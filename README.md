@@ -92,4 +92,6 @@ In addition to these public-facing classes, there are utilities such as **mechan
 
 # Examples
 
-Additional examples can be found in the examples folder.  In addition to the toy example above, there are a number of more realistic examples using the adult dataset.  The file **adult_example** is similar to **toy_example**, but is bigger and slightly more complicated.  The file **convergence** compares the rate of convergence for the different estimation algorithms.  The files **hdmm, privbayes, mwem, and dualquery** show how to use our technique to improve these existing algorithms.  These files have an additional dependency: [Ektelo](https://github.com/ektelo/ektelo).
+Additional examples can be found in the examples folder.  In addition to the toy example above, there are a number of more realistic examples using the adult dataset.  The file **adult_example** is similar to **toy_example**, but is bigger and slightly more complicated.  The file **convergence** compares the rate of convergence for the different estimation algorithms.  
+
+<!--- The files **hdmm, privbayes, mwem, and dualquery** show how to use our technique to improve these existing algorithms.  These files have an additional dependency: [Ektelo](https://github.com/ektelo/ektelo). --->
