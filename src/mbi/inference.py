@@ -48,9 +48,7 @@ class FactoredInference:
             MD2 - Mirror Descent with custom step size
             RDA - Regularized Dual Averaging
             LBFGS - Limited Memory BFGS 
-            EM - Expectation Maximization
             IG - Interior Gradient
-            LNNLS - Local Non-negative least squares
         :param callback: a function to be called after each iteration of optimization
         :param options: solver specific options passed as a dictionary
             { param_name : param_value }
@@ -68,37 +66,9 @@ class FactoredInference:
             self.dual_averaging(measurements, total, **options)
         elif engine == 'LBFGS':
             self.lbfgs(measurements, total, **options)
-        elif engine == 'EM':
-            self.expectation_maximization(measurements, total, **options)
         elif engine == 'IG':
             self.interior_gradient(measurements, total, **options)
-        elif engine == 'LNNLS':
-            self.local_nnls(measurements, total, **options)
         return self.model
-
-    def local_nnls(self, measurements, total = None, callback=None):
-        self._setup(measurements, total)
-
-        model = self.model
-        cliques, potentials = model.cliques, model.potentials
-
-        init =  model.dict_to_vector(model.belief_prop_fast(potentials))
-
-        def loss_and_grad(params):
-            mu = model.vector_to_dict(params)
-            if callback is not None:
-                callback(mu)
-            loss, dmu = self._marginal_loss(mu)
-            dparams = model.dict_to_vector(dmu)
-            return loss, dparams
-
-        opts = { 'maxiter' : self.iters }
-        bnds = [(0,None)]*len(init)
-        res=optimize.minimize(loss_and_grad,init,method='L-BFGS-B',bounds=bnds,jac=True,options=opts)
-
-        mu = model.vector_to_dict(res.x)
-        model.potentials = model.mle(mu)
-        model.marginals = model.belief_prop_fast(model.potentials)
 
     def interior_gradient(self, measurements, total, lipchitz = None,c = 1,sigma = 1,callback=None):
         """ Use the interior gradient algorithm to estimate the GraphicalModel
@@ -323,28 +293,6 @@ class FactoredInference:
         opts = { 'maxiter' : self.iters }
         res = optimize.minimize(loss_and_grad, init, method='L-BFGS-B', jac=True, options=opts)
         return res.fun
-
-    def expectation_maximization(self, measurements, total, alpha, callback=None):
-        self._setup(measurements, total)
-        model = self.model
-        cliques, theta, domain = model.cliques, model.potentials, model.domain
-
-        em_history = []
-        emiter = 0
-
-        for _ in range(self.iters // 500):
-            n = model.belief_prop_fast(theta)
-            for _ in range(500):
-                loss, dL = self._marginal_loss(n)
-                theta1 = theta - dL
-                n1 = model.belief_prop_fast(theta1)
-                n = (1-alpha)*n + alpha*n1
-                if callback is not None:
-                    callback(n)
-            theta = model.mle(n)
-
-        model.potentials = theta
-        model.marginals = n
 
     def _marginal_loss(self, marginals, metric=None):
         """ Compute the loss and gradient for a given dictionary of marginals

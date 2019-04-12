@@ -7,7 +7,7 @@ Suppose we have a unknown data distribution P(A,B,C) defined over three variable
 First, load synthetic data with 1000 rows over a domain of size 2 x 3 x 4
 
 ```
->>> from mbi import Dataset, Domain, FactoredInferece
+>>> from mbi import Dataset, Domain, FactoredInference
 >>> import numpy as np
 >>> 
 >>> domain = Domain(['A','B','C'], [2,3,4])
