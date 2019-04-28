@@ -347,7 +347,7 @@ class FactoredInference:
                     estimates = np.append(estimates, np.dot(v, y))
                 variance = 1.0 / np.sum(1.0 / variances)
                 estimate = variance * np.sum(estimates / variances)
-                total = max(0, estimate)
+                total = max(1, estimate)
 
         if not self.warm_start or not hasattr(self, 'model'):
             cliques = [m[3] for m in measurements] 
