@@ -12,6 +12,8 @@ class TestGraphicalModel(unittest.TestCase):
         domain = Domain(attrs, shape)
         cliques = [('a','b'), ('b','c'),('c','d')]
         self.model = GraphicalModel(domain, cliques)
+        zeros = { cl : Factor.zeros(domain.project(cl)) for cl in self.model.cliques }
+        self.model.potentials = CliqueVector(zeros)
 
     def test_datavector(self):
         x = self.model.datavector().flatten()
@@ -52,7 +54,7 @@ class TestGraphicalModel(unittest.TestCase):
             print(pr, close, results[pr].values, ans)
             self.assertTrue(close)
 
-    def test_krondot(self):
+    def _test_krondot(self):
         model = self.model
         pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
         model.potentials = CliqueVector(pot)
@@ -67,25 +69,17 @@ class TestGraphicalModel(unittest.TestCase):
         self.assertEqual(res.shape, ans.shape)
         self.assertTrue(np.allclose(res, ans))
 
-    def test_dict_to_vector(self):
-        rand = np.random.rand(2*3 + 3*4 + 4*5)
-
-        tmp1 = self.model.vector_to_dict(rand)
-        tmp2 = self.model.dict_to_vector(tmp1)
-        
-        self.assertTrue(np.allclose(tmp2, rand))
-
     def test_belief_prop(self):
         pot = self.model.potentials
         self.model.total = 10
-        mu, logZ, cache = self.model.belief_propagation(pot)
+        mu = self.model.belief_propagation(pot)
 
         for key in mu:
             ans = self.model.total/np.prod(mu[key].domain.shape)
             self.assertTrue(np.allclose(mu[key].values, ans))
 
         pot = { cl : Factor.random(pot[cl].domain) for cl in pot }
-        mu, logZ, cache = self.model.belief_propagation(pot)
+        mu = self.model.belief_propagation(pot)
 
         logp = sum(pot.values())
         logp -= logp.logsumexp()
@@ -95,65 +89,6 @@ class TestGraphicalModel(unittest.TestCase):
             ans = dist.project(key).values  
             res = mu[key].values
             self.assertTrue(np.allclose(ans, res))
-
-    def test_back_belief_prop2(self):
-        self.model.total = 10.0
-        
-        def loss(pot):
-            mu, logZ, cache = self.model.belief_propagation(pot)
-            dpot = self.model.back_belief_propagation(mu, cache)
-            ans = 0.5 * sum((mu[cl]*mu[cl]).sum() for cl in mu)
-            return ans, dpot
-
-        pot = self.model.potentials
-        pot = { cl : Factor.random(pot[cl].domain) for cl in pot }
-        _, exact = loss(pot)
-        approx = { cl : Factor.zeros(pot[cl].domain) for cl in pot }
-        eps = 1e-5
-        for cl in pot:
-            vals = pot[cl].values
-            for i in range(vals.size):
-                curr = vals.item(i)
-                vals.itemset(i, curr + eps)
-                f1, _ = loss(pot)
-                vals.itemset(i, curr - eps)
-                f0, _ = loss(pot)
-                vals.itemset(i, curr)
-                approx[cl].values.itemset(i, (f1 - f0) / (2*eps))
-            self.assertTrue(np.allclose(exact[cl].values, approx[cl].values))
-
-    def test_back_belief_prop(self):
-        from scipy.optimize import check_grad
-        self.model.total = 10.0
-        pot = self.model.potentials
-        mu, logZ, cache = self.model.belief_propagation(pot)
-        dpot = self.model.back_belief_propagation(mu, cache)
-
-        def loss(params):
-            pot = self.model.vector_to_dict(params)
-            mu, logZ, cache = self.model.belief_propagation(pot)
-            dpot = self.model.back_belief_propagation(mu, cache)
-           
-            ans = 0.5*np.sum(self.model.dict_to_vector(mu)**2)
-            grad = self.model.dict_to_vector(dpot)
-            return ans, grad
-
-        params = np.random.rand(2*3 + 3*4 + 4*5)
-        _, exact = loss(params)
-        approx = np.zeros_like(exact)
-        eps = 1e-5
-        for i in range(params.size):
-            params[i] -= eps
-            l0 = loss(params)[0]
-            params[i] += 2*eps
-            l1 = loss(params)[0]
-            params[i] -= eps
-            approx[i] = (l1 - l0) / (2*eps)
-        print(exact)
-        print(approx)
-        #err = check_grad(lambda x: loss(x)[0], lambda x: loss(x)[1], params, epsilon=1e-5)
-        print(np.linalg.norm(exact - approx))
-        self.assertTrue(np.allclose(exact, approx))
 
 if __name__ == '__main__':
     unittest.main()
