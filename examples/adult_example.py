@@ -41,6 +41,7 @@ for cl in cliques:
 
 # now perform inference to estimate the data distribution
 
+#options = {'stepsize':1e-7}
 engine = FactoredInference(domain, log=True, iters=10000)
 model = engine.estimate(measurements, total=total, engine='RDA')
 

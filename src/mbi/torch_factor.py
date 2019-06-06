@@ -14,7 +14,7 @@ class Factor:
         Note: values may be a flattened 1d array or a ndarray with same shape as domain
         """
         if type(values) == np.ndarray:
-            values = torch.FloatTensor(values, device=Factor.device)
+            values = torch.tensor(values, dtype=torch.float32, device=Factor.device)
         assert domain.size() == values.nelement(), 'domain size does not match values size'
         assert len(values.shape)==1 or values.shape == domain.shape, 'invalid shape for values array'
         self.domain = domain
@@ -167,7 +167,8 @@ class Factor:
     def __sub__(self, other):
         if np.isscalar(other):
             return Factor(self.domain, self.values - other)
-        zero, inf = torch.tensor(0.0), torch.tensor(np.inf)
+        zero = torch.tensor(0.0, device=Factor.device)
+        inf = torch.tensor(np.inf, device=Factor.device)
         values = torch.where(other.values==-inf, zero, -other.values)
         other = Factor(other.domain, values)
         return self + other

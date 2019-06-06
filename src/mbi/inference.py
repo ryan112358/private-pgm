@@ -209,7 +209,7 @@ class FactoredInference:
                 mu = model.belief_propagation(theta)
                 ans = self._marginal_loss(mu)
                 m = dL.dot(nu - mu)
-                if curr_loss - ans[0] >= 0.5*alpha*m or nols:
+                if nols or curr_loss - ans[0] >= 0.5*alpha*m:
                     break
                 alpha *= 0.5
 
@@ -243,13 +243,14 @@ class FactoredInference:
                 x = mu2.values.flatten()
                 diff = c*(Q @ x - y)
                 if metric == 'L1':
-                    loss += np.abs(diff).sum()
-                    grad = c*(Q.T @ np.sign(diff))
+                    loss += abs(diff).sum()
+                    sign = diff.sign() if hasattr(diff, 'sign') else np.sign(diff)
+                    grad = c*(Q.T @ sign)
                 else:
                     loss += 0.5*(diff @ diff)
                     grad = c*(Q.T @ diff)
                 gradient[cl] += self.Factor(mu2.domain, grad)
-        return loss, CliqueVector(gradient)
+        return float(loss), CliqueVector(gradient)
 
     def _setup(self, measurements, total):
         """ Perform necessary setup for running estimation algorithms
@@ -298,16 +299,16 @@ class FactoredInference:
             if self.backend == 'torch':
                 import torch
                 device = self.Factor.device
-                y = torch.FloatTensor(y, device=device)
+                y = torch.tensor(y, dtype=torch.float32, device=device)
                 if isinstance(Q, np.ndarray):
-                    Q = torch.FloatTensor(Q, device=device)
+                    Q = torch.tensor(Q, dtype=torch.float32, device=device)
                     Q.T = Q.t()
                 elif sparse.issparse(Q):
                     Q
                     Q = Q.tocoo()
                     idx = torch.LongTensor([Q.row, Q.col])
                     vals = torch.FloatTensor(Q.data)
-                    Q = torch.sparse.FloatTensor(idx, vals, device=device)
+                    Q = torch.sparse.FloatTensor(idx, vals).to(device)
                     Q = TorchSparse(Q)
 
                 # else Q is a Linear Operator, must be compatible with torch 

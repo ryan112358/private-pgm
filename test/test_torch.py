@@ -79,7 +79,7 @@ class TestFactor(unittest.TestCase):
  
         res = self.factor.exp().log()
         self.assertEqual(res.domain, self.factor.domain)
-        self.assertTrue(np.allclose(res.values, self.factor.values))
+        self.assertTrue(np.allclose(res.datavector(), self.factor.datavector()))
 
 class TestTorch(test_inference.TestInference):
     def setUp(self):
