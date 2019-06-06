@@ -40,11 +40,18 @@ class Logger(CallBack):
         """
         CallBack.__init__(self, engine, frequency)
         self.true_answers = true_answers
+        self.idx = 0
+
+    def setup(self):
+        model = self.engine.model
+        total = sum(model.domain.size(cl) for cl in model.cliques)
+        print('Total clique size:', total)
+        cl = max(model.cliques, key=lambda cl: model.domain.size(cl))
+        print('Maximal clique', cl, model.domain.size(cl))
         cols = ['iteration', 'time', 'l1_loss', 'l2_loss']
-        if true_answers is not None:
+        if self.true_answers is not None:
             cols.append('variation')
         self.results = pd.DataFrame(columns=cols)
-        self.idx = 0
         print('\t\t'.join(cols))
 
     def variational_distances(self, marginals):
@@ -62,6 +69,9 @@ class Logger(CallBack):
         return errors
 
     def run(self, marginals):
+        if self.idx == 0:
+            self.setup()
+
         t = time.time() - self.start
         l1_loss = self.engine._marginal_loss(marginals, metric='L1')[0]
         l2_loss = self.engine._marginal_loss(marginals, metric='L2')[0]

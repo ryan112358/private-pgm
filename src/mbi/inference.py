@@ -195,7 +195,7 @@ class FactoredInference:
             alpha = float(stepsize)
             stepsize = lambda t: alpha
         if stepsize is None:
-            alpha = 1.0
+            alpha = 1.0 / self.model.total**2
             stepsize = lambda t: 2.0*alpha
 
         for t in range(1, self.iters + 1):
@@ -208,8 +208,7 @@ class FactoredInference:
                 theta = omega - alpha*dL
                 mu = model.belief_propagation(theta)
                 ans = self._marginal_loss(mu)
-                m = dL.dot(nu - mu)
-                if nols or curr_loss - ans[0] >= 0.5*alpha*m:
+                if nols or curr_loss - ans[0] >= 0.5*alpha*dL.dot(nu-mu):
                     break
                 alpha *= 0.5
 

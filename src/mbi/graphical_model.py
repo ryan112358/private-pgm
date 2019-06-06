@@ -30,10 +30,6 @@ class GraphicalModel:
         self.neighbors = tree.neighbors()
         self.elimination_order = tree.elimination_order
 
-        print('Total clique size:', sum(domain.project(cl).size() for cl in self.cliques))
-        cl = max(self.cliques, key=lambda cl: domain.project(cl).size())
-        print('Maximal clique: ', cl, domain.project(cl).size())
-
     @staticmethod
     def save(model, path):
         pickle.dump(model, open(path, 'wb'))
