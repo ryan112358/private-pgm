@@ -184,6 +184,8 @@ class Factor:
         np.log(self.values, out=out.values)
         return out
 
-    def datavector(self):
+    def datavector(self, flatten=True):
         """ Materialize the data vector """
-        return self.values.flatten()
+        if flatten:
+            return self.values.flatten()
+        return self.values

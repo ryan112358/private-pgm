@@ -16,7 +16,7 @@ class TestGraphicalModel(unittest.TestCase):
         self.model.potentials = CliqueVector(zeros)
 
     def test_datavector(self):
-        x = self.model.datavector().flatten()
+        x = self.model.datavector()
         ans = np.ones(2*3*4*5) / (2*3*4*5)
         self.assertTrue(np.allclose(x, ans))
 
@@ -25,17 +25,34 @@ class TestGraphicalModel(unittest.TestCase):
         x = model.datavector()
         ans = np.ones(2*5) / 10.0
         self.assertEqual(x.size, 10)
-        self.assertTrue(np.allclose(x.flatten(), ans))
+        self.assertTrue(np.allclose(x, ans))
 
         model = self.model
         pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
         model.potentials = CliqueVector(pot)
         
-        x = model.datavector().reshape(2,3,4,5)
+        x = model.datavector(flatten=False)
         y0 = x.sum(axis=(2,3)).flatten()
         y1 = model.project(['a','b']).datavector() 
         self.assertEqual(y0.size, y1.size)
         self.assertTrue(np.allclose(y0, y1))
+
+        x = model.project('a').datavector()
+
+    def test_krondot(self):
+        model = self.model
+        pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
+        model.potentials = CliqueVector(pot)
+ 
+        A = np.ones((1,2))
+        B = np.eye(3)
+        C = np.ones((1,4))
+        D = np.eye(5)
+        res = model.krondot([A,B,C,D])
+        x = model.datavector(flatten=False)
+        ans = x.sum(axis=(0,2), keepdims=True)
+        self.assertEqual(res.shape, ans.shape)
+        self.assertTrue(np.allclose(res, ans))
 
     def test_calculate_many_marginals(self):
         proj = [[],['a'],['b'],['c'],['d'],['a','b'],['a','c'],['a','d'],['b','c'],
@@ -53,21 +70,6 @@ class TestGraphicalModel(unittest.TestCase):
             close = np.allclose(results[pr].values, ans)
             print(pr, close, results[pr].values, ans)
             self.assertTrue(close)
-
-    def _test_krondot(self):
-        model = self.model
-        pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
-        model.potentials = CliqueVector(pot)
- 
-        A = np.ones((1,2))
-        B = np.eye(3)
-        C = np.ones((1,4))
-        D = np.eye(5)
-        res = model.krondot([A,B,C,D])
-        x = model.datavector().reshape(2,3,4,5)
-        ans = x.sum(axis=(0,2), keepdims=True)
-        self.assertEqual(res.shape, ans.shape)
-        self.assertTrue(np.allclose(res, ans))
 
     def test_belief_prop(self):
         pot = self.model.potentials
@@ -89,6 +91,11 @@ class TestGraphicalModel(unittest.TestCase):
             ans = dist.project(key).values  
             res = mu[key].values
             self.assertTrue(np.allclose(ans, res))
+
+    def test_synthetic_data(self):
+        model = self.model
+        sy = model.synthetic_data()
+        self.assertTrue(True)
 
 if __name__ == '__main__':
     unittest.main()

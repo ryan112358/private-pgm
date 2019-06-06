@@ -42,7 +42,7 @@ class FactoredInference:
             from mbi import Factor
             self.Factor= Factor
 
-    def infer(self, measurements, total = None, engine='RDA', callback=None, options = {}):
+    def estimate(self, measurements, total = None, engine='RDA', callback=None, options = {}):
         """ 
         Estimate a GraphicalModel from the given measurements
 
@@ -218,48 +218,6 @@ class FactoredInference:
 
         return ans[0]
 
-    def lbfgs(self, measurements, total = None, callback=None):
-        """ Estimate model using LBFGS algorithm by solving the following problem
-
-        theta* = argmin L(mu(theta))
-
-        Note: this is not a convex objective so convergence to global optima is not guaranteed.
-                In practice, it usually converges and is pretty efficient.
-
-        :param measurements: a list of (Q, y, noise, proj) tuples, where
-            Q is the measurement matrix (a numpy array or scipy sparse matrix or LinearOperator)
-            y is the noisy answers to the measurement queries
-            noise is the standard deviation of the noise added to y
-            proj defines the marginal used for this measurement set (a subset of attributes)
-        :param total: The total number of records (if known)
-        :param callback: a function to be called after each iteration of optimization
-        """
-        self._setup(measurements, total)
-        model = self.model
-        cliques, potentials = model.cliques, model.potentials
-       
-        init =  model.dict_to_vector(potentials) 
-
-        def loss_and_grad(params):
-
-            theta = model.vector_to_dict(params)
-
-            u, logZ, cache = model.belief_propagation(theta)
-            loss, du = self._marginal_loss(u)
-            dtheta = model.back_belief_propagation(du, cache)
-
-            model.potentials = theta
-            model.marginals = u
-            if callback is not None:
-                callback(u)
-
-            dparams = model.dict_to_vector(dtheta)
-            return loss, dparams
-
-        opts = { 'maxiter' : self.iters }
-        res = optimize.minimize(loss_and_grad, init, method='L-BFGS-B', jac=True, options=opts)
-        return res.fun
-
     def _marginal_loss(self, marginals, metric=None):
         """ Compute the loss and gradient for a given dictionary of marginals
 
@@ -294,7 +252,7 @@ class FactoredInference:
         return loss, CliqueVector(gradient)
 
     def _setup(self, measurements, total):
-        """ Perform necessary setup for running inference
+        """ Perform necessary setup for running estimation algorithms
        
         1. If total is None, find the minimum variance unbiased estimate for total and use that
         2. Construct the GraphicalModel 
@@ -316,6 +274,7 @@ class FactoredInference:
                 total = max(1, estimate)
 
         if not self.warm_start or not hasattr(self, 'model'):
+            # initialize the model and parameters
             cliques = [m[3] for m in measurements] 
             if self.structural_zeros is not None:
                 cliques += list(self.structural_zeros.keys())
@@ -331,10 +290,10 @@ class FactoredInference:
                         if set(cl) <= set(cl2):
                             self.model.potentials[cl2] += fact
                             break
-        
+       
+        # group the measurements into model cliques 
         cliques = self.model.cliques
         self.groups = { cl : [] for cl in cliques }
-
         for Q,y,noise,proj in measurements:
             if self.backend == 'torch':
                 import torch

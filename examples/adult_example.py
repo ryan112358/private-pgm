@@ -42,7 +42,7 @@ for cl in cliques:
 # now perform inference to estimate the data distribution
 
 engine = FactoredInference(domain, log=True, iters=10000)
-model = engine.infer(measurements, total=total, engine='RDA')
+model = engine.estimate(measurements, total=total, engine='RDA')
 
 # now answer new queries
 

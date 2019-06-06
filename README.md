@@ -1,5 +1,9 @@
 # Graphical-model based estimation and inference for differential privacy
 
+https://arxiv.org/abs/1901.09136
+
+McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. "Graphical-model based estimation and inference for differential privacy." In Proceedings of the 36th International Conference on Machine Learning. 2019.
+
 # Toy example
 
 Suppose we have a unknown data distribution P(A,B,C) defined over three variables and we invoke a noise-addition mechanism to get a noisy answer to the two-way marginals P(A,B) and P(B,C).  We want to use this information to recover a representation of the data distribution that approximates the true data with respect to the measured marginals.  We can do this as follows:
@@ -17,7 +21,7 @@ First, load synthetic data with 1000 rows over a domain of size 2 x 3 x 4
 Then measure the AB marginal and BC marginal using the Laplace mechanism
 ```
 >>> epsilon = 1.0
->>> sigma = np.sqrt(2.0) / epsilon
+>>> sigma = 1.0 / epsilon
 >>> ab = data.project(['A','B']).datavector()
 >>> bc = data.project(['B','C']).datavector()
 >>> yab = ab + np.random.laplace(loc=0, scale=sigma, size=ab.size)
@@ -31,7 +35,7 @@ Now feed these noisy measurements into the inference engine using the Mirror Des
 >>> Ibc = np.eye(bc.size)
 >>> measurements = [(Iab, yab, sigma, ('A','B')), (Ibc, ybc, sigma, ('B','C'))]
 >>> engine = FactoredInference(domain, log=True)
->>> model = engine.infer(measurements, engine='MD')
+>>> model = engine.estimate(measurements, engine='MD')
 ```
 
 Now model can be used as if it were the true data to answer any new queries
@@ -61,12 +65,22 @@ This allows you to import modules from this package like ``` from mbi import Fac
 ```
 $ cd /path/to/private-pgm/test
 $ nosetests
-...............................
+........................................
 ----------------------------------------------------------------------
-Ran 31 tests in 1.420s
+Ran 40 tests in 5.009s
 
 OK
 ```
+
+# PyTorch
+
+In addition to the above setup, if you have access to a GPU machine you can use PyTorch to accelerate the computations for the Inference engine.  This requires changing only one line of code:
+
+```
+>>> engine = FactoredInference(domain, backend='torch', log=True)
+```
+
+See https://pytorch.org/ for instructions to install PyTorch in your environment.
 
 # Documentation
 
@@ -86,7 +100,7 @@ This package contains the following public-facing classes: **Domain, Dataset, Fa
     * y (vector) is the noisy answers to the measurement queries (should be a numpy array).
     * noise (scalar): is the standard deviation of the noise added to y.
 
-The **infer()** method allows you to estimate the data distribution from noisy measurements in this form.  Optional arguments are **total** (if using bounded differential privacy) and **engine** (to specify which estimation algorithm should be used).  This class also has a number of other optional arguments, including **structural_zeros** (if some combinations of attribute settings are impossible), **metric** to specify the marginal loss function (L1, L2, or custom), **log** (to display progress of estimation), **iters** (number of iterations), and some others.
+The **estimate()** method allows you to estimate the data distribution from noisy measurements in this form.  Optional arguments are **total** (if using bounded differential privacy) and **engine** (to specify which estimation algorithm should be used).  This class also has a number of other optional arguments, including **structural_zeros** (if some combinations of attribute settings are impossible), **metric** to specify the marginal loss function (L1, L2, or custom), **log** (to display progress of estimation), **iters** (number of iterations), and some others.
 
 In addition to these public-facing classes, there are utilities such as **mechanism** (for running end-to-end experiments) and **callbacks** (for customized monitoring of the estimation procedure). 
 

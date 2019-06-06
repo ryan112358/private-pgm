@@ -68,6 +68,28 @@ class GraphicalModel:
         ans = result.project(attrs)
         return ans * self.total / ans.sum()
 
+    def krondot(self, matrices):
+        """ Compute the answer to the set of queries Q1 x Q2 X ... x Qd, where 
+            Qi is a query matrix on the ith attribute and "x" is the Kronecker product
+        This may be more efficient than computing a supporting marginal then multiplying that by Q.
+        In particular, if each Qi has only a few rows.
+        
+        :param matrices: a list of matrices for each attribute in the domain
+        :return: the vector of query answers
+        """
+        assert all(M.shape[1] == n for M, n in zip(matrices, self.domain.shape)), \
+            'matrices must conform to the shape of the domain'
+        logZ = self.belief_propagation(self.potentials, logZ=True)
+        factors = [self.potentials[cl].exp() for cl in self.cliques]
+        Factor = type(factors[0]) # infer the type of the factors
+        elim = self.domain.attrs
+        for attr, Q in zip(elim, matrices):
+            d = Domain(['%s-answer'%attr, attr], Q.shape)
+            factors.append(Factor(d, Q))
+        result = variable_elimination(factors, elim)
+        result = result.transpose(['%s-answer'%a for a in elim])
+        return result.datavector(flatten=False) * self.total / np.exp(logZ)
+
     def calculate_many_marginals(self, projections):
         """ Calculates marginals for all the projections in the list using
             Algorithm for answering many out-of-clique queries (section 10.3 in Koller and Friedman)
@@ -118,19 +140,20 @@ class GraphicalModel:
 
         return answers
 
-    def datavector(self):
+    def datavector(self, flatten=True):
         """ Materialize the explicit representation of the distribution as a data vector. """
         logp = sum(self.potentials[cl] for cl in self.cliques)
         ans = np.exp(logp - logp.logsumexp())
         wgt = ans.domain.size() / self.domain.size()
-        return ans.expand(self.domain).values.flatten() * wgt * self.total
+        return ans.expand(self.domain).datavector(flatten) * wgt * self.total
 
-    def belief_propagation(self, potentials):
+    def belief_propagation(self, potentials, logZ=False):
         """ Compute the marginals of the graphical model with given parameters
         
         Note this is an efficient, numerically stable implementation of belief propagation
     
         :param potentials: the (log-space) parameters of the graphical model
+        :param logZ: flag to return logZ instead of marginals
         :return marginals: the marginals of the graphical model
         """
         beliefs = { cl : potentials[cl].copy() for cl in potentials }
@@ -143,7 +166,9 @@ class GraphicalModel:
                 tau = beliefs[i]
             messages[(i,j)] = tau.logsumexp(sep)
             beliefs[j] += messages[(i,j)]
-
+      
+        if logZ: return beliefs[j].logsumexp()
+ 
         logZ = beliefs[j].logsumexp()
         for cl in self.cliques:
             beliefs[cl] += np.log(self.total) - logZ
@@ -191,7 +216,7 @@ class GraphicalModel:
 
         order = self.elimination_order[::-1]
         col = order[0]
-        marg = self.project([col]).values
+        marg = self.project([col]).datavector(flatten=False)
         df.loc[:,col] = synthetic_col(marg, total)
         used = { col }
 
@@ -200,7 +225,7 @@ class GraphicalModel:
             relevant = used.intersection(set.union(*relevant))
             proj = tuple(relevant)
             used.add(col)
-            marg = self.project(proj + (col,)).values
+            marg = self.project(proj + (col,)).datavector(flatten=False)
 
             def foo(group):
                 idx = group.name
@@ -299,5 +324,5 @@ class CliqueVector(dict):
         return sum( (self[cl]*other[cl]).sum() for cl in self )
 
     def size(self):
-        return sum(self[cl].values.size for cl in self)
+        return sum(self[cl].domain.size() for cl in self)
 

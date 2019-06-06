@@ -9,7 +9,7 @@ class TestInference(unittest.TestCase):
     def setUp(self):
         attrs = ['a','b','c','d', 'e']
         shape = [2,3,4,5,6]
-        domain = Domain(attrs, shape)
+        self.domain = Domain(attrs, shape)
 
         #x = np.random.rand(*shape)
 
@@ -20,7 +20,7 @@ class TestInference(unittest.TestCase):
             y /= y.sum()
             self.measurements.append( (I, y, 1.0, attrs[i]) )
 
-        self.engine = FactoredInference(domain, log=True)
+        self.engine = FactoredInference(self.domain, backend='numpy', log=True)
 
     def test_mirror_descent(self):
         loss = self.engine.mirror_descent(self.measurements, 1.0)
@@ -29,6 +29,11 @@ class TestInference(unittest.TestCase):
 
     def test_dual_averaging(self):
         loss = self.engine.dual_averaging(self.measurements, 1.0)
+        self.assertEqual(self.engine.model.total, 1.0)
+        #self.assertTrue(loss <= 1e-5)
+
+    def test_interior_gradient(self):
+        loss = self.engine.interior_gradient(self.measurements, 1.0)
         self.assertEqual(self.engine.model.total, 1.0)
         #self.assertTrue(loss <= 1e-5)
 
@@ -49,7 +54,6 @@ class TestInference(unittest.TestCase):
             B = (x-y).dot(x-y)
             ratio = np.sqrt(A / B)
             self.assertTrue(ratio <= lip) 
-
 
 if __name__ == '__main__':
     unittest.main()

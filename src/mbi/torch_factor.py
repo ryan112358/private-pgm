@@ -9,10 +9,12 @@ class Factor:
         """ Initialize a factor over the given domain
 
         :param domain: the domain of the factor
-        :param values: the ndarray of factor values (for each element of the domain)
+        :param values: the ndarray or tensor of factor values (for each element of the domain)
 
         Note: values may be a flattened 1d array or a ndarray with same shape as domain
         """
+        if type(values) == np.ndarray:
+            values = torch.FloatTensor(values, device=Factor.device)
         assert domain.size() == values.nelement(), 'domain size does not match values size'
         assert len(values.shape)==1 or values.shape == domain.shape, 'invalid shape for values array'
         self.domain = domain
@@ -105,7 +107,7 @@ class Factor:
 
     def max(self, attrs = None):
         if attrs is None:
-            return self.values.max()
+            return float(self.values.max())
         return NotImplementedError # torch.max does not behave like numpy
 
     def condition(self, evidence):
@@ -191,6 +193,7 @@ class Factor:
         torch.log(self.values, out=out.values)
         return out
 
-    def datavector(self):
-        """ Materialize the data vector """
-        return self.values.flatten()
+    def datavector(self, flatten=True):
+        """ Materialize the data vector as a numpy array """
+        ans = self.values.to("cpu").numpy()
+        return ans.flatten() if flatten else ans

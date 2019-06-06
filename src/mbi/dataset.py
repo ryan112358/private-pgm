@@ -51,7 +51,9 @@ class Dataset:
         proj = [c for c in self.domain if c not in cols]
         return self.project(proj)
 
-    def datavector(self):
+    def datavector(self, flatten=True):
         """ return the database in vector-of-counts form """
         bins = [range(n+1) for n in self.domain.shape]
-        return np.histogramdd(self.df.values, bins)[0].flatten()
+        ans = np.histogramdd(self.df.values, bins)[0]
+        return ans.flatten() if flatten else ans
+    

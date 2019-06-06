@@ -1,18 +1,24 @@
 import unittest
-from mbi.torch_factor import Factor
-from mbi.domain import Domain
+from mbi import Domain, FactoredInference
 import numpy as np
-import torch
+import test_inference
+try:
+    import torch
+    from mbi.torch_factor import Factor
+    skip = False
+except:
+    skip = True
 
 class TestFactor(unittest.TestCase):
 
     def setUp(self):
+        if skip: raise unittest.SkipTest('PyTorch not installed')
         attrs = ['a','b','c']
         shape = [2,3,4]
         domain = Domain(attrs, shape)
         values = torch.rand(*shape)
         self.factor = Factor(domain, values)
-   
+  
     def test_expand(self):
         domain = Domain(['a','b','c','d'], [2,3,4,5])
         res = self.factor.expand(domain)
@@ -75,6 +81,11 @@ class TestFactor(unittest.TestCase):
         self.assertEqual(res.domain, self.factor.domain)
         self.assertTrue(np.allclose(res.values, self.factor.values))
 
+class TestTorch(test_inference.TestInference):
+    def setUp(self):
+        if skip: raise unittest.SkipTest('PyTorch not installed')
+        test_inference.TestInference.setUp(self)
+        self.engine = FactoredInference(self.domain, backend='torch', log=True)
 
 if __name__ == '__main__':
     unittest.main()
