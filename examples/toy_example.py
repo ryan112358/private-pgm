@@ -12,7 +12,7 @@ ab = data.project(['A','B']).datavector()
 bc = data.project(['B','C']).datavector()
 
 # add noise to preserve differential privacy
-epsilon = 1.0
+epsilon = np.sqrt(2)
 sigma = np.sqrt(2.0) / epsilon
 
 np.random.seed(0)
@@ -27,8 +27,8 @@ measurements = [(Iab, yab, sigma, ['A', 'B']),
                 (Ibc, ybc, sigma, ['B', 'C'])]
 
 # estimate the data distribution
-engine = FactoredInference(domain, log=True)
-model = engine.infer(measurements, engine='MD')
+engine = FactoredInference(domain)
+model = engine.estimate(measurements, engine='MD')
 
 # recover consistent estimates of measurements
 ab2 = model.project(['A','B']).datavector()
@@ -41,3 +41,7 @@ print(bc2)
 # estimate answer to unmeasured queries
 ac2 = model.project(['A','C']).datavector()
 print(ac2)
+
+# generate synthetic data
+synth = model.synthetic_data(rows=10)
+print(synth.df)

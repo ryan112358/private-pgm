@@ -55,6 +55,6 @@ def run(dataset, measurements, eps=1.0, delta=0.0, bounded=True, engine='RDA',
 
     estimator = FactoredInference(domain, metric=metric, iters=iters, warm_start=False, elim_order=elim_order)
     logger = Logger(estimator, true_answers=truth, frequency=frequency)
-    model = estimator.infer(answers, total, engine=engine, callback=logger, options=options)
+    model = estimator.estimate(answers, total, engine=engine, callback=logger, options=options)
         
     return model, logger, answers
