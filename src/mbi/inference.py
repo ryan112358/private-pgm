@@ -42,7 +42,7 @@ class FactoredInference:
             from mbi import Factor
             self.Factor= Factor
 
-    def estimate(self, measurements, total = None, engine='RDA', callback=None, options = {}):
+    def estimate(self, measurements, total = None, engine='MD', callback=None, options = {}):
         """ 
         Estimate a GraphicalModel from the given measurements
 
@@ -54,9 +54,7 @@ class FactoredInference:
         :param total: The total number of records (if known)
         :param engine: the optimization algorithm to use, options include:
             MD - Mirror Descent with armijo line search
-            MD2 - Mirror Descent with custom step size
             RDA - Regularized Dual Averaging
-            LBFGS - Limited Memory BFGS 
             IG - Interior Gradient
         :param callback: a function to be called after each iteration of optimization
         :param options: solver specific options passed as a dictionary
@@ -334,6 +332,12 @@ class FactoredInference:
                     eigs[cl] += eig * n / p / noise**2
                     break
         return max(eigs.values())
+
+    def infer(self, measurements, total=None, engine='MD', callback=None, options={}):
+        import warnings
+        message = "Function infer is deprecated.  Please use estimate instead."
+        warnings.warn(message, DeprecationWarning)
+        return self.estimate(measurements, total, engine, callback, options)
 
 class TorchSparse:
     # this class is temporarily necessary until torch.sparse 

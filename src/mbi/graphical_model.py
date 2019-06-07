@@ -187,9 +187,9 @@ class GraphicalModel:
             potentials[cl] = marginals[cl].log() - marginals[cl].project(new).log()
         return CliqueVector(potentials)
 
-    def synthetic_data(self):
+    def synthetic_data(self, rows=None):
         """ Generate synthetic tabular data from the distribution """
-        total = int(self.total)
+        total = int(self.total) if rows is None else rows
         cols = self.domain.attrs
         data = np.zeros((total, len(cols)), dtype=int)
         df = pd.DataFrame(data, columns = cols)

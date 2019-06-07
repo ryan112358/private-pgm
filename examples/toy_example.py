@@ -43,5 +43,5 @@ ac2 = model.project(['A','C']).datavector()
 print(ac2)
 
 # generate synthetic data
-synth = model.synthetic_data()
-print(synth)
+synth = model.synthetic_data(rows=10)
+print(synth.df)
