@@ -30,6 +30,13 @@ class GraphicalModel:
         self.neighbors = tree.neighbors()
         self.elimination_order = tree.elimination_order
 
+        size = sum(domain.size(cl) for cl in self.cliques)*8
+        if size > 4*10**9:
+            import warnings
+            message = 'Size of parameter vector is %.2f GB. ' % (size / 10**9) 
+            message += 'Consider removing some measurements or finding a better elimination order'
+            warnings.warn(message)
+
     @staticmethod
     def save(model, path):
         pickle.dump(model, open(path, 'wb'))

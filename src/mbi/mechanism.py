@@ -4,7 +4,7 @@ from scipy.stats import norm, laplace
 import numpy as np
 from scipy import sparse
 
-def run(dataset, measurements, eps=1.0, delta=0.0, bounded=True, engine='RDA', 
+def run(dataset, measurements, eps=1.0, delta=0.0, bounded=True, engine='MD', 
         options={}, iters=10000, seed=None, metric='L2', elim_order=None, frequency=1,workload=None):
     """
     Run a mechanism that measures the given measurements and runs inference.
