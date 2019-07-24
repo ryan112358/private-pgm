@@ -169,10 +169,11 @@ class GraphicalModel:
                 tau = beliefs[i]
             messages[(i,j)] = tau.logsumexp(sep)
             beliefs[j] += messages[(i,j)]
-      
-        if logZ: return beliefs[j].logsumexp()
+
+        cl = self.cliques[0]      
+        if logZ: return beliefs[cl].logsumexp()
  
-        logZ = beliefs[j].logsumexp()
+        logZ = beliefs[cl].logsumexp()
         for cl in self.cliques:
             beliefs[cl] += np.log(self.total) - logZ
             beliefs[cl] = beliefs[cl].exp(out=beliefs[cl])    
