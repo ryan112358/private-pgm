@@ -20,7 +20,11 @@ class TestInference(unittest.TestCase):
             y /= y.sum()
             self.measurements.append( (I, y, 1.0, attrs[i]) )
 
-        self.engine = FactoredInference(self.domain, backend='numpy', log=True)
+        self.engine = FactoredInference(self.domain, backend='numpy', log=True, iters=100, warm_start=True)
+
+    def test_estimate(self):
+        self.engine.estimate(self.measurements, 1.0)
+        self.assertEqual(self.engine.model.total, 1.0)
 
     def test_mirror_descent(self):
         loss = self.engine.mirror_descent(self.measurements, 1.0)
@@ -36,6 +40,12 @@ class TestInference(unittest.TestCase):
         loss = self.engine.interior_gradient(self.measurements, 1.0)
         self.assertEqual(self.engine.model.total, 1.0)
         #self.assertTrue(loss <= 1e-5)
+
+    def test_warm_start(self):
+        self.engine.estimate(self.measurements, 1.0)
+        new = (np.eye(2*3), np.random.rand(6), 1.0, ('a','b'))
+        self.engine.estimate(self.measurements + [new], 1.0)
+        
 
     def test_lipschitz(self):
         self.engine._setup(self.measurements, None)

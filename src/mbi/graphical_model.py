@@ -30,10 +30,10 @@ class GraphicalModel:
         self.neighbors = tree.neighbors()
         self.elimination_order = tree.elimination_order
 
-        size = sum(domain.size(cl) for cl in self.cliques)*8
-        if size > 4*10**9:
+        self.size = sum(domain.size(cl) for cl in self.cliques)
+        if self.size*8 > 4*10**9:
             import warnings
-            message = 'Size of parameter vector is %.2f GB. ' % (size / 10**9) 
+            message = 'Size of parameter vector is %.2f GB. ' % (self.size*8 / 10**9) 
             message += 'Consider removing some measurements or finding a better elimination order'
             warnings.warn(message)
 
@@ -195,6 +195,16 @@ class GraphicalModel:
             potentials[cl] = marginals[cl].log() - marginals[cl].project(new).log()
         return CliqueVector(potentials)
 
+    def fit(self, data):
+        from mbi import Factor
+        assert data.domain.contains(self.domain), 'model domain not compatible with data domain'
+        marginals = {}
+        for cl in self.cliques:
+            x = data.project(cl).datavector()
+            dom = self.domain.project(cl)
+            marginals[cl] = Factor(dom, x)
+        self.potentials = self.mle(marginals)
+
     def synthetic_data(self, rows=None):
         """ Generate synthetic tabular data from the distribution """
         total = int(self.total) if rows is None else rows
@@ -298,6 +308,18 @@ class CliqueVector(dict):
     def __init__(self, dictionary):
         self.dictionary = dictionary
         dict.__init__(self, dictionary)
+
+    def combine(self, other):
+        # combines this CliqueVector with other, even if they do not share the same set of factors
+        for cl in other:
+            check = False
+            for cl2 in self:
+                if set(cl) <= set(cl2):
+                    self[cl2] += other[cl]
+                    check = True
+                    break
+            if not check:
+                raise ValueError('Clique ' + str(cl) + ' in not contained within this CliqueVector')
 
     def __mul__(self, const):
         ans = { cl : const*self[cl] for cl in self }

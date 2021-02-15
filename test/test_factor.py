@@ -37,6 +37,8 @@ class TestFactor(unittest.TestCase):
         self.assertEqual(res.domain, ans)
         self.assertEqual(res.values.shape, (4,2))
 
+        self.factor.project('a')
+
     def test_sum(self):
         res = self.factor.sum(['a','b'])
         self.assertEqual(res.domain, Domain(['c'],[4]))

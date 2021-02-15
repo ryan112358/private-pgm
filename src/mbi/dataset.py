@@ -51,6 +51,10 @@ class Dataset:
         proj = [c for c in self.domain if c not in cols]
         return self.project(proj)
 
+    @property
+    def records(self):
+        return self.df.shape[0]
+
     def datavector(self, flatten=True):
         """ return the database in vector-of-counts form """
         bins = [range(n+1) for n in self.domain.shape]

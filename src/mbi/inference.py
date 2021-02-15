@@ -6,7 +6,7 @@ from scipy import optimize, sparse
 from functools import partial
 
 class FactoredInference:
-    def __init__(self, domain, backend = 'numpy', structural_zeros = None, metric='L2', log=False, iters=100, warm_start=False, elim_order=None):
+    def __init__(self, domain, backend = 'numpy', structural_zeros = {}, metric='L2', log=False, iters=1000, warm_start=False, elim_order=None):
         """
         Class for learning a GraphicalModel from  noisy measurements on a data distribution
         
@@ -28,7 +28,6 @@ class FactoredInference:
         """
         self.domain = domain
         self.backend = backend
-        self.structural_zeros = structural_zeros
         self.metric = metric
         self.log = log
         self.iters = iters
@@ -41,6 +40,12 @@ class FactoredInference:
         else:
             from mbi import Factor
             self.Factor= Factor
+
+        self.structural_zeros = CliqueVector({})
+        for cl in structural_zeros:
+            dom = self.domain.project(cl)
+            fact = structural_zeros[cl]
+            self.structural_zeros[cl] = self.Factor.active(dom,fact)
 
     def estimate(self, measurements, total = None, engine='MD', callback=None, options = {}):
         """ 
@@ -61,7 +66,8 @@ class FactoredInference:
             { param_name : param_value }
         
         :return model: A GraphicalModel that best matches the measurements taken
-        """      
+        """
+        measurements = self.fix_measurements(measurements)
         options['callback'] = callback
         if callback is None and self.log:
             options['callback'] = callbacks.Logger(self)
@@ -72,6 +78,26 @@ class FactoredInference:
         elif engine == 'IG':
             self.interior_gradient(measurements, total, **options)
         return self.model
+
+
+    def fix_measurements(self, measurements):
+        assert type(measurements) is list, 'measurements must be a list, given ' + measurements
+        assert all(len(m)==4 for m in measurements), \
+            'each measurement must be a 4-tuple (Q, y, noise,proj)'
+        ans = []
+        for Q, y, noise, proj in measurements:
+            if type(proj) is list:
+                proj = tuple(proj)
+            if type(proj) is not tuple:
+                proj = (proj,)
+            if Q is None:
+                Q = sparse.eye(self.domain.size(proj))
+            assert np.isscalar(noise), 'noise must be a real value, given ' + noise
+            assert all(a in self.domain for a in proj), proj + ' not contained in domain'
+            assert Q is None or Q.shape[0] == y.size, 'shapes of Q and y are not compatible'
+            assert Q.shape[1] == self.domain.size(proj), 'shapes of Q and proj are not compatible'
+            ans.append( (Q, y, noise, proj) )
+        return ans
 
     def interior_gradient(self, measurements, total, lipschitz = None,c = 1,sigma = 1,callback=None):
         """ Use the interior gradient algorithm to estimate the GraphicalModel
@@ -271,24 +297,20 @@ class FactoredInference:
                 estimate = variance * np.sum(estimates / variances)
                 total = max(1, estimate)
 
-        if not self.warm_start or not hasattr(self, 'model'):
-            # initialize the model and parameters
-            cliques = [m[3] for m in measurements] 
-            if self.structural_zeros is not None:
-                cliques += list(self.structural_zeros.keys())
-            self.model = GraphicalModel(self.domain,cliques,total,elimination_order=self.elim_order)
-            zeros = { cl : self.Factor.zeros(self.domain.project(cl)) for cl in self.model.cliques }
-            self.model.potentials = CliqueVector(zeros)
-            if self.structural_zeros is not None:
-                for cl in self.structural_zeros:
-                    dom = self.domain.project(cl)
-                    zeros = self.structural_zeros[cl]
-                    fact = Factor.active(dom, zeros)
-                    for cl2 in self.model.potentials:
-                        if set(cl) <= set(cl2):
-                            self.model.potentials[cl2] += fact
-                            break
-       
+        #if not self.warm_start or not hasattr(self, 'model'):
+        # initialize the model and parameters
+        cliques = [m[3] for m in measurements] 
+        if self.structural_zeros is not None:
+            cliques += list(self.structural_zeros.keys())
+        model = GraphicalModel(self.domain,cliques,total,elimination_order=self.elim_order)
+        zeros = { cl : self.Factor.zeros(self.domain.project(cl)) for cl in model.cliques }
+        model.potentials = CliqueVector(zeros)
+        model.potentials.combine(self.structural_zeros)
+
+        if self.warm_start and hasattr(self, 'model'):
+            model.potentials.combine(self.model.potentials)
+        self.model = model  
+ 
         # group the measurements into model cliques 
         cliques = self.model.cliques
         self.groups = { cl : [] for cl in cliques }
