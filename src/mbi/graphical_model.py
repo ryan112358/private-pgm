@@ -311,15 +311,14 @@ class CliqueVector(dict):
 
     def combine(self, other):
         # combines this CliqueVector with other, even if they do not share the same set of factors
+        # used for warm-starting optimization
+        # Important note: if other contains factors not defined within this CliqueVector, they 
+        # are ignored and *not* combined into this CliqueVector
         for cl in other:
-            check = False
             for cl2 in self:
                 if set(cl) <= set(cl2):
                     self[cl2] += other[cl]
-                    check = True
                     break
-            if not check:
-                raise ValueError('Clique ' + str(cl) + ' in not contained within this CliqueVector')
 
     def __mul__(self, const):
         ans = { cl : const*self[cl] for cl in self }

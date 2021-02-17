@@ -92,8 +92,8 @@ class FactoredInference:
                 proj = (proj,)
             if Q is None:
                 Q = sparse.eye(self.domain.size(proj))
-            assert np.isscalar(noise), 'noise must be a real value, given ' + noise
-            assert all(a in self.domain for a in proj), proj + ' not contained in domain'
+            assert np.isscalar(noise), 'noise must be a real value, given ' + str(noise)
+            assert all(a in self.domain for a in proj), str(proj) + ' not contained in domain'
             assert Q is None or Q.shape[0] == y.size, 'shapes of Q and y are not compatible'
             assert Q.shape[1] == self.domain.size(proj), 'shapes of Q and proj are not compatible'
             ans.append( (Q, y, noise, proj) )
