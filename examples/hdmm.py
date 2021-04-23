@@ -11,6 +11,8 @@ Run HDMM with and without graphical-model inference on the adult dataset.
 McKenna, Ryan, Gerome Miklau, Michael Hay, and Ashwin Machanavajjhala. "Optimizing error of high-dimensional statistical queries under differential privacy." Proceedings of the VLDB Endowment 11, no. 10 (2018): 1206-1219.
 
 Note that least squares is the bottleneck of HDMM for this dataset, as the vector representation is far too large to fit in memory, preventing the original algorithm to run in this setting.  We thus compare against a simple substitute instead, HDMM+LLS (Local Least Squares).
+
+Also note that this is not a fully general implementation of HDMM.  This file is designed to highlight the benefits of Private-PGM for a particular choice of measurements chosen by HDMM.  In this case, the measurements were obtained by running HDMM with OPT+ for a specific workload of 15 random Prefix-Marginals.  These measurements were hard-coded in this script.  For different workloads (e.g., plain marginals) this script should not be used.  Please refer to https://github.com/dpcomp-org/hdmm, which contains a fully general implementation of HDMM.  
 """
 
 
