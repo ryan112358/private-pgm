@@ -4,6 +4,8 @@ from scipy import sparse
 from disjoint_set import DisjointSet
 import networkx as nx
 import itertools
+from cdp2adp import cdp_rho
+from scipy.special import logsumexp
 
 """
 This is a generalization of the winning mechanism from the 
@@ -16,21 +18,17 @@ and does not rely on public provisional data for measurement selection.
 def MST(data, epsilon, delta):
     # This mechanism is designed for relatively large high-dimensional datasets
     # for lower-dimensional datasets (like adult), simpler mechanisms may be better
-    sigma = calibrate_gaussian_noise(epsilon*2.0/3.0, delta)
+    rho = cdp_rho(epsilon, delta)
+    sigma = np.sqrt(3/(2*rho))
     cliques = [(col,) for col in data.domain]
     log1 = measure(data, cliques, sigma)
     data, log1, undo_compress_fn = compress_domain(data, log1)
-    cliques = select(data, epsilon/3.0, log1)
+    cliques = select(data, rho/3.0, log1)
     log2 = measure(data, cliques, sigma)
     engine = FactoredInference(data.domain, iters=5000)
     est = engine.estimate(log1+log2)
     synth = est.synthetic_data()
     return undo_compress_fn(synth)
-
-def calibrate_gaussian_noise(epsilon, delta):
-    # calibrate noise for 2-fold adaptive composition of sensitivity 1 gaussian mechanisms
-    d = np.log(1/delta)
-    return (np.sqrt(d) + np.sqrt(d + epsilon)) / epsilon
 
 def measure(data, cliques, sigma, weights=None):
     if weights is None:
@@ -63,14 +61,13 @@ def compress_domain(data, measurements):
     undo_compress_fn = lambda data: reverse_data(data, supports)
     return transform_data(data, supports), new_measurements, undo_compress_fn
 
-def permute_and_flip(qualities, epsilon, sensitivity=1.0):
-    q = qualities - qualities.max()
-    p = np.exp(0.5*epsilon/sensitivity*q)
-    for i in np.random.permutation(p.size):
-        if np.random.rand() <= p[i]:
-            return i
+def exponential_mechanism(q, eps, sensitivity, prng=np.random, monotonic=False):
+    coef = 1.0 if monotonic else 0.5
+    scores = coef*eps/sensitivity*q
+    probas = np.exp(scores - logsumexp(scores))
+    return prng.choice(q.size, p=probas)
 
-def select(data, epsilon, measurement_log, cliques=[]):
+def select(data, rho, measurement_log, cliques=[]):
     engine = FactoredInference(data.domain, iters=1000)
     est = engine.estimate(measurement_log)
 
@@ -90,11 +87,11 @@ def select(data, epsilon, measurement_log, cliques=[]):
         ds.union(*e)
 
     r = len(list(nx.connected_components(T)))
-
+    epsilon = np.sqrt(8*rho/(r-1))
     for i in range(r-1):
         candidates = [e for e in candidates if not ds.connected(*e)]
         wgts = np.array([weights[e] for e in candidates])
-        idx = permute_and_flip(wgts, epsilon/(r-1), sensitivity=1.0)
+        idx = exponential_mechanism(wgts, epsilon, sensitivity=1.0)
         e = candidates[idx]
         T.add_edge(*e)
         ds.union(*e)
