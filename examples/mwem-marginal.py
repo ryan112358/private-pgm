@@ -16,7 +16,7 @@ There are two additional improvements not described in the original Private-PGM 
 - At the end of the mechanism, we generate synthetic data (rather than query answers)
 """
 
-def worst_approximated(workload_answers, est, workload, eps, penalty=False):
+def worst_approximated(workload_answers, est, workload, eps, penalty=True):
     """ Select a (noisy) worst-approximated marginal for measurement.
     
     :param workload_answers: a dictionary of true answers to the workload
@@ -31,8 +31,7 @@ def worst_approximated(workload_answers, est, workload, eps, penalty=False):
         bias = est.domain.size(cl) if penalty else 0
         x = workload_answers[cl]
         xest = est.project(cl).datavector()
-        errors = np.append(errors-bias, np.abs(x - xest).sum())
-    errors = np.array(errors)
+        errors = np.append(errors, np.abs(x - xest).sum()-bias)
     prob = softmax(0.5*eps*(errors - errors.max()))
     key = np.random.choice(len(errors), p=prob)
     return workload[key]
