@@ -120,7 +120,8 @@ class Factor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Factor(self.domain, other*self.values)
+            new_values = np.nan_to_num(other*self.values)
+            return Factor(self.domain, new_values)
         #print(self.values.max(), other.values.max(), self.domain, other.domain)
         newdom = self.domain.merge(other.domain)
         factor1 = self.expand(newdom)
@@ -166,7 +167,9 @@ class Factor:
     def __truediv__(self, other):
         #assert np.isscalar(other), 'divisor must be a scalar'
         if np.isscalar(other):
-            return self * (1.0 / other)
+            new_values = self.values / other
+            new_values = np.nan_to_num(new_values)
+            return Factor(self.domain, new_values)
         tmp = other.expand(self.domain)
         vals = np.divide(self.values, tmp.values, where=tmp.values>0)
         vals[tmp.values<=0] = 0.0
