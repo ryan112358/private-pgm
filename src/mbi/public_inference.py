@@ -28,7 +28,7 @@ def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
         new_loss, new_dL = loss_and_grad(Q)
 
         if loss - new_loss >= 0.5*alpha*dL.dot(P-Q):
-            print(alpha, loss)
+            #print(alpha, loss)
             P = Q
             loss, dL = new_loss, new_dL
             # increase step size if we haven't already decreased it at least once

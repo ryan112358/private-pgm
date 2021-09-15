@@ -72,7 +72,7 @@ class ProductDist:
         factors = { col : self.factors[col] for col in cols }
         return ProductDist(factors, domain, self.total)
 
-    def datavector(self, flatten=False):
+    def datavector(self, flatten=True):
         ans = reduce(lambda x,y: x*y, self.factors.values(), 1.0)
         ans = ans.transpose(self.domain.attrs)
         return ans.datavector(flatten) * self.total
@@ -86,7 +86,7 @@ class MixtureOfProducts:
     def project(self, cols):
         return MixtureOfProducts([P.project(cols) for P in self.products])
     
-    def datavector(self, flatten=False):
+    def datavector(self, flatten=True):
         return sum(P.datavector(flatten) for P in self.products)
 
 class MixtureInference:
