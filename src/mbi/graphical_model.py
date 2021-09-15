@@ -1,5 +1,5 @@
 import numpy as np
-from mbi import Domain, Dataset
+from mbi import Domain, Dataset, CliqueVector
 from mbi.junction_tree import JunctionTree
 from functools import reduce
 import pickle
@@ -297,57 +297,3 @@ def greedy_order(domain, cliques, elim):
         total_cost += cost[a]
 
     return order
-
-class CliqueVector(dict):
-    """ This is a convenience class for simplifying arithmetic over the 
-        concatenated vector of marginals and potentials.
-
-        These vectors are represented as a dictionary mapping cliques (subsets of attributes)
-        to marginals/potentials (Factor objects)
-    """
-    def __init__(self, dictionary):
-        self.dictionary = dictionary
-        dict.__init__(self, dictionary)
-
-    def combine(self, other):
-        # combines this CliqueVector with other, even if they do not share the same set of factors
-        # used for warm-starting optimization
-        # Important note: if other contains factors not defined within this CliqueVector, they 
-        # are ignored and *not* combined into this CliqueVector
-        for cl in other:
-            for cl2 in self:
-                if set(cl) <= set(cl2):
-                    self[cl2] += other[cl]
-                    break
-
-    def __mul__(self, const):
-        ans = { cl : const*self[cl] for cl in self }
-        return CliqueVector(ans)
-    
-    def __rmul__(self, const):
-        return self.__mul__(const)
-    
-    def __add__(self, other):
-        if np.isscalar(other):
-            ans = { cl : self[cl] + other for cl in self }
-        else:
-            ans = { cl : self[cl] + other[cl] for cl in self }
-        return CliqueVector(ans)
-    
-    def __sub__(self, other):
-        return self + -1*other
-
-    def exp(self):
-        ans = { cl : self[cl].exp() for cl in self }
-        return CliqueVector(ans)
-    
-    def log(self):
-        ans = { cl : self[cl].log() for cl in self }
-        return CliqueVector(ans)
-
-    def dot(self, other):
-        return sum( (self[cl]*other[cl]).sum() for cl in self )
-
-    def size(self):
-        return sum(self[cl].domain.size() for cl in self)
-

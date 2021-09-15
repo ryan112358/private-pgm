@@ -1,4 +1,4 @@
-from mbi import Dataset, FactoredInference, Domain
+from mbi import Dataset, FactoredInference, Domain, LocalInference
 import numpy as np
 from scipy import sparse
 
@@ -40,9 +40,13 @@ for cl in cliques:
     measurements.append( (I, y, sigma, cl) )
 
 # now perform inference to estimate the data distribution
+# We can either use Private-PGM (FactoredInference) or 
+# Approx-Private-PGM (LocalInference), both share the same interface.
 
-engine = FactoredInference(domain, log=True, iters=10000)
-model = engine.estimate(measurements, total=total, engine='RDA')
+engine = FactoredInference(domain, log=True, iters=2500)
+#engine = LocalInference(domain, log=True, iters=2500, marginal_oracle='convex')
+
+model = engine.estimate(measurements, total=total)
 
 # now answer new queries
 
