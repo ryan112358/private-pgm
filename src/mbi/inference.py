@@ -1,12 +1,12 @@
 import numpy as np
-from mbi import Domain, GraphicalModel, callbacks
-from mbi.graphical_model import CliqueVector
+from mbi import Domain, GraphicalModel, callbacks, FactorGraph, RegionGraph, CliqueVector
 from scipy.sparse.linalg import LinearOperator, eigsh, lsmr, aslinearoperator
 from scipy import optimize, sparse
 from functools import partial
+from collections import defaultdict
 
 class FactoredInference:
-    def __init__(self, domain, backend = 'numpy', structural_zeros = {}, metric='L2', log=False, iters=1000, warm_start=False, elim_order=None):
+    def __init__(self, domain, backend = 'numpy', structural_zeros = {}, metric='L2', log=False, iters=1000, warm_start=False, elim_order=None, marginal_oracle='exact', inner_iters=1):
         """
         Class for learning a GraphicalModel from  noisy measurements on a data distribution
         
@@ -34,6 +34,8 @@ class FactoredInference:
         self.warm_start = warm_start
         self.history = []
         self.elim_order = elim_order
+        self.marginal_oracle = marginal_oracle
+        self.inner_iters = inner_iters
         if backend == 'torch':
             from mbi.torch_factor import Factor
             self.Factor = Factor
@@ -47,7 +49,7 @@ class FactoredInference:
             fact = structural_zeros[cl]
             self.structural_zeros[cl] = self.Factor.active(dom,fact)
 
-    def estimate(self, measurements, total = None, engine='MD', callback=None, options = {}):
+    def estimate(self, measurements, total = None, engine='default', callback=None, options = {}):
         """ 
         Estimate a GraphicalModel from the given measurements
 
@@ -67,12 +69,21 @@ class FactoredInference:
         
         :return model: A GraphicalModel that best matches the measurements taken
         """
+        if engine == 'default':
+            if self.marginal_oracle=='exact' or isinstance(self.marginal_oracle, GraphicalModel):
+                engine = 'MD'
+            else:
+                engine = 'MD3'
         measurements = self.fix_measurements(measurements)
         options['callback'] = callback
         if callback is None and self.log:
             options['callback'] = callbacks.Logger(self)
         if engine == 'MD':
             self.mirror_descent(measurements, total, **options)
+        elif engine == 'MD2':
+            self.mirror_descent2(measurements, total, **options)
+        elif engine == 'MD3':
+            self.mirror_descent3(measurements, total, **options)
         elif engine == 'RDA':
             self.dual_averaging(measurements, total, **options)
         elif engine == 'IG':
@@ -86,6 +97,7 @@ class FactoredInference:
             'each measurement must be a 4-tuple (Q, y, noise,proj)'
         ans = []
         for Q, y, noise, proj in measurements:
+            assert Q is None or Q.shape[0] == y.size, 'shapes of Q and y are not compatible'
             if type(proj) is list:
                 proj = tuple(proj)
             if type(proj) is not tuple:
@@ -94,7 +106,6 @@ class FactoredInference:
                 Q = sparse.eye(self.domain.size(proj))
             assert np.isscalar(noise), 'noise must be a real value, given ' + str(noise)
             assert all(a in self.domain for a in proj), str(proj) + ' not contained in domain'
-            assert Q is None or Q.shape[0] == y.size, 'shapes of Q and y are not compatible'
             assert Q.shape[1] == self.domain.size(proj), 'shapes of Q and proj are not compatible'
             ans.append( (Q, y, noise, proj) )
         return ans
@@ -187,7 +198,147 @@ class FactoredInference:
                 callback(w)
 
         model.marginals = w
-        model.potentials = model.mle(w)
+        model.potentials = model.mle(w) # TODO: add this back in
+
+
+    def mirror_descent_auto(self, alpha, iters, callback=None):
+        model = self.model
+        theta0 = model.potentials
+        messages0 = dict(model.messages)
+        theta = theta0
+        mu = model.belief_propagation(theta)
+        l0, _ = self._marginal_loss(mu)
+        
+        prev_l = np.inf
+        for t in range(iters):
+            if callback is not None:
+                callback(mu)
+            l, dL = self._marginal_loss(mu)
+            theta = theta - alpha*dL
+            #print(np.sqrt(dL.dot(dL)), np.sqrt(theta.dot(theta)))
+            mu = model.belief_propagation(theta)
+            if l > prev_l:
+                if t <= 50:
+                    if self.log: print('Reducing learning rate and restarting', alpha/2)
+                    model.potentials = theta0
+                    model.messages = messages0
+                    return self.mirror_descent_auto(alpha/2, iters, callback)
+                else:
+                    #print('Reducing learning rate and continuing', alpha/2)
+                    model.damping = (0.9 + model.damping) / 2.0
+                    if self.log: print('Increasing damping and continuing', model.damping)
+                    alpha *= 0.5
+            prev_l = l
+
+        # run some extra iterations with no gradient update to make sure things are primal feasible
+        while model.primal_feasibility(mu) > 1.0:
+            mu = model.belief_propagation(theta)
+            if callback is not None:
+                callback(mu)
+        return l, theta, mu
+
+    def mirror_descent3(self, measurements, total=None, initial_alpha=10.0, callback=None):
+        """ Use the mirror descent algorithm to estimate the GraphicalModel
+            See https://web.iem.technion.ac.il/images/user-files/becka/papers/3.pdf
+
+        :param measurements: a list of (Q, y, noise, proj) tuples, where
+            Q is the measurement matrix (a numpy array or scipy sparse matrix or LinearOperator)
+            y is the noisy answers to the measurement queries
+            noise is the standard deviation of the noise added to y
+            proj defines the marginal used for this measurement set (a subset of attributes)
+        :param total: The total number of records (if known)
+        :param stepsize: the learning rate function
+        :param callback: a function to be called after each iteration of optimization
+        """
+        self._setup(measurements, total)
+        l, theta, mu=self.mirror_descent_auto(alpha=initial_alpha,iters=self.iters,callback=callback)
+
+        self.model.potentials = theta
+        self.model.marginals = mu
+
+        return l
+
+    def mirror_descent2(self, measurements, total=None, stepsize = None, callback=None):
+        """ Use the mirror descent algorithm to estimate the GraphicalModel
+            See https://web.iem.technion.ac.il/images/user-files/becka/papers/3.pdf
+
+        :param measurements: a list of (Q, y, noise, proj) tuples, where
+            Q is the measurement matrix (a numpy array or scipy sparse matrix or LinearOperator)
+            y is the noisy answers to the measurement queries
+            noise is the standard deviation of the noise added to y
+            proj defines the marginal used for this measurement set (a subset of attributes)
+        :param total: The total number of records (if known)
+        :param stepsize: the learning rate function
+        :param callback: a function to be called after each iteration of optimization
+        """
+        self._setup(measurements, total)
+        model = self.model
+        cliques, theta = model.cliques, model.potentials
+        mu = model.belief_propagation(theta)
+        print('checkpt', self._marginal_loss(mu)[0], model.total)
+        print('theta norm', theta.dot(theta))
+        if callback is not None:
+            callback(mu)
+        logger = callbacks.Logger(self)
+
+        if stepsize is None: 
+            # Heuristic method to minimize manual effort required to set learning rate
+            _, dL = self._marginal_loss(mu)
+            norm = np.sqrt(dL.dot(dL))
+            theta0 = CliqueVector(theta.copy())
+            messages = dict(model.messages)
+            mu0 = mu.copy()
+            #print('Norm', norm, model.total)
+            best = prev = np.inf
+            losses = []
+            
+            stepsizes = [2**k/(norm+1) for k in range(-8, 9)]
+            for learning_rate in stepsizes:
+                model.messages = dict(messages)
+                theta, mu = theta0, mu0 
+                for t in range(10):
+                    l, dL = self._marginal_loss(mu)
+                    theta = theta - learning_rate*dL
+                    mu = model.belief_propagation(theta)
+                    #losses.append(l)
+                    #print(feas)
+                print(learning_rate, l, prev-l)
+                losses.append(l)
+                prev = l
+            diffs = -np.diff(losses)
+            valid = ((diffs[1:] < 0) & (diffs[:-1] < 0)) | (diffs[1:] > 1.5*diffs[:-1])
+            #print(diffs, valid)
+            stepsize = stepsizes[np.where(~valid)[0][0]]
+            """
+                #if not all(losses[i] < 1.1*losses[i+1] for i in range(9)):
+                #if losses != sorted(losses, reverse=True):
+                feas = logger.primal_feasibility(mu)
+                #print('Learning rate quality', learning_rate, l, feas)
+                print(l, best-l)
+                if l > 1.01*best:# or feas >= 0.01*model.total:
+                   break
+                best = l 
+            """
+            model.messages = dict(messages)
+            #stepsize = lambda t: 0.25*learning_rate#/(1.0 + np.log10(t))
+            print('Chosen stepsize', stepsize)
+            theta, mu = theta0, mu0
+            #print('Selected step size', learning_rate)
+        alpha = stepsize if callable(stepsize) else lambda t: stepsize
+
+
+        for t in range(1, self.iters + 1):
+            l, dL = self._marginal_loss(mu)
+            theta = theta - alpha(t)*dL
+            mu = model.belief_propagation(theta)
+            if callback is not None:
+                callback(mu)
+
+        model.potentials = theta
+        model.marginals = mu
+
+        return l
+
 
     def mirror_descent(self, measurements, total = None, stepsize = None, callback=None):
         """ Use the mirror descent algorithm to estimate the GraphicalModel
@@ -213,6 +364,8 @@ class FactoredInference:
         cliques, theta = model.cliques, model.potentials
         mu = model.belief_propagation(theta)
         ans = self._marginal_loss(mu)
+        if ans[0] == 0:
+            return ans[0]
 
         nols = stepsize is not None
         if np.isscalar(stepsize):
@@ -227,6 +380,7 @@ class FactoredInference:
                 callback(mu)
             omega, nu = theta, mu
             curr_loss, dL = ans
+            #print('Gradient Norm', np.sqrt(dL.dot(dL)))
             alpha = stepsize(t)
             for i in range(25):
                 theta = omega - alpha*dL
@@ -263,7 +417,7 @@ class FactoredInference:
             for Q, y, noise, proj in self.groups[cl]:
                 c = 1.0/noise
                 mu2 = mu.project(proj)
-                x = mu2.values.flatten()
+                x = mu2.datavector()
                 diff = c*(Q @ x - y)
                 if metric == 'L1':
                     loss += abs(diff).sum()
@@ -293,6 +447,9 @@ class FactoredInference:
                 if np.allclose(Q.T.dot(v), o):
                     variances = np.append(variances, noise**2 * np.dot(v, v))
                     estimates = np.append(estimates, np.dot(v, y))
+            if estimates.size == 0:
+                total = 1
+            else:
                 variance = 1.0 / np.sum(1.0 / variances)
                 estimate = variance * np.sum(estimates / variances)
                 total = max(1, estimate)
@@ -302,18 +459,31 @@ class FactoredInference:
         cliques = [m[3] for m in measurements] 
         if self.structural_zeros is not None:
             cliques += list(self.structural_zeros.keys())
-        model = GraphicalModel(self.domain,cliques,total,elimination_order=self.elim_order)
-        zeros = { cl : self.Factor.zeros(self.domain.project(cl)) for cl in model.cliques }
-        model.potentials = CliqueVector(zeros)
-        model.potentials.combine(self.structural_zeros)
+        if self.marginal_oracle == 'exact':
+            model = GraphicalModel(self.domain,cliques,total,elimination_order=self.elim_order)
+        elif self.marginal_oracle == 'approx':
+            model = RegionGraph(self.domain, cliques, total, convex=False, iters=self.inner_iters)
+        elif self.marginal_oracle == 'convex':
+            model = RegionGraph(self.domain, cliques, total, convex=True, iters=self.inner_iters)
+        elif self.marginal_oracle == 'pairwise':
+            model = FactorGraph(self.domain, cliques, total, convex=False, iters=self.inner_iters)
+        elif self.marginal_oracle == 'pairwise-convex':
+            model = FactorGraph(self.domain, cliques, total, convex=True, iters=self.inner_iters)
+        else:
+            model = self.marginal_oracle
+            model.total = total
 
-        if self.warm_start and hasattr(self, 'model'):
-            model.potentials.combine(self.model.potentials)
+        if type(self.marginal_oracle) is str:
+            model.potentials = CliqueVector.zeros(self.domain, model.cliques)
+            model.potentials.combine(self.structural_zeros)
+            if self.warm_start and hasattr(self, 'model'):
+                model.potentials.combine(self.model.potentials)
         self.model = model  
  
         # group the measurements into model cliques 
         cliques = self.model.cliques
-        self.groups = { cl : [] for cl in cliques }
+        #self.groups = { cl : [] for cl in cliques }
+        self.groups = defaultdict(lambda: [])
         for Q,y,noise,proj in measurements:
             if self.backend == 'torch':
                 import torch
@@ -321,18 +491,15 @@ class FactoredInference:
                 y = torch.tensor(y, dtype=torch.float32, device=device)
                 if isinstance(Q, np.ndarray):
                     Q = torch.tensor(Q, dtype=torch.float32, device=device)
-                    Q.T = Q.t()
                 elif sparse.issparse(Q):
-                    Q
                     Q = Q.tocoo()
                     idx = torch.LongTensor([Q.row, Q.col])
                     vals = torch.FloatTensor(Q.data)
                     Q = torch.sparse.FloatTensor(idx, vals).to(device)
-                    Q = TorchSparse(Q)
 
                 # else Q is a Linear Operator, must be compatible with torch 
             m = (Q, y, noise, proj)
-            for cl in cliques:
+            for cl in sorted(cliques, key=model.domain.size):
                 # (Q, y, noise, proj) tuple
                 if set(proj) <= set(cl):
                     self.groups[cl].append(m)
@@ -350,6 +517,7 @@ class FactoredInference:
                     n = self.domain.size(cl)
                     p = self.domain.size(proj)
                     Q = aslinearoperator(Q)
+                    Q.dtype = np.dtype(Q.dtype)
                     eig = eigsh(Q.H * Q, 1)[0][0]
                     eigs[cl] += eig * n / p / noise**2
                     break
@@ -360,19 +528,3 @@ class FactoredInference:
         message = "Function infer is deprecated.  Please use estimate instead."
         warnings.warn(message, DeprecationWarning)
         return self.estimate(measurements, total, engine, callback, options)
-
-class TorchSparse:
-    # this class is temporarily necessary until torch.sparse 
-    # supports multiplication with 1D tensors
-    def __init__(self, Q):
-        self.Q = Q
-
-    def __matmul__(self, x):
-        if x.dim() == 1:
-            return (self.Q @ x[:,None]).flatten()
-        return self.Q @ x
-        
-    @property
-    def T(self):
-        return TorchSparse(self.Q.t())
-        

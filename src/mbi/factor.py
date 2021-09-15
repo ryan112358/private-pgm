@@ -24,8 +24,8 @@ class Factor:
         return Factor(domain, np.ones(domain.shape))
 
     @staticmethod
-    def random(domain):
-        return Factor(domain, np.random.rand(*domain.shape))
+    def random(domain, prng=np.random):
+        return Factor(domain, prng.rand(*domain.shape))
 
     @staticmethod
     def uniform(domain):

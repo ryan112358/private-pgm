@@ -45,18 +45,17 @@ class Logger(CallBack):
     def setup(self):
         model = self.engine.model
         total = sum(model.domain.size(cl) for cl in model.cliques)
-        print('Total clique size:', total)
-        cl = max(model.cliques, key=lambda cl: model.domain.size(cl))
-        print('Maximal clique', cl, model.domain.size(cl))
-        cols = ['iteration', 'time', 'l1_loss', 'l2_loss']
+        print('Total clique size:', total, flush=True)
+        #cl = max(model.cliques, key=lambda cl: model.domain.size(cl))
+        #print('Maximal clique', cl, model.domain.size(cl), flush=True)
+        cols = ['iteration', 'time', 'l1_loss', 'l2_loss', 'feasibility']
         if self.true_answers is not None:
             cols.append('variation')
         self.results = pd.DataFrame(columns=cols)
-        print('\t\t'.join(cols))
+        print('\t\t'.join(cols), flush=True)
 
     def variational_distances(self, marginals):
         errors = []
-        model = self.engine.model
         for Q, y, proj in self.true_answers:
             for cl in marginals:
                 if set(proj) <= set(cl):
@@ -68,6 +67,22 @@ class Logger(CallBack):
                     break
         return errors
 
+    def primal_feasibility(self, mu):
+        ans = 0 
+        count = 0
+        for r in mu:
+            for s in mu:
+                if r == s: break
+                d = tuple(set(r) & set(s))
+                if len(d) > 0:
+                    x = mu[r].project(d).datavector()
+                    y = mu[s].project(d).datavector()
+                    err = np.linalg.norm(x-y, 1)
+                    ans += err
+                    count += 1
+        try: return ans / count
+        except: return 0
+
     def run(self, marginals):
         if self.idx == 0:
             self.setup()
@@ -75,11 +90,12 @@ class Logger(CallBack):
         t = time.time() - self.start
         l1_loss = self.engine._marginal_loss(marginals, metric='L1')[0]
         l2_loss = self.engine._marginal_loss(marginals, metric='L2')[0]
-        row = [self.calls, t, l1_loss, l2_loss]
+        feasibility = self.primal_feasibility(marginals)
+        row = [self.calls, t, l1_loss, l2_loss, feasibility]
         if self.true_answers is not None:
             variational = np.mean(self.variational_distances(marginals))
-            row.append(variational)
+            row.append(100*variational)
         self.results.loc[self.idx] = row
         self.idx += 1
         
-        print('\t\t'.join(['%.2f' % v for v in row]))
+        print('\t\t'.join(['%.2f' % v for v in row]), flush=True)

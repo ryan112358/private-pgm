@@ -1,0 +1,35 @@
+0,City x Priority,0.002,46.317,2.507,41.983,1.184 
+1,Call Type x Original Priority,0.004,90.298,1.756,40.436,0.936 
+2,Neighborhooods - Analysis Boundaries x Station Area,0.018,133.394,1.705,39.109,0.843 
+3,Neighborhooods - Analysis Boundaries x Zipcode of Incident,0.027,178.306,2.169,40.973,0.779 
+4,Neighborhooods - Analysis Boundaries x Supervisor District,0.030,224.745,1.646,42.543,0.705 
+5,Battalion x Fire Prevention District,0.031,269.155,2.164,40.550,0.642 
+6,Battalion x Station Area,0.035,317.988,1.622,44.942,0.555 
+7,Call Final Disposition x Call Type Group,0.036,364.570,2.066,42.820,0.355 
+8,ALS Unit x Unit Type,0.036,409.063,1.597,40.707,0.221 
+9,Final Priority x Priority,0.036,454.267,2.047,41.474,0.178 
+10,Original Priority x Priority,0.036,503.372,1.533,45.332,0.160 
+11,Call Type x Call Type Group,0.037,556.435,1.983,49.360,0.136 
+12,Fire Prevention District x Zipcode of Incident,0.296,623.225,1.564,62.848,0.117 
+13,Call Type Group x Priority,0.304,688.845,2.114,61.671,0.103 
+14,Call Type Group x Unit Type,0.305,757.976,1.642,65.630,0.074 
+15,Station Area x Zipcode of Incident,0.564,842.489,1.659,80.782,0.070 
+16,Fire Prevention District x Supervisor District,4.639,1189.256,1.815,340.841,0.062 
+17,Station Area x Supervisor District,6.306,1563.328,3.843,365.311,0.060 
+18,Call Type x Station Area,6.317,1941.614,4.627,368.739,0.045 
+19,ALS Unit x Station Area,6.366,2313.837,4.637,362.724,0.041 
+20,Station Area x Unit Type,6.437,2693.819,4.543,370.553,0.037 
+21,Battalion x Neighborhooods - Analysis Boundaries,54.934,8248.150,4.553,5509.823,0.035 
+22,Priority x Unit Type,55.023,13840.729,39.637,5513.274,0.033 
+23,Call Final Disposition x Neighborhooods - Analysis Boundaries,60.164,19821.049,39.298,5893.835,0.031 
+24,Call Type x Unit Type,60.164,25813.176,46.700,5898.569,0.030 
+25,Supervisor District x Zipcode of Incident,60.164,31809.509,46.589,5902.763,0.028 
+26,Fire Prevention District x Station Area,61.637,36723.473,46.509,4826.157,0.028 
+27,Call Final Disposition x Call Type,62.822,41691.415,40.798,4885.639,0.027 
+28,Call Final Disposition x Priority,64.006,46819.610,41.240,5045.340,0.026 
+29,Call Type x Neighborhooods - Analysis Boundaries,64.006,51955.069,41.084,5052.932,0.025 
+30,Fire Prevention District x Neighborhooods - Analysis Boundaries,64.006,57100.350,41.064,5062.399,0.025 
+31,Battalion x Zipcode of Incident,112.161,67455.880,41.207,10243.312,0.024 
+32,City x Station Area,155.970,82096.769,70.062,14496.784,0.023 
+33,Call Final Disposition x Station Area,126.483,92395.660,73.423,10170.506,0.022 
+34,Call Type Group x Zipcode of Incident,337.386,117430.995,54.268,24793.492,0.019 

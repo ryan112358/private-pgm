@@ -5,7 +5,7 @@ import numpy as np
 from scipy import sparse
 
 def run(dataset, measurements, eps=1.0, delta=0.0, bounded=True, engine='MD', 
-        options={}, iters=10000, seed=None, metric='L2', elim_order=None, frequency=1,workload=None):
+        options={}, iters=10000, seed=None, metric='L2', elim_order=None, frequency=1,workload=None,oracle='exact'):
     """
     Run a mechanism that measures the given measurements and runs inference.
     This is a convenience method for running end-to-end experiments.
@@ -53,7 +53,7 @@ def run(dataset, measurements, eps=1.0, delta=0.0, bounded=True, engine='MD',
         y = Q.dot(x)
         answers.append( (Q, y+z, 1.0, proj) )
 
-    estimator = FactoredInference(domain, metric=metric, iters=iters, warm_start=False, elim_order=elim_order)
+    estimator = FactoredInference(domain, metric=metric, iters=iters, warm_start=False, elim_order=elim_order, marginal_oracle=oracle)
     logger = Logger(estimator, true_answers=truth, frequency=frequency)
     model = estimator.estimate(answers, total, engine=engine, callback=logger, options=options)
         
