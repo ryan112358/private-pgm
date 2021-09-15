@@ -7,3 +7,5 @@ from mbi.factor_graph import FactorGraph
 from mbi.region_graph import RegionGraph
 from mbi.inference import FactoredInference
 from mbi.local_inference import LocalInference
+from mbi.public_inference import PublicInference
+from mbi.mixture_inference import MixtureInference
