@@ -6,6 +6,13 @@ from functools import partial
 from collections import defaultdict
 from copy import deepcopy
 
+"""
+This file implements Approx-Private-PGM from the following paper:
+
+Relaxed Marginal Consistency for Differentially Private Query Answering 
+https://arxiv.org/pdf/2109.06153.pdf
+"""
+
 class LocalInference:
     def __init__(self, domain, backend = 'numpy', structural_zeros = {}, metric='L2', log=False, iters=1000, warm_start=False, marginal_oracle='convex', inner_iters=1):
         """
