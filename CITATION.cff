@@ -1,5 +1,3 @@
-# YAML 1.2
----
 abstract: |
     "We propose a general approach for differentially private synthetic data generation, that consists of three steps: (1) \textbf{select} a collection of low-dimensional marginals, (2) \textbf{measure} those marginals with a noise addition mechanism, and (3) \textbf{generate} synthetic data that preserves the measured marginals well.  Central to this approach is \pgm \cite{mckenna2019graphical}, a post-processing method that is used to estimate a high-dimensional data distribution from noisy measurements of its marginals.  We present two mechanisms, \mech and \mst, that are instances of this general approach.  \mech was the winning mechanism in the 2018 NIST differential privacy synthetic data competition, and \mst is a new mechanism that can work in more general settings, while still performing comparably to \mech.  We believe our general approach should be of broad interest, and can be adopted in future mechanisms for synthetic data generation.
     "
@@ -23,4 +21,3 @@ message: "If you use this software, please cite it using these metadata, as well
 repository-code: "https://github.com/journalprivacyconfidentiality/private-pgm-jpc-778/tree/v2021-10-04-jpc"
 title: "Private-PGM"
 version: "v2021-10-04-jpc"
-...
