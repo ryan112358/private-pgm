@@ -4,13 +4,13 @@ abstract: "We propose a general approach for differentially private synthetic da
 authors: 
 - family-names: McKenna
   given-names: Ryan
-  affiliation: "College of Information & Computer Sciences, The University of Massachusets, Amherst, MA"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
 - family-names: Miklau
   given-names: Gerome
-  affiliation: "College of Information \& Computer Sciences, The University of Massachusets, Amherst, MA"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
 - family-names: Sheldon
   given-names: Daniel
-  affiliation: "College of Information \& Computer Sciences, The University of Massachusets, Amherst, MA"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
 title: "Private-PGM"
 version: "v2021-10-04-jpc"
 date-released: 2021-10-04
