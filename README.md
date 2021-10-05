@@ -1,6 +1,6 @@
 # Graphical-model based estimation and inference for differential privacy
 
-- Published article: [![DOI:10.29012/jpc.778](https://zenodo.org/badge/DOI/10.29012/jpc.778.svg)](https://doi.org/10.29012/jpc.778)
+- Published article: [![DOI:10.29012/jpc.778](https://zenodo.org/badge/DOI/10.29012/jpc.778.svg)](https://doi.org/10.29012/jpc.778) McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. "Winning the NIST Contest: A scalable and general approach to differentially private synthetic data."  *Journal of Privacy and Confidentiality* 11 (3). [https://doi.org/10.29012/jpc.778](https://doi.org/10.29012/jpc.778).
 
 - ArXiV version: McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. "Graphical-model based estimation and inference for differential privacy." In Proceedings of the 36th International Conference on Machine Learning. 2019. https://arxiv.org/abs/1901.09136
 
