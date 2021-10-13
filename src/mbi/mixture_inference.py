@@ -5,6 +5,7 @@ import numpy as np
 from scipy.special import softmax
 from functools import reduce
 from scipy.sparse.linalg import lsmr
+import pandas as pd
 
 """ This file is experimental.
 
@@ -55,6 +56,19 @@ def adam(loss_and_grad, x0, iters=250):
 #        print np.linalg.norm(A.dot(x) - y, ord=2)
     return x
 
+def synthetic_col(counts, total):
+    counts *= total / counts.sum()
+    frac, integ = np.modf(counts)
+    integ = integ.astype(int)
+    extra = total - integ.sum()
+    if extra > 0:
+        idx = np.random.choice(counts.size, extra, False, frac / frac.sum())
+        integ[idx] += 1
+    vals = np.repeat(np.arange(counts.size), integ)
+    np.random.shuffle(vals)
+    return vals
+
+
 class ProductDist:
     def __init__(self, factors, domain, total):
         """
@@ -77,6 +91,14 @@ class ProductDist:
         ans = ans.transpose(self.domain.attrs)
         return ans.datavector(flatten) * self.total
 
+    def synthetic_data(self, rows=None):
+        total = rows or int(self.total)
+        df = pd.DataFrame()
+        for col in self.factors:
+            counts = self.factors[col].datavector()
+            df[col] = synthetic_col(counts, total)
+        return Dataset(df, self.domain)
+
 class MixtureOfProducts:
     def __init__(self, products):
         self.products = products
@@ -89,8 +111,15 @@ class MixtureOfProducts:
     def datavector(self, flatten=True):
         return sum(P.datavector(flatten) for P in self.products)
 
+    def synthetic_data(self, rows=None):
+        total = rows or int(self.total)
+        subtotal = total // len(self.products) + 1
+        df = pd.concat([P.synthetic_data(subtotal).df for P in self.products])
+        df = df.sample(frac=1).reset_index(drop=True)[:total]
+        return Dataset(df, self.domain)
+
 class MixtureInference:
-    def __init__(self, domain, components=10, metric='L2'):
+    def __init__(self, domain, components=10, metric='L2', iters=2500, warm_start=False):
         """
         :param domain: A Domain object
         :param components: The number of mixture components
@@ -99,6 +128,9 @@ class MixtureInference:
         self.domain = domain
         self.components = components
         self.metric = metric
+        self.iters = iters
+        self.warm_start = warm_start
+        self.params = np.random.normal(loc=0, scale=0.25, size=sum(domain.shape) * components)
 
     def estimate(self, measurements, total=None, alpha=0.1):
         if total == None:
@@ -129,7 +161,7 @@ class MixtureInference:
             loss, dL = self._marginal_loss(mu)
 
             # Now back-propagate gradient to params
-            dparams = np.zeros(params.size) # what to do with total?
+            dparams = np.zeros(params.size) 
             for cl in dL:
                 idx = 0
                 for i in range(self.components):
@@ -144,11 +176,11 @@ class MixtureInference:
                             dparams[idx:idx+n] += dpij * pij - pij*(pij @ dpij)
                         idx += n
             return loss, dparams
-                        
-        params = np.random.normal(loc=0, scale=0.25, size=sum(self.domain.shape) * self.components)
-
-        params = adam(loss_and_grad, params)
-        return get_model(params)                     
+          
+        if not self.warm_start:
+            self.params = np.random.normal(loc=0, scale=0.25, size=sum(self.domain.shape) * self.components)
+        self.params = adam(loss_and_grad, self.params, iters=self.iters)
+        return get_model(self.params)                     
 
     
     def _marginal_loss(self, marginals, metric=None):
