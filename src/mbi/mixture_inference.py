@@ -2,6 +2,9 @@ from mbi import Dataset, Factor, CliqueVector
 from scipy.optimize import minimize
 from collections import defaultdict
 import numpy as np
+import jax.numpy as jnp
+from jax import vjp
+from jax.nn import softmax as jax_softmax
 from scipy.special import softmax
 from functools import reduce
 from scipy.sparse.linalg import lsmr
@@ -68,54 +71,38 @@ def synthetic_col(counts, total):
     np.random.shuffle(vals)
     return vals
 
-
-class ProductDist:
-    def __init__(self, factors, domain, total):
-        """
-        :param factors: a list of factors
-                defined over disjoint subsets of attributes
-        :param domain: the domain object
-        :param total: known or estimated total
-        """
-        self.factors = factors
-        self.domain = domain
-        self.total = total
-
-    def project(self, cols):
-        domain = self.domain.project(cols)
-        factors = { col : self.factors[col] for col in cols }
-        return ProductDist(factors, domain, self.total)
-
-    def datavector(self, flatten=True):
-        ans = reduce(lambda x,y: x*y, self.factors.values(), 1.0)
-        ans = ans.transpose(self.domain.attrs)
-        return ans.datavector(flatten) * self.total
-
-    def synthetic_data(self, rows=None):
-        total = rows or int(self.total)
-        df = pd.DataFrame()
-        for col in self.factors:
-            counts = self.factors[col].datavector()
-            df[col] = synthetic_col(counts, total)
-        return Dataset(df, self.domain)
-
 class MixtureOfProducts:
-    def __init__(self, products):
+    def __init__(self, products, domain, total):
         self.products = products
-        self.domain = products[0].domain
-        self.total = sum(P.total for P in products)
+        self.domain = domain
+        self.total = total 
+        self.num_components = next(iter(products.values())).shape[0]
 
     def project(self, cols):
-        return MixtureOfProducts([P.project(cols) for P in self.products])
+        products = { col : self.products[col] for col in cols }
+        domain = self.domain.project(cols)
+        return MixtureOfProducts(products, domain, self.total)
     
     def datavector(self, flatten=True):
-        return sum(P.datavector(flatten) for P in self.products)
+        letters = 'bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'[:len(self.domain)]
+        formula = ','.join(['a%s'%l for l in letters]) + '->' + ''.join(letters)
+        components = [self.products[col] for col in self.domain]
+        ans = np.einsum(formula, *components) * self.total / self.num_components
+        return ans.flatten() if flatten else ans
 
     def synthetic_data(self, rows=None):
         total = rows or int(self.total)
-        subtotal = total // len(self.products) + 1
-        df = pd.concat([P.synthetic_data(subtotal).df for P in self.products])
-        df = df.sample(frac=1).reset_index(drop=True)[:total]
+        subtotal = total // self.num_components + 1
+       
+        dfs = []
+        for i in range(self.num_components): 
+            df = pd.DataFrame()
+            for col in self.products:
+                counts = self.products[col][i]
+                df[col] = synthetic_col(counts, subtotal)
+            dfs.append(df)
+
+        df = pd.concat(dfs).sample(frac=1).reset_index(drop=True)[:total]
         return Dataset(df, self.domain)
 
 class MixtureInference:
@@ -137,51 +124,45 @@ class MixtureInference:
             total = estimate_total(measurements)
         self.measurements = measurements
         cliques = [M[-1] for M in measurements]
+        letters = 'bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-        def get_model(params):
+        def get_products(params):
+            products = {}
             idx = 0
-            products = []
-            for _ in range(self.components):
-                factors = {}
-                for col in self.domain:
-                    n = self.domain[col]
-                    vals = softmax(params[idx:idx+n])
-                    idx += n
-                    factors[col] = Factor(self.domain.project(col), vals)
-                products.append(ProductDist(factors, self.domain, total/self.components))
-            return MixtureOfProducts(products)
-
+            for col in self.domain:
+                n = self.domain[col]
+                k = self.components
+                products[col] = jax_softmax(params[idx:idx+k*n].reshape(k,n), axis=1)
+                idx += k*n
+            return products
+            
+        def marginals_from_params(params):
+            products = get_products(params)
+            mu = {}
+            for cl in cliques:
+                let = letters[:len(cl)]
+                formula = ','.join(['a%s'%l for l in let]) + '->' + ''.join(let)
+                components = [products[col] for col in cl]
+                ans = jnp.einsum(formula, *components) * total / self.components
+                mu[cl] = ans.flatten()
+            return mu
 
         def loss_and_grad(params):
-            # first create the model
-            model = get_model(params)
-
-            # Now calculate the necessary marginals
-            mu = CliqueVector.from_data(model, cliques)
+            # For computing dL / dmu we will use ordinary numpy so as to support scipy sparse and linear operator inputs
+            # For computing dL / dparams we will use jax to avoid manually deriving gradients
+            params = jnp.array(params)
+            mu, backprop = vjp(marginals_from_params, params)
+            mu = { cl : np.array(mu[cl]) for cl in cliques }
             loss, dL = self._marginal_loss(mu)
-
-            # Now back-propagate gradient to params
-            dparams = np.zeros(params.size) 
-            for cl in dL:
-                idx = 0
-                for i in range(self.components):
-                    submodel = model.products[i]
-                    mui = Factor(self.domain.project(cl), submodel.project(cl).datavector())
-                    tmp = dL[cl] * mui
-                    for col in self.domain:
-                        n = self.domain[col]
-                        if col in cl:
-                            dpij = (tmp / submodel.factors[col]).project([col]).datavector()
-                            pij = submodel.factors[col].datavector()
-                            dparams[idx:idx+n] += dpij * pij - pij*(pij @ dpij)
-                        idx += n
-            return loss, dparams
+            dL = { cl : jnp.array(dL[cl]) for cl in cliques }
+            dparams = backprop(dL)
+            return loss, np.array(dparams[0])
           
         if not self.warm_start:
             self.params = np.random.normal(loc=0, scale=0.25, size=sum(self.domain.shape) * self.components)
         self.params = adam(loss_and_grad, self.params, iters=self.iters)
-        return get_model(self.params)                     
-
+        products = get_products(self.params)
+        return MixtureOfProducts(products, self.domain, total)
     
     def _marginal_loss(self, marginals, metric=None):
         """ Compute the loss and gradient for a given dictionary of marginals
@@ -193,16 +174,12 @@ class MixtureInference:
         if metric is None:
             metric = self.metric
 
-        if callable(metric):
-            return metric(marginals)
-
         loss = 0.0
-        gradient = { cl : Factor.zeros(marginals[cl].domain) for cl in marginals }
+        gradient = { cl : np.zeros_like(marginals[cl]) for cl in marginals }
 
         for Q, y, noise, cl in self.measurements:
-            mu = marginals[cl]
+            x = marginals[cl]
             c = 1.0/noise
-            x = mu.datavector()
             diff = c*(Q @ x - y)
             if metric == 'L1':
                 loss += abs(diff).sum()
@@ -211,5 +188,6 @@ class MixtureInference:
             else:
                 loss += 0.5*(diff @ diff)
                 grad = c*(Q.T @ diff)
-            gradient[cl] += Factor(mu.domain, grad)
-        return float(loss), CliqueVector(gradient)
+            gradient[cl] += grad
+
+        return float(loss), gradient
