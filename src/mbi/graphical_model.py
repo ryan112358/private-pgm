@@ -62,14 +62,9 @@ class GraphicalModel:
 
         elim = self.domain.invert(attrs)
         elim_order = greedy_order(self.domain, self.cliques, elim)
-        #elim_order = [a for a in self.elimination_order if a in elim]
-        factors = []
-        for cl in self.cliques:
-            f = self.potentials[cl]
-            factors.append( (f - f.logsumexp()).exp() )
-        result = variable_elimination(factors, elim_order)
-        ans = result.project(attrs)
-        return ans * self.total / ans.sum()
+        pots = list(self.potentials.values())
+        ans = variable_elimination_logspace(pots, elim_order, self.total)
+        return ans.project(attrs)
 
     def krondot(self, matrices):
         """ Compute the answer to the set of queries Q1 x Q2 X ... x Qd, where 
@@ -254,9 +249,21 @@ class GraphicalModel:
 
         return Dataset(df, self.domain)
 
+def variable_elimination_logspace(potentials, elim, total):
+    """ run variable elimination on a list of **logspace** factors """
+    k = len(potentials)
+    psi = dict(zip(range(k), potentials))
+    for z in elim:
+        psi2 = [psi.pop(i) for i in list(psi.keys()) if z in psi[i].domain]
+        phi = reduce(lambda x,y: x+y, psi2, 0)
+        tau = phi.logsumexp([z])
+        psi[k] = tau
+        k += 1
+    ans = reduce(lambda x,y: x+y, psi.values(), 0)
+    return (ans - ans.logsumexp() + np.log(total)).exp()
+
 def variable_elimination(factors, elim):
     """ run variable elimination on a list of (non-logspace) factors """
-     
     k = len(factors)
     psi = dict(zip(range(k), factors))
     for z in elim:
