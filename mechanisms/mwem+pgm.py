@@ -121,13 +121,15 @@ def default_params():
     params['noise'] = 'laplace'
     params['max_model_size'] = 25
     params['pgm_iters'] = 250
-    params['workload'] = 'all2way'
+    params['degree'] = 2
+    params['num_marginals'] = None
+    params['max_cells'] = 10000
 
     return params
 
 if __name__ == "__main__":
 
-    description = 'A generalization of the Adaptive Grid Mechanism that won 2nd place in the 2020 NIST temporal map challenge'
+    description = ''
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
     parser.add_argument('--dataset', help='dataset to use')
@@ -137,7 +139,11 @@ if __name__ == "__main__":
     parser.add_argument('--rounds', type=int, help='number of rounds of MWEM to run')
     parser.add_argument('--noise', choices=['laplace','gaussian'], help='noise distribution to use')
     parser.add_argument('--max_model_size', type=float, help='maximum size (in megabytes) of model')
-    parser.add_argument('--workload', choices=['all2way', 'all3way', 'all4way'], default='workload to use')
+
+    parser.add_argument('--degree', type=int, help='degree of marginals in workload')
+    parser.add_argument('--num_marginals', type=int, help='number of marginals in workload')
+    parser.add_argument('--max_cells', type=int, help='maximum number of cells for marginals in workload')
+
     parser.add_argument('--pgm_iters', type=int, help='number of iterations')
     parser.add_argument('--save', type=str, help='path to save synthetic data')
 
@@ -146,9 +152,10 @@ if __name__ == "__main__":
 
     data = Dataset.load(args.dataset, args.domain)
 
-    k = { 'all2way' : 2, 'all3way' : 3, 'all4way' : 4 }[args.workload]
-    # feel free to change this to any list of attribute subsets to run on different workloads
-    workload = list(itertools.combinations(data.domain.attrs, k))
+    workload = list(itertools.combinations(data.domain, args.degree))
+    workload = [cl for cl in workload if data.domain.size(cl) <= args.max_cells]
+    if args.num_marginals is not None:
+        workload = [workload[i] for i in prng.choice(len(workload), args.num_marginals, replace=False)]
 
     synth = mwem_pgm(data, args.epsilon, args.delta, 
                     workload=workload,

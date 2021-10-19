@@ -397,10 +397,6 @@ if __name__ == "__main__":
     parser.set_defaults(**default_params())
     args = parser.parse_args()
 
-    # run doctests
-    #import doctest
-    #doctest.testmod()
-
     df = pd.read_csv(args.dataset)
     domain = Domain.fromdict(json.load(open(args.domain, "r")))
     data = Dataset(df, domain)

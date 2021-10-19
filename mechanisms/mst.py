@@ -135,16 +135,59 @@ def reverse_data(data, supports):
     newdom = Domain.fromdict(newdom)
     return Dataset(df, newdom)
 
+def default_params():
+    """
+    Return default parameters to run this program
+
+    :returns: a dictionary of default parameter settings for each command line argument
+    """
+    params = {}
+    params['dataset'] = '../data/adult.csv'
+    params['domain'] = '../data/adult-domain.json'
+    params['epsilon'] = 1.0
+    params['delta'] = 1e-9
+    params['degree'] = 2
+    params['num_marginals'] = None
+    params['max_cells'] = 10000
+
+    return params
+
+
 if __name__ == '__main__':
-    data = Dataset.load('../data/adult.csv', '../data/adult-domain.json')
-    synth = MST(data, 1.0, 1e-6)
-    
-    # measure error (total variation distance) on 3-way marginals
+
+    description = ''
+    formatter = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
+    parser.add_argument('--dataset', help='dataset to use')
+    parser.add_argument('--domain', help='domain to use')
+    parser.add_argument('--epsilon', type=float, help='privacy parameter')
+    parser.add_argument('--delta', type=float, help='privacy parameter')
+
+    parser.add_argument('--degree', type=int, help='degree of marginals in workload')
+    parser.add_argument('--num_marginals', type=int, help='number of marginals in workload')
+    parser.add_argument('--max_cells', type=int, help='maximum number of cells for marginals in workload')
+
+    parser.add_argument('--save', type=str, help='path to save synthetic data')
+
+    parser.set_defaults(**default_params())
+    args = parser.parse_args()
+
+    data = Dataset.load(args.dataset, args.domain)
+
+    workload = list(itertools.combinations(data.domain, args.degree))
+    workload = [cl for cl in workload if data.domain.size(cl) <= args.max_cells]
+    if args.num_marginals is not None:
+        workload = [workload[i] for i in prng.choice(len(workload), args.num_marginals, replace=False)]
+
+    synth = MST(data, args.epsilon, args.delta)
+  
+    if args.save is not None:
+        synth.df.to_csv(args.save, index=False)
+ 
     errors = []
-    for proj in itertools.combinations(data.domain.attrs, 2):
+    for proj in workload:
         X = data.project(proj).datavector()
         Y = synth.project(proj).datavector()
-        e = 0.5*np.linalg.norm(X/X.sum() - Y/Y.sum(), 1) 
+        e = 0.5*np.linalg.norm(X/X.sum() - Y/Y.sum(), 1)
         errors.append(e)
-    print('Average Error: ', np.mean(errors))
-    
+    print('Average Error: ', np.mean(errors)) 
