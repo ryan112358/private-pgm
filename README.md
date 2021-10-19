@@ -4,6 +4,21 @@ https://arxiv.org/abs/1901.09136
 
 McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. "Graphical-model based estimation and inference for differential privacy." In Proceedings of the 36th International Conference on Machine Learning. 2019.
 
+# Important Update
+
+For anyone interested in using this code-base, the "examples" folder has been reorganized.  Specifically, the files in the "examples" folder are meant to demonstrate how to use Private-PGM for different problems.  These files are typically not designed to run on arbitrary datasets and/or workloads.  They are more useful if you are trying to learn how to use this code base and would like to build your own mechanisms on top of it.
+
+If you would simply like to compare against mechanisms that are built on top of Private-PGM, please refer to the "mechanisms" folder.  These will contain implementations of several mechanisms that are designed to work on a broad class of datasets and workloads.  The mechanisms currently available here are:
+
+* MST - Winning solution to the 2018 NIST synthetic data challenge.
+* Adaptive Grid - Second place solution to the 2020 NIST synthetic data challenge.
+* MWEM+PGM - A scalable instantiation of the MWEM algorithm for marginal query workloads.
+* HDMM+APPGM - A scalable instantiation of the HDMM algorithm for marginal query workloads.
+
+For the methods above, MST and Adaptive Grid are workload agnostic.  Nevertheless, we expect them to do well on general workloads like all 3-way marginals.  MWEM+PGM and HDMM+APPGM are both workload aware, and are designed to offer low error on the marginals specified in the workload.  
+
+NOTE: The first three mechanisms produce synthetic data, but HDMM+APPGM only produces query answers, not synthetic data.
+
 # Toy example
 
 Suppose we have a unknown data distribution P(A,B,C) defined over three variables and we invoke a noise-addition mechanism to get a noisy answer to the two-way marginals P(A,B) and P(B,C).  We want to use this information to recover a representation of the data distribution that approximates the true data with respect to the measured marginals.  We can do this as follows:

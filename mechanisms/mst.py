@@ -6,6 +6,7 @@ import networkx as nx
 import itertools
 from cdp2adp import cdp_rho
 from scipy.special import logsumexp
+import argparse
 
 """
 This is a generalization of the winning mechanism from the 
@@ -16,8 +17,6 @@ and does not rely on public provisional data for measurement selection.
 """
 
 def MST(data, epsilon, delta):
-    # This mechanism is designed for relatively large high-dimensional datasets
-    # for lower-dimensional datasets (like adult), simpler mechanisms may be better
     rho = cdp_rho(epsilon, delta)
     sigma = np.sqrt(3/(2*rho))
     cliques = [(col,) for col in data.domain]

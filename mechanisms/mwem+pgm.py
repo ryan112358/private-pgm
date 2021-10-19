@@ -3,6 +3,9 @@ import itertools
 from mbi import Dataset, GraphicalModel, FactoredInference
 from scipy.special import softmax
 from scipy import sparse
+from cdp2adp import cdp_rho
+import argparse
+
 
 """
 This file contains an implementation of MWEM+PGM that is designed specifically for marginal query workloads.
@@ -32,11 +35,12 @@ def worst_approximated(workload_answers, est, workload, eps, penalty=True):
         x = workload_answers[cl]
         xest = est.project(cl).datavector()
         errors = np.append(errors, np.abs(x - xest).sum()-bias)
-    prob = softmax(0.5*eps*(errors - errors.max()))
+    sensitivity = 2.0
+    prob = softmax(0.5*eps/sensitivity*(errors - errors.max()))
     key = np.random.choice(len(errors), p=prob)
     return workload[key]
 
-def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 25, pgm_iters=100):
+def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 25, pgm_iters=100, noise='laplace'):
     """
     Implementation of MWEM + PGM
 
@@ -46,7 +50,9 @@ def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 
     :param workload: A list of cliques (attribute tuples) to include in the workload (default: all pairs of attributes)
     :param rounds: The number of rounds of MWEM to run (default: number of attributes)
     :param maxsize_mb: [New] a limit on the size of the model (in megabytes), used to filter out candidate cliques from selection.
-        Used to avoid MWEM+PGM failure models (intractable model sizes).   
+        Used to avoid MWEM+PGM failure modes (intractable model sizes).   
+        Set to np.inf if you would like to run MWEM as originally described without this modification 
+        (Note it may exceed resource limits if run for too many rounds)
 
     Implementation Notes:
     - During each round of MWEM, one clique will be selected for measurement, but only if measuring the clique does
@@ -57,13 +63,23 @@ def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 
     if rounds is None:
         rounds = len(data.domain)
 
+    if noise == 'laplace':
+        eps_per_round = epsilon / (2 * rounds)
+        sigma = 1.0 / eps_per_round
+        exp_eps = eps_per_round
+        marginal_sensitivity = 2
+    else:
+        rho = cdp_rho(epsilon, delta)
+        rho_per_round = rho / (2 * rounds)
+        sigma = np.sqrt(0.5 / rho_per_round)
+        exp_eps = np.sqrt(8*rho_per_round)
+        marginal_sensitivity = np.sqrt(2)
+
     domain = data.domain
     total = data.records
 
     def size(cliques):
         return GraphicalModel(domain, cliques).size * 8 / 2**20
-
-    eps1 = epsilon / (2.0 * rounds)
 
     workload_answers = { cl : data.project(cl).datavector() for cl in workload }
 
@@ -74,29 +90,77 @@ def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 
     for i in range(1, rounds+1):
         # [New] Only consider candidates that keep the model sufficiently small
         candidates = [cl for cl in workload if size(cliques+[cl]) <= maxsize_mb*i/rounds]
-        if len(candidates) == 0:
-            break # Terminate early and forfeit remaining privacy budget
-        ax = worst_approximated(workload_answers, est, candidates, eps1)
+        ax = worst_approximated(workload_answers, est, candidates, exp_eps)
         print('Round', i, 'Selected', ax, 'Model Size (MB)', est.size*8/2**20)
         n = domain.size(ax)
         x = data.project(ax).datavector()
-        y = x + np.random.laplace(loc=0, scale=2.0 / eps1, size=n)
+        if noise == 'laplace':
+            y = x + np.random.laplace(loc=0, scale=marginal_sensitivity*sigma, size=n)
+        else:
+            y = x + np.random.normal(loc=0, scale=marginal_sensitivity*sigma, size=n)
         Q = sparse.eye(n)
         measurements.append((Q, y, 1.0, ax))
         est = engine.estimate(measurements, total)
-        workload.remove(ax)
         cliques.append(ax)
 
     print('Generating Data...')
     return est.synthetic_data()
 
-if __name__ == '__main__':
-    data = Dataset.load('../data/adult.csv', '../data/adult-domain.json')
-    synth = mwem_pgm(data, 1.0)
+def default_params():
+    """
+    Return default parameters to run this program
 
-    # measure error (total variation distance) on 3-way marginals
+    :returns: a dictionary of default parameter settings for each command line argument
+    """
+    params = {}
+    params['dataset'] = '../data/adult.csv'
+    params['domain'] = '../data/adult-domain.json'
+    params['epsilon'] = 1.0
+    params['delta'] = 1e-9
+    params['rounds'] = None
+    params['noise'] = 'laplace'
+    params['max_model_size'] = 25
+    params['pgm_iters'] = 250
+    params['workload'] = 'all2way'
+
+    return params
+
+if __name__ == "__main__":
+
+    description = 'A generalization of the Adaptive Grid Mechanism that won 2nd place in the 2020 NIST temporal map challenge'
+    formatter = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
+    parser.add_argument('--dataset', help='dataset to use')
+    parser.add_argument('--domain', help='domain to use')
+    parser.add_argument('--epsilon', type=float, help='privacy parameter')
+    parser.add_argument('--delta', type=float, help='privacy parameter')
+    parser.add_argument('--rounds', type=int, help='number of rounds of MWEM to run')
+    parser.add_argument('--noise', choices=['laplace','gaussian'], help='noise distribution to use')
+    parser.add_argument('--max_model_size', type=float, help='maximum size (in megabytes) of model')
+    parser.add_argument('--workload', choices=['all2way', 'all3way', 'all4way'], default='workload to use')
+    parser.add_argument('--pgm_iters', type=int, help='number of iterations')
+    parser.add_argument('--save', type=str, help='path to save synthetic data')
+
+    parser.set_defaults(**default_params())
+    args = parser.parse_args()
+
+    data = Dataset.load(args.dataset, args.domain)
+
+    k = { 'all2way' : 2, 'all3way' : 3, 'all4way' : 4 }[args.workload]
+    # feel free to change this to any list of attribute subsets to run on different workloads
+    workload = list(itertools.combinations(data.domain.attrs, k))
+
+    synth = mwem_pgm(data, args.epsilon, args.delta, 
+                    workload=workload,
+                    rounds=args.rounds,
+                    maxsize_mb=args.max_model_size,
+                    pgm_iters=args.pgm_iters)
+
+    if args.save is not None:
+        synth.df.to_csv(args.save, index=False)
+
     errors = []
-    for proj in itertools.combinations(data.domain.attrs, 2):
+    for proj in workload:
         X = data.project(proj).datavector()
         Y = synth.project(proj).datavector()
         e = 0.5*np.linalg.norm(X/X.sum() - Y/Y.sum(), 1)
