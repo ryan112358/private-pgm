@@ -107,6 +107,9 @@ class JunctionTree:
             #orders.append(self._greedy_order(stochastic=False))
             #order = min(orders, key=lambda x: x[1])[0]
             order = self._greedy_order(stochastic=False)[0]
+        elif type(order) is int:
+            orders = [self._greedy_order(stochastic=False)] + [self._greedy_order(stochastic=True) for _ in range(order)]
+            order = min(orders, key=lambda x: x[1])[0]
         self.elimination_order = order
         tri, cost = self._triangulated(order)
         #cliques = [tuple(c) for c in nx.find_cliques(tri)]

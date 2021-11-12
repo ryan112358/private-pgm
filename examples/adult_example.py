@@ -1,4 +1,4 @@
-from mbi import Dataset, FactoredInference, Domain, LocalInference
+from mbi import Dataset, FactoredInference, Domain, LocalInference, MixtureInference, PublicInference
 import numpy as np
 from scipy import sparse
 
@@ -14,7 +14,8 @@ print(domain)
 np.random.seed(0)
 
 epsilon = 1.0
-sigma = 1.0 / len(data.domain) / 2.0
+epsilon_split = epsilon / (len(data.domain) + len(cliques))
+sigma = 2.0 / epsilon_split
 
 measurements = []
 for col in data.domain:
@@ -30,8 +31,6 @@ cliques = [('age', 'education-num'),
             ('sex', 'hours-per-week'),
             ('hours-per-week', 'income>50K'),
             ('native-country', 'marital-status', 'occupation')]
-
-sigma = 1.0 / len(cliques) / 2.0
 
 for cl in cliques:
     x = data.project(cl).datavector()
