@@ -19,7 +19,7 @@ There are two additional improvements not described in the original Private-PGM 
 - At the end of the mechanism, we generate synthetic data (rather than query answers)
 """
 
-def worst_approximated(workload_answers, est, workload, eps, penalty=True):
+def worst_approximated(workload_answers, est, workload, eps, penalty=True, bounded=False):
     """ Select a (noisy) worst-approximated marginal for measurement.
     
     :param workload_answers: a dictionary of true answers to the workload
@@ -35,12 +35,12 @@ def worst_approximated(workload_answers, est, workload, eps, penalty=True):
         x = workload_answers[cl]
         xest = est.project(cl).datavector()
         errors = np.append(errors, np.abs(x - xest).sum()-bias)
-    sensitivity = 2.0
+    sensitivity = 2.0 if bounded else 1.0
     prob = softmax(0.5*eps/sensitivity*(errors - errors.max()))
     key = np.random.choice(len(errors), p=prob)
     return workload[key]
 
-def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 25, pgm_iters=100, noise='laplace'):
+def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 25, pgm_iters=1000, noise='gaussian', bounded=False, alpha=0.9):
     """
     Implementation of MWEM + PGM
 
@@ -64,19 +64,19 @@ def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 
         rounds = len(data.domain)
 
     if noise == 'laplace':
-        eps_per_round = epsilon / (2 * rounds)
-        sigma = 1.0 / eps_per_round
-        exp_eps = eps_per_round
-        marginal_sensitivity = 2
+        eps_per_round = epsilon / rounds
+        sigma = 1.0 / (alpha*eps_per_round)
+        exp_eps = (1-alpha)*eps_per_round
+        marginal_sensitivity = 2 if bounded else 1.0
     else:
         rho = cdp_rho(epsilon, delta)
-        rho_per_round = rho / (2 * rounds)
-        sigma = np.sqrt(0.5 / rho_per_round)
-        exp_eps = np.sqrt(8*rho_per_round)
-        marginal_sensitivity = np.sqrt(2)
+        rho_per_round = rho / rounds
+        sigma = np.sqrt(0.5 / (alpha*rho_per_round))
+        exp_eps = np.sqrt(8*(1-alpha)*rho_per_round)
+        marginal_sensitivity = np.sqrt(2) if bounded else 1.0
 
     domain = data.domain
-    total = data.records
+    total = data.records if bounded else None
 
     def size(cliques):
         return GraphicalModel(domain, cliques).size * 8 / 2**20
@@ -118,9 +118,9 @@ def default_params():
     params['epsilon'] = 1.0
     params['delta'] = 1e-9
     params['rounds'] = None
-    params['noise'] = 'laplace'
+    params['noise'] = 'gaussian'
     params['max_model_size'] = 25
-    params['pgm_iters'] = 250
+    params['pgm_iters'] = 1000
     params['degree'] = 2
     params['num_marginals'] = None
     params['max_cells'] = 10000
