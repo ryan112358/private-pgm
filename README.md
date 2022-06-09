@@ -10,12 +10,13 @@ For anyone interested in using this code-base, the "examples" folder has been re
 
 If you would simply like to compare against mechanisms that are built on top of Private-PGM, please refer to the "mechanisms" folder.  These will contain implementations of several mechanisms that are designed to work on a broad class of datasets and workloads.  The mechanisms currently available here are:
 
-* MST - Winning solution to the 2018 NIST synthetic data challenge.
-* Adaptive Grid - Second place solution to the 2020 NIST synthetic data challenge.
-* MWEM+PGM - A scalable instantiation of the MWEM algorithm for marginal query workloads.
-* HDMM+APPGM - A scalable instantiation of the HDMM algorithm for marginal query workloads.
+* [AIM](https://arxiv.org/abs/2201.12677) - An adaptive and iterative mechanism
+* [MST](https://arxiv.org/abs/2108.04978) - Winning solution to the 2018 NIST synthetic data challenge.
+* [Adaptive Grid](https://github.com/ryan112358/nist-synthetic-data-2021) - Second place solution to the 2020 NIST synthetic data challenge.
+* [MWEM+PGM](https://arxiv.org/pdf/1901.09136.pdf) - A scalable instantiation of the MWEM algorithm for marginal query workloads.
+* [HDMM+APPGM](https://arxiv.org/abs/2109.06153) - A scalable instantiation of the HDMM algorithm for marginal query workloads.
 
-For the methods above, MST and Adaptive Grid are workload agnostic.  Nevertheless, we expect them to do well on general workloads like all 3-way marginals.  MWEM+PGM and HDMM+APPGM are both workload aware, and are designed to offer low error on the marginals specified in the workload.  
+For the methods above, MST and Adaptive Grid are workload agnostic.  Nevertheless, we expect them to do well on general workloads like all 3-way marginals.  MWEM+PGM, HDMM+APPGM, and AIM are all workload aware, and are designed to offer low error on the marginals specified in the workload.  
 
 NOTE: The first three mechanisms produce synthetic data, but HDMM+APPGM only produces query answers, not synthetic data.
 
@@ -61,7 +62,13 @@ Now model can be used as if it were the true data to answer any new queries
 >>> ac2 = model.project(['A','C']).datavector()
 ```
 
-# Setup
+# Automatic Setup
+
+```
+$ pip install git+https://github.com/ryan112358/private-pgm.git
+```
+
+# Manual Setup
 
 We officially support python3, and have the following dependencies: numpy, scipy, pandas, matplotlib, and networkx.  These can be installed with pip as follows:
 
