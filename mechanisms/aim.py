@@ -1,14 +1,29 @@
 import numpy as np
 import itertools
 from mbi import Dataset, GraphicalModel, FactoredInference, Domain
-from dpsynth.mechanisms import Mechanism
-from dpsynth.utils import hypothetical_model_size, downward_closure, powerset
+from mechanism import Mechanism
 from collections import defaultdict
 from hdmm.matrix import Identity
 from scipy.optimize import bisect
 import pandas as pd
 from mbi import Factor
 import argparse
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(1,len(s)+1))
+
+def downward_closure(Ws):
+    ans = set()
+    for proj in Ws:
+        ans.update(powerset(proj))
+    return list(sorted(ans, key=len))
+
+def hypothetical_model_size(domain, cliques):
+    model = GraphicalModel(domain, cliques)
+    return model.size * 8 / 2**20
+
 
 def compile_workload(workload):
     def score(cl):
