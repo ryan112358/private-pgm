@@ -243,7 +243,7 @@ class GraphicalModel:
                 return group
 
             if len(proj) >= 1:
-                df = df.groupby(list(proj)).apply(foo)
+                df = df.groupby(list(proj), group_keys=False).apply(foo)
             else:
                 df[col] = synthetic_col(marg, df.shape[0])
 
