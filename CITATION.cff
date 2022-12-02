@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata, as well as the associated publication in the Journal of Privacy and Confidentiality."
+abstract: "Private-PGM is a post-processing method that is used to estimate a high-dimensional data distribution from noisy measurements of its marginals. "
+authors: 
+- family-names: "McKenna"
+  given-names: "Ryan"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
+- family-names: "Miklau"
+  given-names: "Gerome"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
+- family-names: "Sheldon"
+  given-names: "Daniel"
+  affiliation: "College of Information and Computer Sciences, The University of Massachusets, Amherst, MA"
+title: "Private-PGM"
+version: "v2021-10-04-jpc"
+date-released: 2021-10-04
+license: "Apache-2.0"
+url: "https://github.com/journalprivacyconfidentiality/private-pgm-jpc-778/tree/v2021-10-04-jpc"
