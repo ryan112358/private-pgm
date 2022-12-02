@@ -61,7 +61,7 @@ class GraphicalModel:
                     return self.marginals[cl].project(attrs)
 
         elim = self.domain.invert(attrs)
-        elim_order = greedy_order(self.domain, self.cliques, elim)
+        elim_order = greedy_order(self.domain, self.cliques + [attrs], elim)
         pots = list(self.potentials.values())
         ans = variable_elimination_logspace(pots, elim_order, self.total)
         return ans.project(attrs)
@@ -200,8 +200,9 @@ class GraphicalModel:
             marginals[cl] = Factor(dom, x)
         self.potentials = self.mle(marginals)
 
-    def synthetic_data(self, rows=None):
-        """ Generate synthetic tabular data from the distribution """
+    def synthetic_data(self, rows=None, method='round'):
+        """ Generate synthetic tabular data from the distribution.  
+            Valid options for method are 'round' and 'sample'."""
         total = int(self.total) if rows is None else rows
         cols = self.domain.attrs
         data = np.zeros((total, len(cols)), dtype=int)
@@ -209,13 +210,13 @@ class GraphicalModel:
         cliques = [set(cl) for cl in self.cliques]
 
         def synthetic_col(counts, total):
+            if method == 'sample':
+                probas = counts / counts.sum()
+                return np.random.choice(counts.size, total, True, probas)
             counts *= total / counts.sum()
             frac, integ = np.modf(counts)
             integ = integ.astype(int)
             extra = total - integ.sum()
-            #if extra > 0:
-            #    o = np.argsort(frac)
-            #    integ[o[-extra:]] += 1
             if extra > 0:
                 idx = np.random.choice(counts.size, extra, False, frac / frac.sum())
                 integ[idx] += 1
