@@ -18,7 +18,7 @@ Notable differences:
 
 
 def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
-    logP = np.log(x0+np.nextafter(0)) + np.log(total) - np.log(x0.sum())
+    logP = np.log(x0+np.nextafter(0,1)) + np.log(total) - np.log(x0.sum())
     P = np.exp(logP)
     P = x0 * total / x0.sum()
     loss, dL = loss_and_grad(P)
