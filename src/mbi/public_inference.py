@@ -3,6 +3,7 @@ from scipy.optimize import minimize
 from collections import defaultdict
 import numpy as np
 from scipy.sparse.linalg import lsmr
+from scipy.special import logsumexp
 
 """ This file is experimental.  
 It is an attempt to re-implement and generalize the technique used in PMW^{Pub}.
@@ -17,19 +18,24 @@ Notable differences:
 
 
 def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
+    logP = np.log(x0+np.nextafter(0)) + np.log(total) - np.log(x0.sum())
+    P = np.exp(logP)
     P = x0 * total / x0.sum()
     loss, dL = loss_and_grad(P)
     alpha = 1.0
     begun = False
 
     for _ in range(iters):
-        Q = P * np.exp(-alpha*dL)
-        Q *= total / Q.sum()
+        logQ = logP - alpha*dL
+        logQ += np.log(total) - logsumexp(logQ)
+        Q = np.exp(logQ)
+        #Q = P * np.exp(-alpha*dL)
+        #Q *= total / Q.sum()
         new_loss, new_dL = loss_and_grad(Q)
 
         if loss - new_loss >= 0.5*alpha*dL.dot(P-Q):
             #print(alpha, loss)
-            P = Q
+            logP = logQ
             loss, dL = new_loss, new_dL
             # increase step size if we haven't already decreased it at least once
             if not begun: alpha *= 2
@@ -37,7 +43,7 @@ def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
             alpha *= 0.5
             begun = True
 
-    return P
+    return np.exp(logP)
 
 def estimate_total(measurements):
     # find the minimum variance estimate of the total given the measurements
