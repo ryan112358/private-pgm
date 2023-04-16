@@ -4,7 +4,7 @@ from scipy import sparse
 from disjoint_set import DisjointSet
 import networkx as nx
 import itertools
-from cdp2adp import cdp_rho
+from mechanisms.cdp2adp import cdp_rho
 from scipy.special import logsumexp
 import argparse
 

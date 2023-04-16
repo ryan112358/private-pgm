@@ -1,7 +1,7 @@
 import numpy as np
 from autodp import privacy_calibrator
 from functools import partial
-from cdp2adp import cdp_rho
+from mechanisms.cdp2adp import cdp_rho
 from scipy.special import softmax
 
 def pareto_efficient(costs):

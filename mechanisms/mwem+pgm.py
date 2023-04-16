@@ -3,7 +3,7 @@ import itertools
 from mbi import Dataset, GraphicalModel, FactoredInference
 from scipy.special import softmax
 from scipy import sparse
-from cdp2adp import cdp_rho
+from mechanisms.cdp2adp import cdp_rho
 import argparse
 
 
