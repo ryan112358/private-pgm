@@ -44,7 +44,7 @@ def filter_candidates(candidates, model, size_limit):
     return ans
 
 class AIM(Mechanism):
-    def __init__(self,epsilon,delta,max_iters,prng=None,rounds=None,max_model_size=80,structural_zeros={}):
+    def __init__(self,epsilon,delta,prng=None,rounds=None,max_model_size=80,max_iters=1000,structural_zeros={}):
         super(AIM, self).__init__(epsilon, delta, prng)
         self.rounds = rounds
         self.max_iters = max_iters
@@ -143,6 +143,7 @@ def default_params():
     params['delta'] = 1e-9
     params['noise'] = 'laplace'
     params['max_model_size'] = 80
+    params['max_iters'] = 1000
     params['degree'] = 2
     params['num_marginals'] = None
     params['max_cells'] = 10000
@@ -159,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', type=float, help='privacy parameter')
     parser.add_argument('--delta', type=float, help='privacy parameter')
     parser.add_argument('--max_model_size', type=float, help='maximum size (in megabytes) of model')
+    parser.add_argument('--max_iters', type=int, help='maximum number of iterations')
     parser.add_argument('--degree', type=int, help='degree of marginals in workload')
     parser.add_argument('--num_marginals', type=int, help='number of marginals in workload')
     parser.add_argument('--max_cells', type=int, help='maximum number of cells for marginals in workload')
@@ -175,7 +177,7 @@ if __name__ == "__main__":
         workload = [workload[i] for i in prng.choice(len(workload), args.num_marginals, replace=False)]
 
     workload = [(cl, 1.0) for cl in workload]
-    mech = AIM(args.epsilon, args.delta, max_model_size=args.max_model_size)
+    mech = AIM(args.epsilon, args.delta, max_model_size=args.max_model_size, max_iters=args.max_iters)
     model, synth = mech.run(data, workload)
 
     if args.save is not None:
@@ -188,4 +190,3 @@ if __name__ == "__main__":
         e = 0.5*wgt*np.linalg.norm(X/X.sum() - Y/Y.sum(), 1)
         errors.append(e)
     print('Average Error: ', np.mean(errors))
-
