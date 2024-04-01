@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 from mbi import Dataset, GraphicalModel, FactoredInference, Domain
-from mechanism import Mechanism
+from mechanisms.mechanism import Mechanism
 from collections import defaultdict
 from hdmm.matrix import Identity
 from scipy.optimize import bisect
