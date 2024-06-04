@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 from mbi import Dataset, GraphicalModel, FactoredInference, Domain
-from mechanisms.mechanism import Mechanism
+from mechanism import Mechanism
 from collections import defaultdict
 from hdmm.matrix import Identity
 from scipy.optimize import bisect
@@ -65,7 +65,7 @@ class AIM(Mechanism):
         max_sensitivity = max(sensitivity.values()) # if all weights are 0, could be a problem
         return self.exponential_mechanism(errors, eps, max_sensitivity)
 
-    def run(self, data, workload, num_synth_rows, initial_cliques):
+    def run(self, data, workload, num_synth_rows = None, initial_cliques = None):
         rounds = self.rounds or 16*len(data.domain)
         candidates = compile_workload(workload)
         answers = {cl : data.project(cl).datavector() for cl in candidates}
