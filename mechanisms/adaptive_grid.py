@@ -6,7 +6,7 @@ from scipy import sparse
 from scipy.special import logsumexp
 import itertools
 import networkx as nx
-from disjoint_set import DisjointSet
+from scipy.cluster.hierarchy import DisjointSet
 from mechanisms.cdp2adp import cdp_rho
 import argparse
 
@@ -235,7 +235,7 @@ def select(data, model, rho, targets=[]):
         idx = exponential_mechanism(wgts, epsilon, sensitivity=1.0)
         e = candidates[idx]
         T.add_edge(*e)
-        ds.union(*e)
+        ds.merge(*e)
 
     return [e + tuple(targets) for e in T.edges]
 

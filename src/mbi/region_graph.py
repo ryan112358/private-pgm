@@ -6,7 +6,7 @@ from scipy import optimize
 from functools import reduce
 import itertools
 import networkx as nx
-from disjoint_set import DisjointSet
+from scipy.cluster.hierarchy import DisjointSet
 
 class RegionGraph():
     def __init__(self,domain,cliques,total = 1.0,minimal=True,convex=True,iters=25,convergence=1e-3,damping=0.5):
@@ -148,13 +148,14 @@ class RegionGraph():
             min_edges = []
             for r in regions:
                 ds = DisjointSet()
-                for u in self.parents[r]: ds.find(u)
+                for u in self.parents[r]:
+                    ds.add(u)
                 for u, v in itertools.combinations(self.parents[r], 2):
                     uv = set(self.ancestors[u]) & set(self.ancestors[v])
-                    if len(uv) > 0: ds.union(u,v)
+                    if len(uv) > 0: ds.merge(u,v)
                 canonical = set()
                 for u in self.parents[r]:
-                    canonical.update({ds.find(u)})
+                    canonical.update({ds[u]})
                 #if len(canonical) > 1:# or r in self.cliques:
                 min_edges.extend([(u,r) for u in canonical])
             #G = nx.DiGraph(min_edges)

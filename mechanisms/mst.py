@@ -1,7 +1,7 @@
 import numpy as np
 from mbi import FactoredInference, Dataset, Domain
 from scipy import sparse
-from disjoint_set import DisjointSet
+from scipy.cluster.hierarchy import DisjointSet
 import networkx as nx
 import itertools
 from mechanisms.cdp2adp import cdp_rho
@@ -83,7 +83,7 @@ def select(data, rho, measurement_log, cliques=[]):
 
     for e in cliques:
         T.add_edge(*e)
-        ds.union(*e)
+        ds.merge(*e)
 
     r = len(list(nx.connected_components(T)))
     epsilon = np.sqrt(8*rho/(r-1))
@@ -93,7 +93,7 @@ def select(data, rho, measurement_log, cliques=[]):
         idx = exponential_mechanism(wgts, epsilon, sensitivity=1.0)
         e = candidates[idx]
         T.add_edge(*e)
-        ds.union(*e)
+        ds.merge(*e)
 
     return list(T.edges)
 
