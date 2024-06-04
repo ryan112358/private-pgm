@@ -4,21 +4,26 @@ from functools import partial
 from mechanisms.cdp2adp import cdp_rho
 from scipy.special import softmax
 
+
 def pareto_efficient(costs):
-    eff = np.ones(costs.shape[0], dtype = bool)
+    eff = np.ones(costs.shape[0], dtype=bool)
     for i, c in enumerate(costs):
         if eff[i]:
-            eff[eff] = np.any(costs[eff]<=c, axis=1)  # Keep any point with a lower cost
+            eff[eff] = np.any(
+                costs[eff] <= c, axis=1
+            )  # Keep any point with a lower cost
     return np.nonzero(eff)[0]
+
 
 def generalized_em_scores(q, ds, t):
     q = -q
     idx = pareto_efficient(np.vstack([q, ds]).T)
-    r = q + t*ds
-    r = r[:,None] - r[idx][None,:]
-    z = ds[:,None] + ds[idx][None,:]
-    s = (r/z).max(axis=1)
+    r = q + t * ds
+    r = r[:, None] - r[idx][None, :]
+    z = ds[:, None] + ds[idx][None, :]
+    s = (r / z).max(axis=1)
     return -s
+
 
 class Mechanism:
     def __init__(self, epsilon, delta, bounded, prng=np.random):
@@ -38,9 +43,11 @@ class Mechanism:
     def run(self, dataset, workload):
         pass
 
-    def generalized_exponential_mechanism(self, qualities, sensitivities, epsilon, t=None, base_measure=None):
+    def generalized_exponential_mechanism(
+        self, qualities, sensitivities, epsilon, t=None, base_measure=None
+    ):
         if t is None:
-            t = 2*np.log(len(qualities) / 0.5) / epsilon
+            t = 2 * np.log(len(qualities) / 0.5) / epsilon
         if isinstance(qualities, dict):
             keys = list(qualities.keys())
             qualities = np.array([qualities[key] for key in keys])
@@ -50,21 +57,25 @@ class Mechanism:
         else:
             keys = np.arange(qualities.size)
         scores = generalized_em_scores(qualities, sensitivities, t)
-        key = self.exponential_mechanism(scores, epsilon, 1.0, base_measure=base_measure)
+        key = self.exponential_mechanism(
+            scores, epsilon, 1.0, base_measure=base_measure
+        )
         return keys[key]
 
     def permute_and_flip(self, qualities, epsilon, sensitivity=1.0):
         """ Sample a candidate from the permute-and-flip mechanism """
         q = qualities - qualities.max()
-        p = np.exp(0.5*epsilon/sensitivity*q)
+        p = np.exp(0.5 * epsilon / sensitivity * q)
         for i in np.random.permutation(p.size):
             if np.random.rand() <= p[i]:
                 return i
 
-    def exponential_mechanism(self, qualities, epsilon, sensitivity=1.0, base_measure=None):
+    def exponential_mechanism(
+        self, qualities, epsilon, sensitivity=1.0, base_measure=None
+    ):
         if isinstance(qualities, dict):
-            #import pandas as pd
-            #print(pd.Series(list(qualities.values()), list(qualities.keys())).sort_values().tail())
+            # import pandas as pd
+            # print(pd.Series(list(qualities.values()), list(qualities.keys())).sort_values().tail())
             keys = list(qualities.keys())
             qualities = np.array([qualities[key] for key in keys])
             if base_measure is not None:
@@ -76,20 +87,25 @@ class Mechanism:
         """ Sample a candidate from the permute-and-flip mechanism """
         q = qualities - qualities.max()
         if base_measure is None:
-            p = softmax(0.5*epsilon/sensitivity*q)
+            p = softmax(0.5 * epsilon / sensitivity * q)
         else:
-            p = softmax(0.5*epsilon/sensitivity*q + base_measure)
+            p = softmax(0.5 * epsilon / sensitivity * q + base_measure)
 
         return keys[self.prng.choice(p.size, p=p)]
 
     def gaussian_noise_scale(self, l2_sensitivity, epsilon, delta):
         """ Return the Gaussian noise necessary to attain (epsilon, delta)-DP """
-        if self.bounded: l2_sensitivity *= 2.0
-        return l2_sensitivity * privacy_calibrator.ana_gaussian_mech(epsilon, delta)['sigma']
+        if self.bounded:
+            l2_sensitivity *= 2.0
+        return (
+            l2_sensitivity
+            * privacy_calibrator.ana_gaussian_mech(epsilon, delta)["sigma"]
+        )
 
     def laplace_noise_scale(self, l1_sensitivity, epsilon):
         """ Return the Laplace noise necessary to attain epsilon-DP """
-        if self.bounded: l1_sensitivity *= 2.0
+        if self.bounded:
+            l1_sensitivity *= 2.0
         return l1_sensitivity / epsilon
 
     def gaussian_noise(self, sigma, size):
@@ -105,9 +121,7 @@ class Mechanism:
             return a function that samples from the appropriate distribution """
         b = self.laplace_noise_scale(l1_sensitivity, epsilon)
         sigma = self.gaussian_noise_scale(l2_sensitivity, epsilon, delta)
-        dist = self.gaussian_noise if np.sqrt(2)*b > sigma else self.laplace_noise
-        if np.sqrt(2)*b < sigma:
+        dist = self.gaussian_noise if np.sqrt(2) * b > sigma else self.laplace_noise
+        if np.sqrt(2) * b < sigma:
             return partial(self.laplace_noise, b)
         return partial(self.gaussian_noise, sigma)
-
-

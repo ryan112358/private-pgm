@@ -19,7 +19,10 @@ There are two additional improvements not described in the original Private-PGM 
 - At the end of the mechanism, we generate synthetic data (rather than query answers)
 """
 
-def worst_approximated(workload_answers, est, workload, eps, penalty=True, bounded=False):
+
+def worst_approximated(
+    workload_answers, est, workload, eps, penalty=True, bounded=False
+):
     """ Select a (noisy) worst-approximated marginal for measurement.
     
     :param workload_answers: a dictionary of true answers to the workload
@@ -34,13 +37,25 @@ def worst_approximated(workload_answers, est, workload, eps, penalty=True, bound
         bias = est.domain.size(cl) if penalty else 0
         x = workload_answers[cl]
         xest = est.project(cl).datavector()
-        errors = np.append(errors, np.abs(x - xest).sum()-bias)
+        errors = np.append(errors, np.abs(x - xest).sum() - bias)
     sensitivity = 2.0 if bounded else 1.0
-    prob = softmax(0.5*eps/sensitivity*(errors - errors.max()))
+    prob = softmax(0.5 * eps / sensitivity * (errors - errors.max()))
     key = np.random.choice(len(errors), p=prob)
     return workload[key]
 
-def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 25, pgm_iters=1000, noise='gaussian', bounded=False, alpha=0.9):
+
+def mwem_pgm(
+    data,
+    epsilon,
+    delta=0.0,
+    workload=None,
+    rounds=None,
+    maxsize_mb=25,
+    pgm_iters=1000,
+    noise="gaussian",
+    bounded=False,
+    alpha=0.9,
+):
     """
     Implementation of MWEM + PGM
 
@@ -57,54 +72,57 @@ def mwem_pgm(data, epsilon, delta=0.0, workload=None, rounds=None, maxsize_mb = 
     Implementation Notes:
     - During each round of MWEM, one clique will be selected for measurement, but only if measuring the clique does
         not increase size of the graphical model too much
-    """ 
+    """
     if workload is None:
         workload = list(itertools.combinations(data.domain, 2))
     if rounds is None:
         rounds = len(data.domain)
 
-    if noise == 'laplace':
+    if noise == "laplace":
         eps_per_round = epsilon / rounds
-        sigma = 1.0 / (alpha*eps_per_round)
-        exp_eps = (1-alpha)*eps_per_round
+        sigma = 1.0 / (alpha * eps_per_round)
+        exp_eps = (1 - alpha) * eps_per_round
         marginal_sensitivity = 2 if bounded else 1.0
     else:
         rho = cdp_rho(epsilon, delta)
         rho_per_round = rho / rounds
-        sigma = np.sqrt(0.5 / (alpha*rho_per_round))
-        exp_eps = np.sqrt(8*(1-alpha)*rho_per_round)
+        sigma = np.sqrt(0.5 / (alpha * rho_per_round))
+        exp_eps = np.sqrt(8 * (1 - alpha) * rho_per_round)
         marginal_sensitivity = np.sqrt(2) if bounded else 1.0
 
     domain = data.domain
     total = data.records if bounded else None
 
     def size(cliques):
-        return GraphicalModel(domain, cliques).size * 8 / 2**20
+        return GraphicalModel(domain, cliques).size * 8 / 2 ** 20
 
-    workload_answers = { cl : data.project(cl).datavector() for cl in workload }
+    workload_answers = {cl: data.project(cl).datavector() for cl in workload}
 
     engine = FactoredInference(data.domain, log=False, iters=pgm_iters, warm_start=True)
     measurements = []
     est = engine.estimate(measurements, total)
     cliques = []
-    for i in range(1, rounds+1):
+    for i in range(1, rounds + 1):
         # [New] Only consider candidates that keep the model sufficiently small
-        candidates = [cl for cl in workload if size(cliques+[cl]) <= maxsize_mb*i/rounds]
+        candidates = [
+            cl for cl in workload if size(cliques + [cl]) <= maxsize_mb * i / rounds
+        ]
         ax = worst_approximated(workload_answers, est, candidates, exp_eps)
-        print('Round', i, 'Selected', ax, 'Model Size (MB)', est.size*8/2**20)
+        print("Round", i, "Selected", ax, "Model Size (MB)", est.size * 8 / 2 ** 20)
         n = domain.size(ax)
         x = data.project(ax).datavector()
-        if noise == 'laplace':
-            y = x + np.random.laplace(loc=0, scale=marginal_sensitivity*sigma, size=n)
+        if noise == "laplace":
+            y = x + np.random.laplace(loc=0, scale=marginal_sensitivity * sigma, size=n)
         else:
-            y = x + np.random.normal(loc=0, scale=marginal_sensitivity*sigma, size=n)
+            y = x + np.random.normal(loc=0, scale=marginal_sensitivity * sigma, size=n)
         Q = sparse.eye(n)
         measurements.append((Q, y, 1.0, ax))
         est = engine.estimate(measurements, total)
         cliques.append(ax)
 
-    print('Generating Data...')
+    print("Generating Data...")
     return est.synthetic_data()
+
 
 def default_params():
     """
@@ -113,39 +131,50 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
-    params['dataset'] = '../data/adult.csv'
-    params['domain'] = '../data/adult-domain.json'
-    params['epsilon'] = 1.0
-    params['delta'] = 1e-9
-    params['rounds'] = None
-    params['noise'] = 'gaussian'
-    params['max_model_size'] = 25
-    params['pgm_iters'] = 1000
-    params['degree'] = 2
-    params['num_marginals'] = None
-    params['max_cells'] = 10000
+    params["dataset"] = "../data/adult.csv"
+    params["domain"] = "../data/adult-domain.json"
+    params["epsilon"] = 1.0
+    params["delta"] = 1e-9
+    params["rounds"] = None
+    params["noise"] = "gaussian"
+    params["max_model_size"] = 25
+    params["pgm_iters"] = 1000
+    params["degree"] = 2
+    params["num_marginals"] = None
+    params["max_cells"] = 10000
 
     return params
 
+
 if __name__ == "__main__":
 
-    description = ''
+    description = ""
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
-    parser.add_argument('--dataset', help='dataset to use')
-    parser.add_argument('--domain', help='domain to use')
-    parser.add_argument('--epsilon', type=float, help='privacy parameter')
-    parser.add_argument('--delta', type=float, help='privacy parameter')
-    parser.add_argument('--rounds', type=int, help='number of rounds of MWEM to run')
-    parser.add_argument('--noise', choices=['laplace','gaussian'], help='noise distribution to use')
-    parser.add_argument('--max_model_size', type=float, help='maximum size (in megabytes) of model')
+    parser.add_argument("--dataset", help="dataset to use")
+    parser.add_argument("--domain", help="domain to use")
+    parser.add_argument("--epsilon", type=float, help="privacy parameter")
+    parser.add_argument("--delta", type=float, help="privacy parameter")
+    parser.add_argument("--rounds", type=int, help="number of rounds of MWEM to run")
+    parser.add_argument(
+        "--noise", choices=["laplace", "gaussian"], help="noise distribution to use"
+    )
+    parser.add_argument(
+        "--max_model_size", type=float, help="maximum size (in megabytes) of model"
+    )
 
-    parser.add_argument('--degree', type=int, help='degree of marginals in workload')
-    parser.add_argument('--num_marginals', type=int, help='number of marginals in workload')
-    parser.add_argument('--max_cells', type=int, help='maximum number of cells for marginals in workload')
+    parser.add_argument("--degree", type=int, help="degree of marginals in workload")
+    parser.add_argument(
+        "--num_marginals", type=int, help="number of marginals in workload"
+    )
+    parser.add_argument(
+        "--max_cells",
+        type=int,
+        help="maximum number of cells for marginals in workload",
+    )
 
-    parser.add_argument('--pgm_iters', type=int, help='number of iterations')
-    parser.add_argument('--save', type=str, help='path to save synthetic data')
+    parser.add_argument("--pgm_iters", type=int, help="number of iterations")
+    parser.add_argument("--save", type=str, help="path to save synthetic data")
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()
@@ -155,13 +184,20 @@ if __name__ == "__main__":
     workload = list(itertools.combinations(data.domain, args.degree))
     workload = [cl for cl in workload if data.domain.size(cl) <= args.max_cells]
     if args.num_marginals is not None:
-        workload = [workload[i] for i in prng.choice(len(workload), args.num_marginals, replace=False)]
+        workload = [
+            workload[i]
+            for i in prng.choice(len(workload), args.num_marginals, replace=False)
+        ]
 
-    synth = mwem_pgm(data, args.epsilon, args.delta, 
-                    workload=workload,
-                    rounds=args.rounds,
-                    maxsize_mb=args.max_model_size,
-                    pgm_iters=args.pgm_iters)
+    synth = mwem_pgm(
+        data,
+        args.epsilon,
+        args.delta,
+        workload=workload,
+        rounds=args.rounds,
+        maxsize_mb=args.max_model_size,
+        pgm_iters=args.pgm_iters,
+    )
 
     if args.save is not None:
         synth.df.to_csv(args.save, index=False)
@@ -170,6 +206,6 @@ if __name__ == "__main__":
     for proj in workload:
         X = data.project(proj).datavector()
         Y = synth.project(proj).datavector()
-        e = 0.5*np.linalg.norm(X/X.sum() - Y/Y.sum(), 1)
+        e = 0.5 * np.linalg.norm(X / X.sum() - Y / Y.sum(), 1)
         errors.append(e)
-    print('Average Error: ', np.mean(errors))
+    print("Average Error: ", np.mean(errors))

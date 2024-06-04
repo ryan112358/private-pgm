@@ -8,8 +8,10 @@ from mbi.region_graph import RegionGraph
 from mbi.inference import FactoredInference
 from mbi.local_inference import LocalInference
 from mbi.public_inference import PublicInference
+
 try:
     from mbi.mixture_inference import MixtureInference
 except:
     import warnings
-    warnings.warn('MixtureInference disabled, please install jax and jaxlib')
+
+    warnings.warn("MixtureInference disabled, please install jax and jaxlib")

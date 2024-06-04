@@ -12,22 +12,28 @@ Note that for this example, running on a GPU does not speed up inference, likely
 the total clique size is small (6516).  With more complicated measurements/models torch may help.
 """
 
+
 class Identity(sparse.linalg.LinearOperator):
     def __init__(self, n):
-        self.shape = (n,n)
+        self.shape = (n, n)
         self.dtype = np.float64
+
     def _matmat(self, X):
         return X
+
     def __matmul__(self, X):
         return X
+
     def _transpose(self):
         return self
+
     def _adjoint(self):
         return self
 
+
 # load adult dataset
 
-data = Dataset.load('../data/adult.csv', '../data/adult-domain.json')
+data = Dataset.load("../data/adult.csv", "../data/adult-domain.json")
 domain = data.domain
 total = data.df.shape[0]
 
@@ -44,15 +50,17 @@ for col in data.domain:
     x = data.project(col).datavector()
     y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
     I = Identity(x.size)
-    measurements.append( (I, y, sigma, (col,)) )
+    measurements.append((I, y, sigma, (col,)))
 
 # spend half of privacy budget to measure some more 2 and 3 way marginals
 
-cliques = [('age', 'education-num'), 
-            ('marital-status', 'race'), 
-            ('sex', 'hours-per-week'),
-            ('hours-per-week', 'income>50K'),
-            ('native-country', 'marital-status', 'occupation')]
+cliques = [
+    ("age", "education-num"),
+    ("marital-status", "race"),
+    ("sex", "hours-per-week"),
+    ("hours-per-week", "income>50K"),
+    ("native-country", "marital-status", "occupation"),
+]
 
 sigma = 1.0 / len(cliques) / 2.0
 
@@ -60,14 +68,14 @@ for cl in cliques:
     x = data.project(cl).datavector()
     y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
     I = Identity(x.size)
-    measurements.append( (I, y, sigma, cl) )
+    measurements.append((I, y, sigma, cl))
 
 # now perform inference to estimate the data distribution
 
-engine = FactoredInference(domain, backend='torch', log=True, iters=10000)
-model = engine.estimate(measurements, total=total, engine='RDA')
+engine = FactoredInference(domain, backend="torch", log=True, iters=10000)
+model = engine.estimate(measurements, total=total, engine="RDA")
 
 # now answer new queries
 
-y1 = model.project(('sex', 'income>50K')).datavector()
-y2 = model.project(('race', 'occupation')).datavector()
+y1 = model.project(("sex", "income>50K")).datavector()
+y2 = model.project(("race", "occupation")).datavector()

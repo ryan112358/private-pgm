@@ -1,5 +1,6 @@
 from functools import reduce
 
+
 class Domain:
     def __init__(self, attrs, shape):
         """ Construct a Domain object
@@ -7,7 +8,7 @@ class Domain:
         :param attrs: a list or tuple of attribute names
         :param shape: a list or tuple of domain sizes for each attribute
         """
-        assert len(attrs) == len(shape), 'dimensions must be equal'
+        assert len(attrs) == len(shape), "dimensions must be equal"
         self.attrs = tuple(attrs)
         self.shape = tuple(shape)
         self.config = dict(zip(attrs, shape))
@@ -78,14 +79,14 @@ class Domain:
     def size(self, attrs=None):
         """ return the total size of the domain """
         if attrs == None:
-            return reduce(lambda x,y: x*y, self.shape, 1)
+            return reduce(lambda x, y: x * y, self.shape, 1)
         return self.project(attrs).size()
 
-    def sort(self, how='size'):
+    def sort(self, how="size"):
         """ return a new domain object, sorted by attribute size or attribute name """
-        if how == 'size':
+        if how == "size":
             attrs = sorted(self.attrs, key=self.size)
-        elif how == 'name':
+        elif how == "name":
             attrs = sorted(self.attrs)
         return self.project(attrs)
 
@@ -113,8 +114,8 @@ class Domain:
         return self.attrs == other.attrs and self.shape == other.shape
 
     def __repr__(self):
-        inner = ', '.join(['%s: %d' % x for x in zip(self.attrs, self.shape)])
-        return 'Domain(%s)' % inner
+        inner = ", ".join(["%s: %d" % x for x in zip(self.attrs, self.shape)])
+        return "Domain(%s)" % inner
 
     def __str__(self):
         return self.__repr__()

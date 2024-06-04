@@ -7,8 +7,9 @@ import networkx as nx
 import itertools
 import pandas as pd
 
+
 class GraphicalModel:
-    def __init__(self, domain, cliques, total = 1.0, elimination_order=None):
+    def __init__(self, domain, cliques, total=1.0, elimination_order=None):
         """ Constructor for a GraphicalModel
 
         :param domain: a Domain object
@@ -24,26 +25,29 @@ class GraphicalModel:
         tree = JunctionTree(domain, cliques, elimination_order)
         self.junction_tree = tree
 
-        self.cliques = tree.maximal_cliques() # maximal cliques
+        self.cliques = tree.maximal_cliques()  # maximal cliques
         self.message_order = tree.mp_order()
         self.sep_axes = tree.separator_axes()
         self.neighbors = tree.neighbors()
         self.elimination_order = tree.elimination_order
 
         self.size = sum(domain.size(cl) for cl in self.cliques)
-        if self.size*8 > 4*10**9:
+        if self.size * 8 > 4 * 10 ** 9:
             import warnings
-            message = 'Size of parameter vector is %.2f GB. ' % (self.size*8 / 10**9) 
-            message += 'Consider removing some measurements or finding a better elimination order'
+
+            message = "Size of parameter vector is %.2f GB. " % (
+                self.size * 8 / 10 ** 9
+            )
+            message += "Consider removing some measurements or finding a better elimination order"
             warnings.warn(message)
 
     @staticmethod
     def save(model, path):
-        pickle.dump(model, open(path, 'wb'))
+        pickle.dump(model, open(path, "wb"))
 
     @staticmethod
     def load(path):
-        return pickle.load(open(path, 'rb'))
+        return pickle.load(open(path, "rb"))
 
     def project(self, attrs):
         """ Project the distribution onto a subset of attributes.
@@ -55,7 +59,7 @@ class GraphicalModel:
         # use precalculated marginals if possible
         if type(attrs) is list:
             attrs = tuple(attrs)
-        if hasattr(self, 'marginals'):
+        if hasattr(self, "marginals"):
             for cl in self.cliques:
                 if set(attrs) <= set(cl):
                     return self.marginals[cl].project(attrs)
@@ -75,17 +79,18 @@ class GraphicalModel:
         :param matrices: a list of matrices for each attribute in the domain
         :return: the vector of query answers
         """
-        assert all(M.shape[1] == n for M, n in zip(matrices, self.domain.shape)), \
-            'matrices must conform to the shape of the domain'
+        assert all(
+            M.shape[1] == n for M, n in zip(matrices, self.domain.shape)
+        ), "matrices must conform to the shape of the domain"
         logZ = self.belief_propagation(self.potentials, logZ=True)
         factors = [self.potentials[cl].exp() for cl in self.cliques]
-        Factor = type(factors[0]) # infer the type of the factors
+        Factor = type(factors[0])  # infer the type of the factors
         elim = self.domain.attrs
         for attr, Q in zip(elim, matrices):
-            d = Domain(['%s-answer'%attr, attr], Q.shape)
+            d = Domain(["%s-answer" % attr, attr], Q.shape)
             factors.append(Factor(d, Q))
         result = variable_elimination(factors, elim)
-        result = result.transpose(['%s-answer'%a for a in elim])
+        result = result.transpose(["%s-answer" % a for a in elim])
         return result.datavector(flatten=False) * self.total / np.exp(logZ)
 
     def calculate_many_marginals(self, projections):
@@ -108,25 +113,31 @@ class GraphicalModel:
             for Cj in neighbors[Ci]:
                 Sij = sep[(Cj, Ci)]
                 Z = self.marginals[Cj]
-                conditional[(Cj,Ci)] = Z / Z.project(Sij)
+                conditional[(Cj, Ci)] = Z / Z.project(Sij)
 
         # now iterate through pairs of cliques in order of distance
-        pred, dist = nx.floyd_warshall_predecessor_and_distance(self.junction_tree.tree,weight=False)
+        pred, dist = nx.floyd_warshall_predecessor_and_distance(
+            self.junction_tree.tree, weight=False
+        )
         results = {}
-        for Ci,Cj in sorted(itertools.combinations(self.cliques,2),key=lambda X:dist[X[0]][X[1]]):
+        for Ci, Cj in sorted(
+            itertools.combinations(self.cliques, 2), key=lambda X: dist[X[0]][X[1]]
+        ):
             Cl = pred[Ci][Cj]
-            Y = conditional[(Cj,Cl)]
+            Y = conditional[(Cj, Cl)]
             if Cl == Ci:
                 X = self.marginals[Ci]
-                results[(Ci, Cj)] = results[(Cj, Ci)] = X*Y
+                results[(Ci, Cj)] = results[(Cj, Ci)] = X * Y
             else:
                 X = results[(Ci, Cl)]
                 S = set(Cl) - set(Ci) - set(Cj)
-                results[(Ci, Cj)] = results[(Cj, Ci)] = (X*Y).sum(S)
-            
-        results = { self.domain.canonical(key[0]+key[1]) : results[key] for key in results }
-        
-        answers = { }
+                results[(Ci, Cj)] = results[(Cj, Ci)] = (X * Y).sum(S)
+
+        results = {
+            self.domain.canonical(key[0] + key[1]): results[key] for key in results
+        }
+
+        answers = {}
         for proj in projections:
             for attr in results:
                 if set(proj) <= set(attr):
@@ -134,7 +145,7 @@ class GraphicalModel:
                     break
             if proj not in answers:
                 # just use variable elimination
-                answers[proj] = self.project(proj) 
+                answers[proj] = self.project(proj)
 
         return answers
 
@@ -154,24 +165,25 @@ class GraphicalModel:
         :param logZ: flag to return logZ instead of marginals
         :return marginals: the marginals of the graphical model
         """
-        beliefs = { cl : potentials[cl].copy() for cl in potentials }
+        beliefs = {cl: potentials[cl].copy() for cl in potentials}
         messages = {}
-        for i,j in self.message_order:
-            sep = beliefs[i].domain.invert(self.sep_axes[(i,j)])
-            if (j,i) in messages:
-                tau = beliefs[i] - messages[(j,i)]
+        for i, j in self.message_order:
+            sep = beliefs[i].domain.invert(self.sep_axes[(i, j)])
+            if (j, i) in messages:
+                tau = beliefs[i] - messages[(j, i)]
             else:
                 tau = beliefs[i]
-            messages[(i,j)] = tau.logsumexp(sep)
-            beliefs[j] += messages[(i,j)]
+            messages[(i, j)] = tau.logsumexp(sep)
+            beliefs[j] += messages[(i, j)]
 
-        cl = self.cliques[0]      
-        if logZ: return beliefs[cl].logsumexp()
- 
+        cl = self.cliques[0]
+        if logZ:
+            return beliefs[cl].logsumexp()
+
         logZ = beliefs[cl].logsumexp()
         for cl in self.cliques:
             beliefs[cl] += np.log(self.total) - logZ
-            beliefs[cl] = beliefs[cl].exp(out=beliefs[cl])    
+            beliefs[cl] = beliefs[cl].exp(out=beliefs[cl])
 
         return CliqueVector(beliefs)
 
@@ -185,14 +197,17 @@ class GraphicalModel:
         variables = set()
         for cl in self.cliques:
             new = tuple(variables & set(cl))
-            #factor = marginals[cl] / marginals[cl].project(new)
+            # factor = marginals[cl] / marginals[cl].project(new)
             variables.update(cl)
             potentials[cl] = marginals[cl].log() - marginals[cl].project(new).log()
         return CliqueVector(potentials)
 
     def fit(self, data):
         from mbi import Factor
-        assert data.domain.contains(self.domain), 'model domain not compatible with data domain'
+
+        assert data.domain.contains(
+            self.domain
+        ), "model domain not compatible with data domain"
         marginals = {}
         for cl in self.cliques:
             x = data.project(cl).datavector()
@@ -200,17 +215,17 @@ class GraphicalModel:
             marginals[cl] = Factor(dom, x)
         self.potentials = self.mle(marginals)
 
-    def synthetic_data(self, rows=None, method='round'):
+    def synthetic_data(self, rows=None, method="round"):
         """ Generate synthetic tabular data from the distribution.  
             Valid options for method are 'round' and 'sample'."""
         total = int(self.total) if rows is None else rows
         cols = self.domain.attrs
         data = np.zeros((total, len(cols)), dtype=int)
-        df = pd.DataFrame(data, columns = cols)
+        df = pd.DataFrame(data, columns=cols)
         cliques = [set(cl) for cl in self.cliques]
 
         def synthetic_col(counts, total):
-            if method == 'sample':
+            if method == "sample":
                 probas = counts / counts.sum()
                 return np.random.choice(counts.size, total, True, probas)
             counts *= total / counts.sum()
@@ -227,8 +242,8 @@ class GraphicalModel:
         order = self.elimination_order[::-1]
         col = order[0]
         marg = self.project([col]).datavector(flatten=False)
-        df.loc[:,col] = synthetic_col(marg, total)
-        used = { col }
+        df.loc[:, col] = synthetic_col(marg, total)
+        used = {col}
 
         for col in order[1:]:
             relevant = [cl for cl in cliques if col in cl]
@@ -250,18 +265,20 @@ class GraphicalModel:
 
         return Dataset(df, self.domain)
 
+
 def variable_elimination_logspace(potentials, elim, total):
     """ run variable elimination on a list of **logspace** factors """
     k = len(potentials)
     psi = dict(zip(range(k), potentials))
     for z in elim:
         psi2 = [psi.pop(i) for i in list(psi.keys()) if z in psi[i].domain]
-        phi = reduce(lambda x,y: x+y, psi2, 0)
+        phi = reduce(lambda x, y: x + y, psi2, 0)
         tau = phi.logsumexp([z])
         psi[k] = tau
         k += 1
-    ans = reduce(lambda x,y: x+y, psi.values(), 0)
+    ans = reduce(lambda x, y: x + y, psi.values(), 0)
     return (ans - ans.logsumexp() + np.log(total)).exp()
+
 
 def variable_elimination(factors, elim):
     """ run variable elimination on a list of (non-logspace) factors """
@@ -269,11 +286,12 @@ def variable_elimination(factors, elim):
     psi = dict(zip(range(k), factors))
     for z in elim:
         psi2 = [psi.pop(i) for i in list(psi.keys()) if z in psi[i].domain]
-        phi = reduce(lambda x,y: x*y, psi2, 1)
+        phi = reduce(lambda x, y: x * y, psi2, 1)
         tau = phi.sum([z])
         psi[k] = tau
         k += 1
-    return reduce(lambda x,y: x*y, psi.values(), 1)
+    return reduce(lambda x, y: x * y, psi.values(), 1)
+
 
 def greedy_order(domain, cliques, elim):
     order = []
@@ -281,7 +299,7 @@ def greedy_order(domain, cliques, elim):
     cliques = set(cliques)
     total_cost = 0
     for k in range(len(elim)):
-        cost = { }
+        cost = {}
         for a in unmarked:
             # all cliques that have a
             neighbors = list(filter(lambda cl: a in cl, cliques))
@@ -299,7 +317,7 @@ def greedy_order(domain, cliques, elim):
         order.append(a)
         unmarked.remove(a)
         neighbors = list(filter(lambda cl: a in cl, cliques))
-        variables = tuple(set.union(set(), *map(set, neighbors)) - { a })
+        variables = tuple(set.union(set(), *map(set, neighbors)) - {a})
         cliques -= set(neighbors)
         cliques.add(variables)
         total_cost += cost[a]

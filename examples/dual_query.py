@@ -23,6 +23,7 @@ Note that we solve the hard dual query problem *exactly* using max-sum variable 
 rather than CPLEX as suggested in the DualQuery paper.
 """
 
+
 class Negated(matrix.EkteloMatrix):
     def __init__(self, Q):
         self.Q = Q
@@ -32,14 +33,15 @@ class Negated(matrix.EkteloMatrix):
     @property
     def matrix(self):
         return 1 - self.Q.dense_matrix()
-    
+
     def _matvec(self, x):
         return x.sum() - self.Q.dot(x)
-    
+
     def _transpose(self):
         return Negated(self.Q.T)
 
-def max_sum_ve(factors, domain = None, elim = None):
+
+def max_sum_ve(factors, domain=None, elim=None):
     """ run max-product variable elimination on the factors
     return the most likely assignment as a dictionary where
         keys are attributes
@@ -63,10 +65,10 @@ def max_sum_ve(factors, domain = None, elim = None):
         phi[k] = psi[z].max([z])
         k += 1
 
-    value = phi[k-1]
+    value = phi[k - 1]
 
     # step 2: traceback-MAP
-    x = { }
+    x = {}
     for z in reversed(elim):
         x[z] = psi[z].condition(x).values.argmax()
 
@@ -74,37 +76,52 @@ def max_sum_ve(factors, domain = None, elim = None):
     df = pd.DataFrame(x, index=[0])
     return Dataset(df, domain)
 
+
 def answer_workload(workload, data):
     ans = [W.dot(data.project(cl).datavector()) for cl, W in workload]
     return np.concatenate(ans)
+
 
 def DualQuery(data, workload, eps=1.0, delta=0.001, seed=0):
     prng = np.random.RandomState(seed)
     total = data.df.shape[0]
     domain = data.domain
     answers = answer_workload(workload, data) / total
-    
+
     nu = 2.0
     s = 50
-    #T = int(0.5 * ( np.sqrt(4 * eps * total + s * nu) / np.sqrt(s*nu) + 1 ))
+    # T = int(0.5 * ( np.sqrt(4 * eps * total + s * nu) / np.sqrt(s*nu) + 1 ))
     T = 2
-    while 2*nu*(T-1)/total * (np.sqrt(2*s*(T-1)*np.log(1.0/delta) + s*(T-1)*np.exp(2*nu*(T-1)/total)-1)) < eps:
+    while (
+        2
+        * nu
+        * (T - 1)
+        / total
+        * (
+            np.sqrt(
+                2 * s * (T - 1) * np.log(1.0 / delta)
+                + s * (T - 1) * np.exp(2 * nu * (T - 1) / total)
+                - 1
+            )
+        )
+        < eps
+    ):
         T = T + 1
-    T = T - 1   
- 
+    T = T - 1
+
     Qsize = sum(W.shape[0] for _, W in workload)
     Xsize = data.domain.size()
-    
+
     Q = np.ones(Qsize) / Qsize
     cache = []
-    #lookup = [Factor(domain.project(cl), q) for cl, W in workload for q in W]
+    # lookup = [Factor(domain.project(cl), q) for cl, W in workload for q in W]
     lookup = [(cl, W, i) for cl, W in workload for i in range(W.shape[0])]
     results = []
-    
+
     for i in range(T):
         idx = prng.choice(Qsize, s, True, Q)
-       
-        #queries = [lookup[i] for i in idx]
+
+        # queries = [lookup[i] for i in idx]
         queries = []
         for i in idx:
             cl, W, e = lookup[i]
@@ -120,25 +137,38 @@ def DualQuery(data, workload, eps=1.0, delta=0.001, seed=0):
 
         Q *= np.exp(-nu * (answers - curr))
         Q /= Q.sum()
-        
-        cache.append( (idx, curr) )
+
+        cache.append((idx, curr))
         results.append(best.df)
 
     synthetic = Dataset(pd.concat(results), data.domain)
-       
-    print('Iterations', T) 
-    print('Privacy level', nu*T*(T-1)*s / total)
-    
+
+    print("Iterations", T)
+    print("Privacy level", nu * T * (T - 1) * s / total)
+
     delta = 1e-3
-    eps = 2*nu*(T-1)/total * (np.sqrt(2*s*(T-1)*np.log(1.0/delta) + s*(T-1)*np.exp(2*nu*(T-1)/total)-1))
-    print('Approx privacy level', eps, delta)
-    
+    eps = (
+        2
+        * nu
+        * (T - 1)
+        / total
+        * (
+            np.sqrt(
+                2 * s * (T - 1) * np.log(1.0 / delta)
+                + s * (T - 1) * np.exp(2 * nu * (T - 1) / total)
+                - 1
+            )
+        )
+    )
+    print("Approx privacy level", eps, delta)
+
     return synthetic, cache
 
+
 def log_likelihood(answers, cache):
-    nu = 2.0 
+    nu = 2.0
     Qsize = sum(W.shape[0] for _, W in workload)
-    logQ = np.zeros(Qsize) - np.log(Qsize) 
+    logQ = np.zeros(Qsize) - np.log(Qsize)
     ans = 0
     for idx, a in cache:
         probas = logQ[idx]
@@ -146,6 +176,7 @@ def log_likelihood(answers, cache):
         logQ = logQ - logsumexp(logQ)
         ans += np.sum(probas)
     return -ans
+
 
 def marginal_loss(marginals, workload, cache):
     answers = []
@@ -164,12 +195,12 @@ def marginal_loss(marginals, workload, cache):
     danswers = gradient(answers, cache)
 
     i = 0
-    gradients = { cl : Factor.zeros(marginals[cl].domain) for cl in marginals }
+    gradients = {cl: Factor.zeros(marginals[cl].domain) for cl in marginals}
     for proj, W in workload:
         for cl in marginals:
             if set(proj) <= set(cl):
                 m = W.shape[0]
-                dmu = W.T.dot(danswers[i:i+m]) / total
+                dmu = W.T.dot(danswers[i : i + m]) / total
                 dom = gradients[cl].domain.project(proj)
                 gradients[cl] += Factor(dom, dmu)
                 i += m
@@ -178,6 +209,7 @@ def marginal_loss(marginals, workload, cache):
     print(loss)
     return loss, graphical_model.CliqueVector(gradients)
 
+
 def default_params():
     """
     Return default parameters to run this program
@@ -185,21 +217,22 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
-    params['dataset'] = 'adult'
-    params['iters'] = 10000
-    params['epsilon'] = 1.0
-    params['seed'] = 0
+    params["dataset"] = "adult"
+    params["iters"] = 10000
+    params["epsilon"] = 1.0
+    params["seed"] = 0
 
     return params
 
-if __name__ == '__main__':
-    description = ''
+
+if __name__ == "__main__":
+    description = ""
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
-    parser.add_argument('--dataset', choices=['adult'], help='dataset to use')
-    parser.add_argument('--iters', type=int, help='number of optimization iterations')
-    parser.add_argument('--epsilon', type=float, help='privacy  parameter')
-    parser.add_argument('--seed', type=int, help='random seed')
+    parser.add_argument("--dataset", choices=["adult"], help="dataset to use")
+    parser.add_argument("--iters", type=int, help="number of optimization iterations")
+    parser.add_argument("--epsilon", type=float, help="privacy  parameter")
+    parser.add_argument("--seed", type=int, help="random seed")
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()
@@ -207,12 +240,14 @@ if __name__ == '__main__':
     data, workloads = benchmarks.adult_benchmark()
 
     total = data.df.shape[0]
-   
+
     workload = []
     for cl, W in workloads:
-        workload.append( (cl, matrix.VStack([W, Negated(W)])) )
+        workload.append((cl, matrix.VStack([W, Negated(W)])))
 
-    synthetic, cache = DualQuery(data, workload, eps=args.epsilon, delta=1e-3, seed=args.seed)
+    synthetic, cache = DualQuery(
+        data, workload, eps=args.epsilon, delta=1e-3, seed=args.seed
+    )
 
     metric = lambda marginals: marginal_loss(marginals, workload, cache)
 
@@ -235,5 +270,5 @@ if __name__ == '__main__':
         mb.append(err)
         dq.append(err2)
 
-    print('Error of DualQuery    : %.3f' % np.mean(dq))
-    print('Error of DualQuery+PGM: %.3f' % np.mean(mb))
+    print("Error of DualQuery    : %.3f" % np.mean(dq))
+    print("Error of DualQuery+PGM: %.3f" % np.mean(mb))

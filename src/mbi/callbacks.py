@@ -2,11 +2,13 @@ import time
 import pandas as pd
 import numpy as np
 
+
 class CallBack:
     """ A CallBack is a function called after every iteration of an iterative optimization procedure
     It is useful for tracking loss and other metrics over time.
     """
-    def __init__(self, engine, frequency = 50):
+
+    def __init__(self, engine, frequency=50):
         """ Initialize the callback objet
 
         :param engine: the FactoredInference object that is performing the optimization
@@ -26,12 +28,14 @@ class CallBack:
             self.run(marginals)
         self.calls += 1
 
+
 class Logger(CallBack):
     """ Logger is the default callback function.  It tracks the time, L1 loss, L2 loss, and
         optionally the total variation distance to the true query answers (when available).
         The last is for debugging purposes only - in practice the true answers can not  be observed.
     """
-    def __init__(self, engine, true_answers = None, frequency = 50):
+
+    def __init__(self, engine, true_answers=None, frequency=50):
         """ Initialize the callback objet
 
         :param engine: the FactoredInference object that is performing the optimization
@@ -45,14 +49,14 @@ class Logger(CallBack):
     def setup(self):
         model = self.engine.model
         total = sum(model.domain.size(cl) for cl in model.cliques)
-        print('Total clique size:', total, flush=True)
-        #cl = max(model.cliques, key=lambda cl: model.domain.size(cl))
-        #print('Maximal clique', cl, model.domain.size(cl), flush=True)
-        cols = ['iteration', 'time', 'l1_loss', 'l2_loss', 'feasibility']
+        print("Total clique size:", total, flush=True)
+        # cl = max(model.cliques, key=lambda cl: model.domain.size(cl))
+        # print('Maximal clique', cl, model.domain.size(cl), flush=True)
+        cols = ["iteration", "time", "l1_loss", "l2_loss", "feasibility"]
         if self.true_answers is not None:
-            cols.append('variation')
+            cols.append("variation")
         self.results = pd.DataFrame(columns=cols)
-        print('\t\t'.join(cols), flush=True)
+        print("\t\t".join(cols), flush=True)
 
     def variational_distances(self, marginals):
         errors = []
@@ -68,34 +72,37 @@ class Logger(CallBack):
         return errors
 
     def primal_feasibility(self, mu):
-        ans = 0 
+        ans = 0
         count = 0
         for r in mu:
             for s in mu:
-                if r == s: break
+                if r == s:
+                    break
                 d = tuple(set(r) & set(s))
                 if len(d) > 0:
                     x = mu[r].project(d).datavector()
                     y = mu[s].project(d).datavector()
-                    err = np.linalg.norm(x-y, 1)
+                    err = np.linalg.norm(x - y, 1)
                     ans += err
                     count += 1
-        try: return ans / count
-        except: return 0
+        try:
+            return ans / count
+        except:
+            return 0
 
     def run(self, marginals):
         if self.idx == 0:
             self.setup()
 
         t = time.time() - self.start
-        l1_loss = self.engine._marginal_loss(marginals, metric='L1')[0]
-        l2_loss = self.engine._marginal_loss(marginals, metric='L2')[0]
+        l1_loss = self.engine._marginal_loss(marginals, metric="L1")[0]
+        l2_loss = self.engine._marginal_loss(marginals, metric="L2")[0]
         feasibility = self.primal_feasibility(marginals)
         row = [self.calls, t, l1_loss, l2_loss, feasibility]
         if self.true_answers is not None:
             variational = np.mean(self.variational_distances(marginals))
-            row.append(100*variational)
+            row.append(100 * variational)
         self.results.loc[self.idx] = row
         self.idx += 1
-        
-        print('\t\t'.join(['%.2f' % v for v in row]), flush=True)
+
+        print("\t\t".join(["%.2f" % v for v in row]), flush=True)

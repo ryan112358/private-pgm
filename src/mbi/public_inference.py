@@ -18,7 +18,7 @@ Notable differences:
 
 
 def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
-    logP = np.log(x0+np.nextafter(0,1)) + np.log(total) - np.log(x0.sum())
+    logP = np.log(x0 + np.nextafter(0, 1)) + np.log(total) - np.log(x0.sum())
     P = np.exp(logP)
     P = x0 * total / x0.sum()
     loss, dL = loss_and_grad(P)
@@ -26,24 +26,26 @@ def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
     begun = False
 
     for _ in range(iters):
-        logQ = logP - alpha*dL
+        logQ = logP - alpha * dL
         logQ += np.log(total) - logsumexp(logQ)
         Q = np.exp(logQ)
-        #Q = P * np.exp(-alpha*dL)
-        #Q *= total / Q.sum()
+        # Q = P * np.exp(-alpha*dL)
+        # Q *= total / Q.sum()
         new_loss, new_dL = loss_and_grad(Q)
 
-        if loss - new_loss >= 0.5*alpha*dL.dot(P-Q):
-            #print(alpha, loss)
+        if loss - new_loss >= 0.5 * alpha * dL.dot(P - Q):
+            # print(alpha, loss)
             logP = logQ
             loss, dL = new_loss, new_dL
             # increase step size if we haven't already decreased it at least once
-            if not begun: alpha *= 2
+            if not begun:
+                alpha *= 2
         else:
             alpha *= 0.5
             begun = True
 
     return np.exp(logP)
+
 
 def estimate_total(measurements):
     # find the minimum variance estimate of the total given the measurements
@@ -53,7 +55,7 @@ def estimate_total(measurements):
         o = np.ones(Q.shape[1])
         v = lsmr(Q.T, o, atol=0, btol=0)[0]
         if np.allclose(Q.T.dot(v), o):
-            variances = np.append(variances, noise**2 * np.dot(v, v))
+            variances = np.append(variances, noise ** 2 * np.dot(v, v))
             estimates = np.append(estimates, np.dot(v, y))
     if estimates.size == 0:
         return 1
@@ -62,8 +64,9 @@ def estimate_total(measurements):
         estimate = variance * np.sum(estimates / variances)
         return max(1, estimate)
 
+
 class PublicInference:
-    def __init__(self, public_data, metric='L2'):
+    def __init__(self, public_data, metric="L2"):
         self.public_data = public_data
         self.metric = metric
         self.weights = np.ones(self.public_data.records)
@@ -73,7 +76,7 @@ class PublicInference:
             total = estimate_total(measurements)
         self.measurements = measurements
         cliques = [M[-1] for M in measurements]
-        
+
         def loss_and_grad(weights):
             est = Dataset(self.public_data.df, self.public_data.domain, weights)
             mu = CliqueVector.from_data(est, cliques)
@@ -82,12 +85,12 @@ class PublicInference:
             for cl in dL:
                 idx = est.project(cl).df.values
                 dweights += dL[cl].values[tuple(idx.T)]
-            return loss, dweights 
-        
-        #bounds = [(0,None) for _ in self.weights]
-        #res = minimize(loss_and_grad, x0=self.weights, method='L-BFGS-B', jac=True, bounds=bounds)
-        #self.weights = res.x
-        
+            return loss, dweights
+
+        # bounds = [(0,None) for _ in self.weights]
+        # res = minimize(loss_and_grad, x0=self.weights, method='L-BFGS-B', jac=True, bounds=bounds)
+        # self.weights = res.x
+
         self.weights = entropic_mirror_descent(loss_and_grad, self.weights, total)
         return Dataset(self.public_data.df, self.public_data.domain, self.weights)
 
@@ -105,19 +108,19 @@ class PublicInference:
             return metric(marginals)
 
         loss = 0.0
-        gradient = { cl : Factor.zeros(marginals[cl].domain) for cl in marginals }
+        gradient = {cl: Factor.zeros(marginals[cl].domain) for cl in marginals}
 
         for Q, y, noise, cl in self.measurements:
             mu = marginals[cl]
-            c = 1.0/noise
+            c = 1.0 / noise
             x = mu.datavector()
-            diff = c*(Q @ x - y)
-            if metric == 'L1':
+            diff = c * (Q @ x - y)
+            if metric == "L1":
                 loss += abs(diff).sum()
-                sign = diff.sign() if hasattr(diff, 'sign') else np.sign(diff)
-                grad = c*(Q.T @ sign)
+                sign = diff.sign() if hasattr(diff, "sign") else np.sign(diff)
+                grad = c * (Q.T @ sign)
             else:
-                loss += 0.5*(diff @ diff)
-                grad = c*(Q.T @ diff)
+                loss += 0.5 * (diff @ diff)
+                grad = c * (Q.T @ diff)
             gradient[cl] += Factor(mu.domain, grad)
         return float(loss), CliqueVector(gradient)

@@ -25,18 +25,19 @@ def get_measurements(domain, workload):
         n = domain.size(attr)
         lookup[attr] = Identity(n)
     # optimal strategy for Prefix is precomputed and loaded
-    lookup['age'] = EkteloMatrix(np.load('prefix-85.npy'))
-    lookup['fnlwgt'] = EkteloMatrix(np.load('prefix-100.npy'))
-    lookup['capital-gain'] = EkteloMatrix(np.load('prefix-100.npy'))
-    lookup['capital-loss'] = EkteloMatrix(np.load('prefix-100.npy'))
-    lookup['hours-per-week'] = EkteloMatrix(np.load('prefix-99.npy'))
+    lookup["age"] = EkteloMatrix(np.load("prefix-85.npy"))
+    lookup["fnlwgt"] = EkteloMatrix(np.load("prefix-100.npy"))
+    lookup["capital-gain"] = EkteloMatrix(np.load("prefix-100.npy"))
+    lookup["capital-loss"] = EkteloMatrix(np.load("prefix-100.npy"))
+    lookup["hours-per-week"] = EkteloMatrix(np.load("prefix-99.npy"))
 
     measurements = []
     for proj, _ in workload:
         Q = Kronecker([lookup[a] for a in proj])
-        measurements.append( (proj, Q.sparse_matrix()) )
+        measurements.append((proj, Q.sparse_matrix()))
 
     return measurements
+
 
 def default_params():
     """
@@ -45,30 +46,38 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
-    params['dataset'] = 'adult'
-    params['iters'] = 10000
-    params['epsilon'] = 1.0
-    params['seed'] = 0
+    params["dataset"] = "adult"
+    params["iters"] = 10000
+    params["epsilon"] = 1.0
+    params["seed"] = 0
 
     return params
 
-if __name__ == '__main__':
-    description = ''
+
+if __name__ == "__main__":
+    description = ""
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
-    parser.add_argument('--dataset', choices=['adult'], help='dataset to use')
-    parser.add_argument('--iters', type=int, help='number of optimization iterations')
-    parser.add_argument('--epsilon', type=float, help='privacy  parameter')
-    parser.add_argument('--seed', type=int, help='random seed')
+    parser.add_argument("--dataset", choices=["adult"], help="dataset to use")
+    parser.add_argument("--iters", type=int, help="number of optimization iterations")
+    parser.add_argument("--epsilon", type=float, help="privacy  parameter")
+    parser.add_argument("--seed", type=int, help="random seed")
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()
 
     data, workload = benchmarks.adult_benchmark()
 
-    measurements = get_measurements(data.domain, workload) 
+    measurements = get_measurements(data.domain, workload)
 
-    model, log, answers = mechanism.run(data, measurements, eps=args.epsilon, frequency=50, seed=args.seed, iters=args.iters)
+    model, log, answers = mechanism.run(
+        data,
+        measurements,
+        eps=args.epsilon,
+        frequency=50,
+        seed=args.seed,
+        iters=args.iters,
+    )
 
     local_ls = {}
     for Q, y, _, proj in answers:
@@ -86,5 +95,5 @@ if __name__ == '__main__':
         mb.append(err)
         ls.append(err2)
 
-    print('Error of HDMM    : %.3f' % np.mean(ls))
-    print('Error of HDMM+PGM: %.3f' % np.mean(mb))
+    print("Error of HDMM    : %.3f" % np.mean(ls))
+    print("Error of HDMM+PGM: %.3f" % np.mean(mb))

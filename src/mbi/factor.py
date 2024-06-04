@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import logsumexp
 
+
 class Factor:
     def __init__(self, domain, values):
         """ Initialize a factor over the given domain
@@ -10,15 +11,17 @@ class Factor:
 
         Note: values may be a flattened 1d array or a ndarray with same shape as domain
         """
-        assert domain.size() == values.size, 'domain size does not match values size'
-        assert values.ndim == 1 or values.shape == domain.shape, 'invalid shape for values array'
+        assert domain.size() == values.size, "domain size does not match values size"
+        assert (
+            values.ndim == 1 or values.shape == domain.shape
+        ), "invalid shape for values array"
         self.domain = domain
         self.values = values.reshape(domain.shape)
 
     @staticmethod
     def zeros(domain):
         return Factor(domain, np.zeros(domain.shape))
-    
+
     @staticmethod
     def ones(domain):
         return Factor(domain, np.ones(domain.shape))
@@ -45,47 +48,51 @@ class Factor:
         return Factor(domain, vals)
 
     def expand(self, domain):
-        assert domain.contains(self.domain), 'expanded domain must contain current domain'
+        assert domain.contains(
+            self.domain
+        ), "expanded domain must contain current domain"
         dims = len(domain) - len(self.domain)
-        values = self.values.reshape(self.domain.shape + tuple([1]*dims))
+        values = self.values.reshape(self.domain.shape + tuple([1] * dims))
         ax = domain.axes(self.domain.attrs)
         values = np.moveaxis(values, range(len(ax)), ax)
         values = np.broadcast_to(values, domain.shape)
         return Factor(domain, values)
 
     def transpose(self, attrs):
-        assert set(attrs) == set(self.domain.attrs), 'attrs must be same as domain attributes'
+        assert set(attrs) == set(
+            self.domain.attrs
+        ), "attrs must be same as domain attributes"
         newdom = self.domain.project(attrs)
         ax = newdom.axes(self.domain.attrs)
         values = np.moveaxis(self.values, range(len(ax)), ax)
         return Factor(newdom, values)
 
-    def project(self, attrs, agg = 'sum'):
+    def project(self, attrs, agg="sum"):
         """ 
         project the factor onto a list of attributes (in order)
         using either sum or logsumexp to aggregate along other attributes
         """
-        assert agg in ['sum','logsumexp'], 'agg must be sum or logsumexp'
+        assert agg in ["sum", "logsumexp"], "agg must be sum or logsumexp"
         marginalized = self.domain.marginalize(attrs)
-        if agg == 'sum':
+        if agg == "sum":
             ans = self.sum(marginalized.attrs)
-        elif agg == 'logsumexp':
+        elif agg == "logsumexp":
             ans = self.logsumexp(marginalized.attrs)
         return ans.transpose(attrs)
 
-    def sum(self, attrs = None):
+    def sum(self, attrs=None):
         if attrs is None:
             return np.sum(self.values)
         axes = self.domain.axes(attrs)
-        values = np.sum(self.values, axis=axes) 
+        values = np.sum(self.values, axis=axes)
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
-    def logsumexp(self, attrs = None):
+    def logsumexp(self, attrs=None):
         if attrs is None:
             return logsumexp(self.values)
         axes = self.domain.axes(attrs)
-        values = logsumexp(self.values, axis=axes) 
+        values = logsumexp(self.values, axis=axes)
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
@@ -95,7 +102,7 @@ class Factor:
         factor2 = self.expand(newdom)
         return Factor(newdom, np.logaddexp(factor1.values, factor2.values))
 
-    def max(self, attrs = None):
+    def max(self, attrs=None):
         if attrs is None:
             return self.values.max()
         axes = self.domain.axes(attrs)
@@ -120,13 +127,13 @@ class Factor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            new_values = np.nan_to_num(other*self.values)
+            new_values = np.nan_to_num(other * self.values)
             return Factor(self.domain, new_values)
-        #print(self.values.max(), other.values.max(), self.domain, other.domain)
+        # print(self.values.max(), other.values.max(), self.domain, other.domain)
         newdom = self.domain.merge(other.domain)
         factor1 = self.expand(newdom)
         factor2 = other.expand(newdom)
-        return Factor(newdom, factor1.values * factor2.values)       
+        return Factor(newdom, factor1.values * factor2.values)
 
     def __add__(self, other):
         if np.isscalar(other):
@@ -142,7 +149,7 @@ class Factor:
             return self
         factor2 = other.expand(self.domain)
         self.values += factor2.values
-        return self 
+        return self
 
     def __imul__(self, other):
         if np.isscalar(other):
@@ -150,7 +157,7 @@ class Factor:
             return self
         factor2 = other.expand(self.domain)
         self.values *= factor2.values
-        return self 
+        return self
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -161,19 +168,21 @@ class Factor:
     def __sub__(self, other):
         if np.isscalar(other):
             return Factor(self.domain, self.values - other)
-        other = Factor(other.domain, np.where(other.values==-np.inf, 0, -other.values))
+        other = Factor(
+            other.domain, np.where(other.values == -np.inf, 0, -other.values)
+        )
         return self + other
 
     def __truediv__(self, other):
-        #assert np.isscalar(other), 'divisor must be a scalar'
+        # assert np.isscalar(other), 'divisor must be a scalar'
         if np.isscalar(other):
             new_values = self.values / other
             new_values = np.nan_to_num(new_values)
             return Factor(self.domain, new_values)
         tmp = other.expand(self.domain)
-        vals = np.divide(self.values, tmp.values, where=tmp.values>0)
-        vals[tmp.values<=0] = 0.0
-        return Factor(self.domain, vals) 
+        vals = np.divide(self.values, tmp.values, where=tmp.values > 0)
+        vals[tmp.values <= 0] = 0.0
+        return Factor(self.domain, vals)
 
     def exp(self, out=None):
         if out is None:

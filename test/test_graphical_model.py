@@ -4,66 +4,81 @@ from mbi.factor import Factor
 from mbi.graphical_model import GraphicalModel, CliqueVector
 import numpy as np
 
-class TestGraphicalModel(unittest.TestCase):
 
+class TestGraphicalModel(unittest.TestCase):
     def setUp(self):
-        attrs = ['a','b','c','d']
-        shape = [2,3,4,5]
+        attrs = ["a", "b", "c", "d"]
+        shape = [2, 3, 4, 5]
         domain = Domain(attrs, shape)
-        cliques = [('a','b'), ('b','c'),('c','d')]
+        cliques = [("a", "b"), ("b", "c"), ("c", "d")]
         self.model = GraphicalModel(domain, cliques)
-        zeros = { cl : Factor.zeros(domain.project(cl)) for cl in self.model.cliques }
+        zeros = {cl: Factor.zeros(domain.project(cl)) for cl in self.model.cliques}
         self.model.potentials = CliqueVector(zeros)
 
     def test_datavector(self):
         x = self.model.datavector()
-        ans = np.ones(2*3*4*5) / (2*3*4*5)
+        ans = np.ones(2 * 3 * 4 * 5) / (2 * 3 * 4 * 5)
         self.assertTrue(np.allclose(x, ans))
 
     def test_project(self):
-        model = self.model.project(['d','a'])
+        model = self.model.project(["d", "a"])
         x = model.datavector()
-        ans = np.ones(2*5) / 10.0
+        ans = np.ones(2 * 5) / 10.0
         self.assertEqual(x.size, 10)
         self.assertTrue(np.allclose(x, ans))
 
         model = self.model
-        pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
+        pot = {cl: Factor.random(model.domain.project(cl)) for cl in model.cliques}
         model.potentials = CliqueVector(pot)
-        
+
         x = model.datavector(flatten=False)
-        y0 = x.sum(axis=(2,3)).flatten()
-        y1 = model.project(['a','b']).datavector() 
+        y0 = x.sum(axis=(2, 3)).flatten()
+        y1 = model.project(["a", "b"]).datavector()
         self.assertEqual(y0.size, y1.size)
         self.assertTrue(np.allclose(y0, y1))
 
-        x = model.project('a').datavector()
+        x = model.project("a").datavector()
 
     def test_krondot(self):
         model = self.model
-        pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
+        pot = {cl: Factor.random(model.domain.project(cl)) for cl in model.cliques}
         model.potentials = CliqueVector(pot)
- 
-        A = np.ones((1,2))
+
+        A = np.ones((1, 2))
         B = np.eye(3)
-        C = np.ones((1,4))
+        C = np.ones((1, 4))
         D = np.eye(5)
-        res = model.krondot([A,B,C,D])
+        res = model.krondot([A, B, C, D])
         x = model.datavector(flatten=False)
-        ans = x.sum(axis=(0,2), keepdims=True)
+        ans = x.sum(axis=(0, 2), keepdims=True)
         self.assertEqual(res.shape, ans.shape)
         self.assertTrue(np.allclose(res, ans))
 
     def test_calculate_many_marginals(self):
-        proj = [[],['a'],['b'],['c'],['d'],['a','b'],['a','c'],['a','d'],['b','c'],
-                ['b','d'],['c','d'],['a','b','c'],['a','b','d'],['a','c','d'],['b','c','d'],
-                ['a','b','c','d']]
+        proj = [
+            [],
+            ["a"],
+            ["b"],
+            ["c"],
+            ["d"],
+            ["a", "b"],
+            ["a", "c"],
+            ["a", "d"],
+            ["b", "c"],
+            ["b", "d"],
+            ["c", "d"],
+            ["a", "b", "c"],
+            ["a", "b", "d"],
+            ["a", "c", "d"],
+            ["b", "c", "d"],
+            ["a", "b", "c", "d"],
+        ]
         proj = [tuple(p) for p in proj]
         model = self.model
         model.total = 10.0
-        pot = { cl : Factor.random(model.domain.project(cl)) for cl in model.cliques }
+        pot = {cl: Factor.random(model.domain.project(cl)) for cl in model.cliques}
         model.potentials = CliqueVector(pot)
-        
+
         results = model.calculate_many_marginals(proj)
         for pr in proj:
             ans = model.project(pr).values
@@ -77,10 +92,10 @@ class TestGraphicalModel(unittest.TestCase):
         mu = self.model.belief_propagation(pot)
 
         for key in mu:
-            ans = self.model.total/np.prod(mu[key].domain.shape)
+            ans = self.model.total / np.prod(mu[key].domain.shape)
             self.assertTrue(np.allclose(mu[key].values, ans))
 
-        pot = { cl : Factor.random(pot[cl].domain) for cl in pot }
+        pot = {cl: Factor.random(pot[cl].domain) for cl in pot}
         mu = self.model.belief_propagation(pot)
 
         logp = sum(pot.values())
@@ -88,7 +103,7 @@ class TestGraphicalModel(unittest.TestCase):
         dist = logp.exp() * self.model.total
 
         for key in mu:
-            ans = dist.project(key).values  
+            ans = dist.project(key).values
             res = mu[key].values
             self.assertTrue(np.allclose(ans, res))
 
@@ -97,5 +112,6 @@ class TestGraphicalModel(unittest.TestCase):
         sy = model.synthetic_data()
         self.assertTrue(True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

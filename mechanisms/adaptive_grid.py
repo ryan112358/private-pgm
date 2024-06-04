@@ -240,7 +240,9 @@ def select(data, model, rho, targets=[]):
     return [e + tuple(targets) for e in T.edges]
 
 
-def adagrid(data, epsilon, delta, threshold, targets=[], split_strategy=None, **mbi_args):
+def adagrid(
+    data, epsilon, delta, threshold, targets=[], split_strategy=None, **mbi_args
+):
     """Implements the Adagrid mechanism used in Sprint 3 of NIST 2021
     Competition by Team Minutemen.
 
@@ -269,9 +271,9 @@ def adagrid(data, epsilon, delta, threshold, targets=[], split_strategy=None, **
     else:
         assert len(split_strategy) == 3
         frac_1, frac_2, frac_3 = np.array(split_strategy) / sum(split_strategy)
-        rho_step_1 = rho*frac_1
-        rho_step_2 = rho*frac_2
-        rho_step_3 = rho*frac_3
+        rho_step_1 = rho * frac_1
+        rho_step_2 = rho * frac_2
+        rho_step_3 = rho * frac_3
 
     domain = data.domain
     measurements = []
@@ -363,36 +365,43 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
-    params['dataset'] = 'datasets/adult.zip'
-    params['domain'] = 'datasets/adult-domain.json'
-    params['epsilon'] = 1.0
-    params['delta'] = 1e-10
-    params['targets'] = []
-    params['pgm_iters'] = 2500
-    params['warm_start'] = True
-    params['metric'] = 'L2'
-    params['threshold'] = 5.0
-    params['split_strategy'] = [0.1, 0.1, 0.8]
-    params['save'] = 'out.csv'
+    params["dataset"] = "datasets/adult.zip"
+    params["domain"] = "datasets/adult-domain.json"
+    params["epsilon"] = 1.0
+    params["delta"] = 1e-10
+    params["targets"] = []
+    params["pgm_iters"] = 2500
+    params["warm_start"] = True
+    params["metric"] = "L2"
+    params["threshold"] = 5.0
+    params["split_strategy"] = [0.1, 0.1, 0.8]
+    params["save"] = "out.csv"
 
     return params
 
+
 if __name__ == "__main__":
 
-    description = 'A generalization of the Adaptive Grid Mechanism that won 2nd place in the 2020 NIST temporal map challenge'
+    description = "A generalization of the Adaptive Grid Mechanism that won 2nd place in the 2020 NIST temporal map challenge"
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
-    parser.add_argument('--dataset', help='dataset to use')
-    parser.add_argument('--domain', help='domain to use')
-    parser.add_argument('--epsilon', type=float, help='privacy parameter')
-    parser.add_argument('--delta', type=float, help='privacy parameter')
-    parser.add_argument('--targets', type=str, nargs='+', help='target columns to preserve')
-    parser.add_argument('--pgm_iters', type=int, help='number of iterations')
-    parser.add_argument('--warm_start', type=bool, help='warm start PGM')
-    parser.add_argument('--metric', choices=['L1','L2'], help='loss function metric to use')
-    parser.add_argument('--threshold', type=float, help='adagrid treshold parameter')
-    parser.add_argument('--split_strategy', type=float, nargs='+', help='budget split for 3 steps')
-    parser.add_argument('--save', type=str, help='path to save synthetic data')
+    parser.add_argument("--dataset", help="dataset to use")
+    parser.add_argument("--domain", help="domain to use")
+    parser.add_argument("--epsilon", type=float, help="privacy parameter")
+    parser.add_argument("--delta", type=float, help="privacy parameter")
+    parser.add_argument(
+        "--targets", type=str, nargs="+", help="target columns to preserve"
+    )
+    parser.add_argument("--pgm_iters", type=int, help="number of iterations")
+    parser.add_argument("--warm_start", type=bool, help="warm start PGM")
+    parser.add_argument(
+        "--metric", choices=["L1", "L2"], help="loss function metric to use"
+    )
+    parser.add_argument("--threshold", type=float, help="adagrid treshold parameter")
+    parser.add_argument(
+        "--split_strategy", type=float, nargs="+", help="budget split for 3 steps"
+    )
+    parser.add_argument("--save", type=str, help="path to save synthetic data")
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()
@@ -400,7 +409,11 @@ if __name__ == "__main__":
     df = pd.read_csv(args.dataset)
     domain = Domain.fromdict(json.load(open(args.domain, "r")))
     data = Dataset(df, domain)
-    mbi_args = {"iters": args.pgm_iters, "warm_start": args.warm_start, "metric": args.metric}
+    mbi_args = {
+        "iters": args.pgm_iters,
+        "warm_start": args.warm_start,
+        "metric": args.metric,
+    }
     synth = adagrid(
         data,
         args.epsilon,

@@ -1,10 +1,11 @@
 import numpy as np
 import torch
 
+
 class Factor:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     def __init__(self, domain, values):
         """ Initialize a factor over the given domain
 
@@ -15,15 +16,19 @@ class Factor:
         """
         if type(values) == np.ndarray:
             values = torch.tensor(values, dtype=torch.float32, device=Factor.device)
-        assert domain.size() == values.nelement(), 'domain size does not match values size'
-        assert len(values.shape)==1 or values.shape == domain.shape, 'invalid shape for values array'
+        assert (
+            domain.size() == values.nelement()
+        ), "domain size does not match values size"
+        assert (
+            len(values.shape) == 1 or values.shape == domain.shape
+        ), "invalid shape for values array"
         self.domain = domain
         self.values = values.reshape(domain.shape).to(Factor.device)
 
     @staticmethod
     def zeros(domain):
         return Factor(domain, torch.zeros(domain.shape, device=Factor.device))
-    
+
     @staticmethod
     def ones(domain):
         return Factor(domain, torch.ones(domain.shape, device=Factor.device))
@@ -50,9 +55,11 @@ class Factor:
         return Factor(domain, vals)
 
     def expand(self, domain):
-        assert domain.contains(self.domain), 'expanded domain must contain current domain'
+        assert domain.contains(
+            self.domain
+        ), "expanded domain must contain current domain"
         dims = len(domain) - len(self.domain)
-        values = self.values.view(self.values.size() + tuple([1]*dims))
+        values = self.values.view(self.values.size() + tuple([1] * dims))
         ax = domain.axes(self.domain.attrs)
         # need to find replacement for moveaxis
         ax = ax + tuple(i for i in range(len(domain)) if not i in ax)
@@ -62,53 +69,57 @@ class Factor:
         return Factor(domain, values)
 
     def transpose(self, attrs):
-        assert set(attrs) == set(self.domain.attrs), 'attrs must be same as domain attributes'
+        assert set(attrs) == set(
+            self.domain.attrs
+        ), "attrs must be same as domain attributes"
         newdom = self.domain.project(attrs)
         ax = newdom.axes(self.domain.attrs)
         ax = tuple(np.argsort(ax))
         values = self.values.permute(ax)
         return Factor(newdom, values)
 
-    def project(self, attrs, agg = 'sum'):
+    def project(self, attrs, agg="sum"):
         """ 
         project the factor onto a list of attributes (in order)
         using either sum or logsumexp to aggregate along other attributes
         """
-        assert agg in ['sum','logsumexp'], 'agg must be sum or logsumexp'
+        assert agg in ["sum", "logsumexp"], "agg must be sum or logsumexp"
         marginalized = self.domain.marginalize(attrs)
-        if agg == 'sum':
+        if agg == "sum":
             ans = self.sum(marginalized.attrs)
-        elif agg == 'logsumexp':
+        elif agg == "logsumexp":
             ans = self.logsumexp(marginalized.attrs)
         return ans.transpose(attrs)
 
-    def sum(self, attrs = None):
+    def sum(self, attrs=None):
         if attrs is None:
             return float(self.values.sum())
         elif attrs == tuple():
             return self
         axes = self.domain.axes(attrs)
-        values = self.values.sum(dim=axes) 
+        values = self.values.sum(dim=axes)
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
-    def logsumexp(self, attrs = None):
+    def logsumexp(self, attrs=None):
         if attrs is None:
-            return float(self.values.logsumexp(dim=tuple(range(len(self.values.shape)))))
+            return float(
+                self.values.logsumexp(dim=tuple(range(len(self.values.shape))))
+            )
         elif attrs == tuple():
             return self
         axes = self.domain.axes(attrs)
-        values = self.values.logsumexp(dim=axes) 
+        values = self.values.logsumexp(dim=axes)
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
     def logaddexp(self, other):
         return NotImplementedError
 
-    def max(self, attrs = None):
+    def max(self, attrs=None):
         if attrs is None:
             return float(self.values.max())
-        return NotImplementedError # torch.max does not behave like numpy
+        return NotImplementedError  # torch.max does not behave like numpy
 
     def condition(self, evidence):
         """ evidence is a dictionary where 
@@ -127,12 +138,12 @@ class Factor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Factor(self.domain, other*self.values)
-        #print(self.values.max(), other.values.max(), self.domain, other.domain)
+            return Factor(self.domain, other * self.values)
+        # print(self.values.max(), other.values.max(), self.domain, other.domain)
         newdom = self.domain.merge(other.domain)
         factor1 = self.expand(newdom)
         factor2 = other.expand(newdom)
-        return Factor(newdom, factor1.values * factor2.values)       
+        return Factor(newdom, factor1.values * factor2.values)
 
     def __add__(self, other):
         if np.isscalar(other):
@@ -148,7 +159,7 @@ class Factor:
             return self
         factor2 = other.expand(self.domain)
         self.values += factor2.values
-        return self 
+        return self
 
     def __imul__(self, other):
         if np.isscalar(other):
@@ -156,7 +167,7 @@ class Factor:
             return self
         factor2 = other.expand(self.domain)
         self.values *= factor2.values
-        return self 
+        return self
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -169,18 +180,18 @@ class Factor:
             return Factor(self.domain, self.values - other)
         zero = torch.tensor(0.0, device=Factor.device)
         inf = torch.tensor(np.inf, device=Factor.device)
-        values = torch.where(other.values==-inf, zero, -other.values)
+        values = torch.where(other.values == -inf, zero, -other.values)
         other = Factor(other.domain, values)
         return self + other
 
     def __truediv__(self, other):
-        #assert np.isscalar(other), 'divisor must be a scalar'
+        # assert np.isscalar(other), 'divisor must be a scalar'
         if np.isscalar(other):
             return self * (1.0 / other)
         tmp = other.expand(self.domain)
         vals = torch.div(self.values, tmp.values)
-        vals[tmp.values<=0] = 0.0
-        return Factor(self.domain, vals) 
+        vals[tmp.values <= 0] = 0.0
+        return Factor(self.domain, vals)
 
     def exp(self, out=None):
         if out is None:
