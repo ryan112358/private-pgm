@@ -20,6 +20,15 @@ print(domain)
 # spend half of privacy budget to measure all 1 way marginals
 np.random.seed(0)
 
+cliques = [
+    ("age", "education-num"),
+    ("marital-status", "race"),
+    ("sex", "hours-per-week"),
+    ("hours-per-week", "income>50K"),
+    ("native-country", "marital-status", "occupation"),
+]
+
+
 epsilon = 1.0
 epsilon_split = epsilon / (len(data.domain) + len(cliques))
 sigma = 2.0 / epsilon_split
@@ -32,14 +41,6 @@ for col in data.domain:
     measurements.append((I, y, sigma, (col,)))
 
 # spend half of privacy budget to measure some more 2 and 3 way marginals
-
-cliques = [
-    ("age", "education-num"),
-    ("marital-status", "race"),
-    ("sex", "hours-per-week"),
-    ("hours-per-week", "income>50K"),
-    ("native-country", "marital-status", "occupation"),
-]
 
 for cl in cliques:
     x = data.project(cl).datavector()
@@ -60,3 +61,8 @@ model = engine.estimate(measurements, total=total)
 
 y1 = model.project(("sex", "income>50K")).datavector()
 y2 = model.project(("race", "occupation")).datavector()
+
+# and compute error:
+
+x1 = data.project(("sex", "income>50K")).datavector()
+print('Error on (sex, income>50K)', np.linalg.norm(x1 - y1, 1) / x1.sum())
