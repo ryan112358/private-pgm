@@ -247,6 +247,8 @@ class FactoredInference:
         mu = model.belief_propagation(theta)
         ans = self._marginal_loss(mu)
         if ans[0] == 0:
+            model.potentials = theta
+            model.marginals = mu
             return ans[0]
 
         nols = stepsize is not None
