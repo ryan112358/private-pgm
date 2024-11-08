@@ -4,7 +4,7 @@ from scipy import sparse
 from scipy.cluster.hierarchy import DisjointSet
 import networkx as nx
 import itertools
-from mechanisms.cdp2adp import cdp_rho
+from cdp2adp import cdp_rho
 from scipy.special import logsumexp
 import argparse
 
@@ -84,7 +84,7 @@ def select(data, rho, measurement_log, cliques=[]):
 
     T = nx.Graph()
     T.add_nodes_from(data.domain.attrs)
-    ds = DisjointSet()
+    ds = DisjointSet(data.domain.attrs)
 
     for e in cliques:
         T.add_edge(*e)
