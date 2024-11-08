@@ -47,6 +47,9 @@ class Factor:
         vals[idx] = -np.inf
         return Factor(domain, vals)
 
+    def dot(self, other):
+        return np.sum(self.values * other.values)
+
     def expand(self, domain):
         assert domain.contains(
             self.domain
