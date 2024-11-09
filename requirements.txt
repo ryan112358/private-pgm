@@ -4,3 +4,6 @@ scipy
 pandas
 networkx
 matplotlib
+jax
+jaxlib
+chex
