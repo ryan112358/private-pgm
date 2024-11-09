@@ -42,7 +42,7 @@ class TestDomain(unittest.TestCase):
 
     def test_transpose(self):
         ans = Domain(["b", "d", "a", "c"], [20, 40, 10, 30])
-        res = self.domain.transpose(["b", "d", "a", "c"])
+        res = self.domain.project(["b", "d", "a", "c"])
         self.assertEqual(ans, res)
 
     def test_merge(self):
