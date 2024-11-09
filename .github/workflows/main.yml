@@ -32,3 +32,4 @@ jobs:
         run: |
           pip install --upgrade pytest
           pytest test/*.py
+          pytest --doctest-modules src/mbi/*.py
