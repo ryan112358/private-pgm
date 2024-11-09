@@ -1,4 +1,5 @@
 import unittest
+from mbi.factor import Factor
 from mbi.domain import Domain
 from mbi.inference import FactoredInference
 from mbi.graphical_model import CliqueVector
@@ -21,7 +22,7 @@ class TestInference(unittest.TestCase):
             self.measurements.append((I, y, 1.0, attrs[i]))
 
         self.engine = FactoredInference(
-            self.domain, backend="numpy", log=True, iters=100, warm_start=True
+            self.domain, log=True, iters=100, warm_start=True
         )
 
     def test_estimate(self):
@@ -55,7 +56,7 @@ class TestInference(unittest.TestCase):
         def rand():
             ans = {}
             for cl in self.engine.model.cliques:
-                ans[cl] = self.engine.Factor.random(self.engine.domain.project(cl))
+                ans[cl] = Factor.random(self.engine.domain.project(cl))
             return CliqueVector(ans)
 
         for _ in range(100):

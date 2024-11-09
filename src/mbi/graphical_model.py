@@ -1,5 +1,5 @@
 import numpy as np
-from mbi import Domain, Dataset, CliqueVector
+from mbi import Domain, Dataset, CliqueVector, Factor
 from mbi.junction_tree import JunctionTree
 from functools import reduce
 import pickle
@@ -84,7 +84,6 @@ class GraphicalModel:
         ), "matrices must conform to the shape of the domain"
         logZ = self.belief_propagation(self.potentials, logZ=True)
         factors = [self.potentials[cl].exp() for cl in self.cliques]
-        Factor = type(factors[0])  # infer the type of the factors
         elim = self.domain.attrs
         for attr, Q in zip(elim, matrices):
             d = Domain(["%s-answer" % attr, attr], Q.shape)
@@ -203,8 +202,6 @@ class GraphicalModel:
         return CliqueVector(potentials)
 
     def fit(self, data):
-        from mbi import Factor
-
         assert data.domain.contains(
             self.domain
         ), "model domain not compatible with data domain"

@@ -1,5 +1,5 @@
 import numpy as np
-from mbi import Domain, GraphicalModel, callbacks, CliqueVector
+from mbi import Domain, GraphicalModel, callbacks, CliqueVector, Factor
 from scipy.sparse.linalg import LinearOperator, eigsh, lsmr, aslinearoperator
 from scipy import optimize, sparse
 from functools import partial
@@ -10,7 +10,6 @@ class FactoredInference:
     def __init__(
         self,
         domain,
-        backend="numpy",
         structural_zeros={},
         metric="L2",
         log=False,
@@ -22,7 +21,6 @@ class FactoredInference:
         Class for learning a GraphicalModel from  noisy measurements on a data distribution
         
         :param domain: The domain information (A Domain object)
-        :param backend: numpy or torch backend
         :param structural_zeros: An encoding of the known (structural) zeros in the distribution.
             Specified as a dictionary where 
                 - each key is a subset of attributes of size r
@@ -38,27 +36,18 @@ class FactoredInference:
               By default, a greedy elimination order is used
         """
         self.domain = domain
-        self.backend = backend
         self.metric = metric
         self.log = log
         self.iters = iters
         self.warm_start = warm_start
         self.history = []
         self.elim_order = elim_order
-        if backend == "torch":
-            from mbi.torch_factor import Factor
-
-            self.Factor = Factor
-        else:
-            from mbi import Factor
-
-            self.Factor = Factor
 
         self.structural_zeros = CliqueVector({})
         for cl in structural_zeros:
             dom = self.domain.project(cl)
             fact = structural_zeros[cl]
-            self.structural_zeros[cl] = self.Factor.active(dom, fact)
+            self.structural_zeros[cl] = Factor.active(dom, fact)
 
     def estimate(
         self, measurements, total=None, engine="MD", callback=None, options={}
@@ -201,7 +190,7 @@ class FactoredInference:
 
         theta = model.potentials
         gbar = CliqueVector(
-            {cl: self.Factor.zeros(domain.project(cl)) for cl in cliques}
+            {cl: Factor.zeros(domain.project(cl)) for cl in cliques}
         )
         w = v = model.belief_propagation(theta)
         beta = 0
@@ -297,7 +286,7 @@ class FactoredInference:
 
         for cl in marginals:
             mu = marginals[cl]
-            gradient[cl] = self.Factor.zeros(mu.domain)
+            gradient[cl] = Factor.zeros(mu.domain)
             for Q, y, noise, proj in self.groups[cl]:
                 c = 1.0 / noise
                 mu2 = mu.project(proj)
@@ -310,7 +299,7 @@ class FactoredInference:
                 else:
                     loss += 0.5 * (diff @ diff)
                     grad = c * (Q.T @ diff)
-                gradient[cl] += self.Factor(mu2.domain, grad)
+                gradient[cl] += Factor(mu2.domain, grad)
         return float(loss), CliqueVector(gradient)
 
     def _setup(self, measurements, total):
@@ -359,20 +348,6 @@ class FactoredInference:
         # self.groups = { cl : [] for cl in cliques }
         self.groups = defaultdict(lambda: [])
         for Q, y, noise, proj in measurements:
-            if self.backend == "torch":
-                import torch
-
-                device = self.Factor.device
-                y = torch.tensor(y, dtype=torch.float32, device=device)
-                if isinstance(Q, np.ndarray):
-                    Q = torch.tensor(Q, dtype=torch.float32, device=device)
-                elif sparse.issparse(Q):
-                    Q = Q.tocoo()
-                    idx = torch.LongTensor([Q.row, Q.col])
-                    vals = torch.FloatTensor(Q.data)
-                    Q = torch.sparse.FloatTensor(idx, vals).to(device)
-
-                # else Q is a Linear Operator, must be compatible with torch
             m = (Q, y, noise, proj)
             for cl in sorted(cliques, key=model.domain.size):
                 # (Q, y, noise, proj) tuple
