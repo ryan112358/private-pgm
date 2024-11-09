@@ -26,5 +26,6 @@ jobs:
 
       - name: Run tests
         run: |
+          pip install --upgrade pytest
           cd src/
-          nosetests ../tests/*.py
+          pytest ../test/*.py
