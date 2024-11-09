@@ -1,7 +1,6 @@
 import numpy as np
 from mbi import Factor
 
-
 class CliqueVector(dict):
     """ This is a convenience class for simplifying arithmetic over the 
         concatenated vector of marginals and potentials.
@@ -9,7 +8,6 @@ class CliqueVector(dict):
         These vectors are represented as a dictionary mapping cliques (subsets of attributes)
         to marginals/potentials (Factor objects)
     """
-
     def __init__(self, dictionary):
         self.dictionary = dictionary
         dict.__init__(self, dictionary)

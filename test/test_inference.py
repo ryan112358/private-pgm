@@ -56,7 +56,9 @@ class TestInference(unittest.TestCase):
         def rand():
             ans = {}
             for cl in self.engine.model.cliques:
-                ans[cl] = Factor.random(self.engine.domain.project(cl))
+                domain = self.engine.domain.project(cl)
+                values = np.random.rand(*domain.shape)
+                ans[cl] = Factor(domain, values)
             return CliqueVector(ans)
 
         for _ in range(100):
@@ -66,7 +68,7 @@ class TestInference(unittest.TestCase):
             _, gy = self.engine._marginal_loss(y)
             A = (gx - gy).dot(gx - gy)
             B = (x - y).dot(x - y)
-            ratio = np.sqrt(A / B)
+            ratio = np.sqrt(A.values / B.values)
             self.assertTrue(ratio <= lip)
 
 

@@ -4,7 +4,8 @@ from scipy.sparse.linalg import LinearOperator, eigsh, lsmr, aslinearoperator
 from scipy import optimize, sparse
 from functools import partial
 from collections import defaultdict
-
+import jax
+import functools
 
 class FactoredInference:
     def __init__(
@@ -43,7 +44,7 @@ class FactoredInference:
         self.history = []
         self.elim_order = elim_order
 
-        self.structural_zeros = CliqueVector({})
+        self.structural_zeros = CliqueVector(dictionary=dict())
         for cl in structural_zeros:
             dom = self.domain.project(cl)
             fact = structural_zeros[cl]
@@ -259,7 +260,7 @@ class FactoredInference:
                 theta = omega - alpha * dL
                 mu = model.belief_propagation(theta)
                 ans = self._marginal_loss(mu)
-                if nols or curr_loss - ans[0] >= 0.5 * alpha * dL.dot(nu - mu):
+                if nols or curr_loss - ans[0] >= 0.5 * alpha * dL.dot(nu - mu).values:
                     break
                 alpha *= 0.5
 

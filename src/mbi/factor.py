@@ -1,206 +1,177 @@
-import numpy as np
-from scipy.special import logsumexp
+import string
+from typing import TypeAlias, Collection, Callable
+
+import chex
+import jax
+import jax.numpy as jnp
+import attr
+
+from mbi import Domain
+
+jax.config.update("jax_enable_x64", True)
 
 
+_EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
+Clique: TypeAlias = tuple[str, ...]
+
+
+@attr.dataclass(frozen=True)
 class Factor:
-    def __init__(self, domain, values):
-        """ Initialize a factor over the given domain
+  """A factor over a domain."""
+  domain: Domain
+  values: jax.Array = attr.field(converter=jnp.array)
 
-        :param domain: the domain of the factor
-        :param values: the ndarray of factor values (for each element of the domain)
+  def __post_init__(self):
+    if self.values.shape != self.domain.shape:
+      raise ValueError('values must be same shape as domain.')
 
-        Note: values may be a flattened 1d array or a ndarray with same shape as domain
-        """
-        assert domain.size() == values.size, "domain size does not match values size"
-        assert (
-            values.ndim == 1 or values.shape == domain.shape
-        ), "invalid shape for values array"
-        self.domain = domain
-        self.values = values.reshape(domain.shape)
+  # Consructors
+  @classmethod
+  def zeros(cls, domain):
+    return cls(domain, jnp.zeros(domain.shape))
 
-    @staticmethod
-    def zeros(domain):
-        return Factor(domain, np.zeros(domain.shape))
+  @classmethod
+  def ones(cls, domain):
+    return cls(domain, jnp.ones(domain.shape))
 
-    @staticmethod
-    def ones(domain):
-        return Factor(domain, np.ones(domain.shape))
+  @classmethod
+  def random(cls, domain, key=jax.random.PRNGKey(0)):
+    return cls(domain, jax.random.uniform(key, domain.shape))
 
-    @staticmethod
-    def random(domain):
-        return Factor(domain, np.random.rand(*domain.shape))
+  # Reshaping operations
+  def transpose(self, attrs: Collection[str]) -> 'Factor':
+    if set(attrs) != set(self.domain.attrs):
+      raise ValueError("attrs must be same as domain attributes")
+    newdom = self.domain.project(attrs)
+    ax = newdom.axes(self.domain.attrs)
+    values = jnp.moveaxis(self.values, range(len(ax)), ax)
+    return Factor(newdom, values)
 
-    @staticmethod
-    def uniform(domain):
-        return Factor.ones(domain) / domain.size()
+  def expand(self, domain):
+    if not domain.contains(self.domain):
+      raise ValueError('Expanded domain must contain domain.')
+    dims = len(domain) - len(self.domain)
+    values = self.values.reshape(self.domain.shape + tuple([1] * dims))
+    ax = domain.axes(self.domain.attrs)
+    values = jnp.moveaxis(values, range(len(ax)), ax)
+    values = jnp.broadcast_to(values, domain.shape)
+    return Factor(domain, values)
 
-    @staticmethod
-    def active(domain, structural_zeros):
-        """ create a factor that is 0 everywhere except in positions present in 
-            'structural_zeros', where it is -infinity
 
-        :param: domain: the domain of this factor
-        :param: structural_zeros: a list of values that are not possible
-        """
-        idx = tuple(np.array(structural_zeros).T)
-        vals = np.zeros(domain.shape)
-        vals[idx] = -np.inf
-        return Factor(domain, vals)
+  # Functions that aggregate along some subset of axes
+  def _aggregate(self, fn: Callable, attrs: Collection[str] | None = None) -> 'Factor':
+    attrs = self.domain.attrs if attrs is None else attrs
+    axes = self.domain.axes(attrs)
+    values = fn(self.values, axis=axes)
+    newdom = self.domain.marginalize(attrs)
+    return Factor(newdom, values)
 
-    def dot(self, other):
-        return np.sum(self.values * other.values)
+  def max(self, attrs: Collection[str] | None = None) -> 'Factor':
+    return self._aggregate(jnp.max, attrs)
 
-    def expand(self, domain):
-        assert domain.contains(
-            self.domain
-        ), "expanded domain must contain current domain"
-        dims = len(domain) - len(self.domain)
-        values = self.values.reshape(self.domain.shape + tuple([1] * dims))
-        ax = domain.axes(self.domain.attrs)
-        values = np.moveaxis(values, range(len(ax)), ax)
-        values = np.broadcast_to(values, domain.shape)
-        return Factor(domain, values)
+  def sum(self, attrs: Collection[str] | None = None) -> 'Factor':
+    return self._aggregate(jnp.sum, attrs)
 
-    def transpose(self, attrs):
-        assert set(attrs) == set(
-            self.domain.attrs
-        ), "attrs must be same as domain attributes"
-        newdom = self.domain.project(attrs)
-        ax = newdom.axes(self.domain.attrs)
-        values = np.moveaxis(self.values, range(len(ax)), ax)
-        return Factor(newdom, values)
+  def logsumexp(self, attrs: Collection[str] | None = None) -> 'Factor':
+    return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
-    def project(self, attrs, agg="sum"):
-        """ 
-        project the factor onto a list of attributes (in order)
-        using either sum or logsumexp to aggregate along other attributes
-        """
-        assert agg in ["sum", "logsumexp"], "agg must be sum or logsumexp"
-        marginalized = self.domain.marginalize(attrs)
-        if agg == "sum":
-            ans = self.sum(marginalized.attrs)
-        elif agg == "logsumexp":
-            ans = self.logsumexp(marginalized.attrs)
-        return ans.transpose(attrs)
+  def project(self, attrs: str | tuple[str, ...], log: bool = False) -> 'Factor':
+    if isinstance(attrs, str):
+      attrs = (attrs,)
+    marginalized = self.domain.marginalize(attrs).attrs
+    result = self.logsumexp(marginalized) if log else self.sum(marginalized)
+    return result.transpose(attrs)
 
-    def sum(self, attrs=None):
-        if attrs is None:
-            return np.sum(self.values)
-        axes = self.domain.axes(attrs)
-        values = np.sum(self.values, axis=axes)
-        newdom = self.domain.marginalize(attrs)
-        return Factor(newdom, values)
 
-    def logsumexp(self, attrs=None):
-        if attrs is None:
-            return logsumexp(self.values)
-        axes = self.domain.axes(attrs)
-        values = logsumexp(self.values, axis=axes)
-        newdom = self.domain.marginalize(attrs)
-        return Factor(newdom, values)
+  # Functions that operate element-wise
+  def exp(self, out = None) -> 'Factor':
+    return Factor(self.domain, jnp.exp(self.values))
 
-    def logaddexp(self, other):
-        newdom = self.domain.merge(other.domain)
-        factor1 = self.expand(newdom)
-        factor2 = self.expand(newdom)
-        return Factor(newdom, np.logaddexp(factor1.values, factor2.values))
+  def log(self, out = None) -> 'Factor':
+    return Factor(self.domain, jnp.log(self.values))
 
-    def max(self, attrs=None):
-        if attrs is None:
-            return self.values.max()
-        axes = self.domain.axes(attrs)
-        values = np.max(self.values, axis=axes)
-        newdom = self.domain.marginalize(attrs)
-        return Factor(newdom, values)
+  def normalize(self, total: float = 1.0, log: bool = False) -> 'Factor':
+    if log:
+      return self + jnp.log(total) - self.logsumexp()
+    return self * total / self.sum()
 
-    def condition(self, evidence):
-        """ evidence is a dictionary where 
-                keys are attributes, and 
-                values are elements of the domain for that attribute """
-        slices = [evidence[a] if a in evidence else slice(None) for a in self.domain]
-        newdom = self.domain.marginalize(evidence.keys())
-        values = self.values[tuple(slices)]
-        return Factor(newdom, values)
+  def copy(self) -> 'Factor':
+    return self
 
-    def copy(self, out=None):
-        if out is None:
-            return Factor(self.domain, self.values.copy())
-        np.copyto(out.values, self.values)
-        return out
+  def __float__(self):
+    if len(self.domain) > 0:
+      raise ValueError('Domain must be empty to convert to float.')
+    return float(self.values)
 
-    def __mul__(self, other):
-        if np.isscalar(other):
-            new_values = np.nan_to_num(other * self.values)
-            return Factor(self.domain, new_values)
-        # print(self.values.max(), other.values.max(), self.domain, other.domain)
-        newdom = self.domain.merge(other.domain)
-        factor1 = self.expand(newdom)
-        factor2 = other.expand(newdom)
-        return Factor(newdom, factor1.values * factor2.values)
+  # Binary operations between two factors
+  def _binaryop(self, fn: Callable, other: 'Factor' | chex.Numeric) -> 'Factor':
+    if isinstance(other, chex.Numeric) and jnp.ndim(other) == 0:
+      other = Factor(Domain([], []), other)
+    newdom = self.domain.merge(other.domain)
+    factor1 = self.expand(newdom)
+    factor2 = other.expand(newdom)
+    return Factor(newdom, fn(factor1.values, factor2.values))
 
-    def __add__(self, other):
-        if np.isscalar(other):
-            return Factor(self.domain, other + self.values)
-        newdom = self.domain.merge(other.domain)
-        factor1 = self.expand(newdom)
-        factor2 = other.expand(newdom)
-        return Factor(newdom, factor1.values + factor2.values)
+  def __sub__(self, other: 'Factor' | chex.Numeric) -> 'Factor':
+    return self._binaryop(jnp.subtract, other)
 
-    def __iadd__(self, other):
-        if np.isscalar(other):
-            self.values += other
-            return self
-        factor2 = other.expand(self.domain)
-        self.values += factor2.values
-        return self
+  def __truediv__(self, other: 'Factor' | chex.Numeric) -> 'Factor':
+    return self._binaryop(jnp.divide, other)
 
-    def __imul__(self, other):
-        if np.isscalar(other):
-            self.values *= other
-            return self
-        factor2 = other.expand(self.domain)
-        self.values *= factor2.values
-        return self
+  def __mul__(self, other: 'Factor' | chex.Numeric) -> 'Factor':
+    """Multiply two factors together.
 
-    def __radd__(self, other):
-        return self.__add__(other)
+    Example Usage:
+    >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
+    >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
+    >>> f3 = f1 * f2
+    >>> print(f3.domain)
+    Domain(a: 2, b: 3, c: 4)
 
-    def __rmul__(self, other):
-        return self.__mul__(other)
+    Args:
+      other: the other factor to multiply
 
-    def __sub__(self, other):
-        if np.isscalar(other):
-            return Factor(self.domain, self.values - other)
-        other = Factor(
-            other.domain, np.where(other.values == -np.inf, 0, -other.values)
-        )
-        return self + other
+    Returns:
+      the product of the two factors
+    """
+    return self._binaryop(jnp.multiply, other)
 
-    def __truediv__(self, other):
-        # assert np.isscalar(other), 'divisor must be a scalar'
-        if np.isscalar(other):
-            new_values = self.values / other
-            new_values = np.nan_to_num(new_values)
-            return Factor(self.domain, new_values)
-        tmp = other.expand(self.domain)
-        vals = np.divide(self.values, tmp.values, where=tmp.values > 0)
-        vals[tmp.values <= 0] = 0.0
-        return Factor(self.domain, vals)
+  def __add__(self, other: 'Factor' | chex.Numeric) -> 'Factor':
+    return self._binaryop(jnp.add, other)
 
-    def exp(self, out=None):
-        if out is None:
-            return Factor(self.domain, np.exp(self.values))
-        np.exp(self.values, out=out.values)
-        return out
+  def __radd__(self, other: chex.Numeric) -> 'Factor':
+    return self + other
 
-    def log(self, out=None):
-        if out is None:
-            return Factor(self.domain, np.log(self.values + 1e-100))
-        np.log(self.values, out=out.values)
-        return out
+  def __rsub__(self, other: chex.Numeric) -> 'Factor':
+    return self + (-1*other)
 
-    def datavector(self, flatten=True):
-        """ Materialize the data vector """
-        if flatten:
-            return self.values.flatten()
-        return self.values
+  def __rmul__(self, other: chex.Numeric) -> 'Factor':
+    return self * other
+
+  def dot(self, other: 'Factor') -> 'Factor':
+    if self.domain != other.domain:
+        raise ValueError(f'Domains do not match {self.domain} != {other.domain}')
+    return jnp.sum(self.values * other.values)
+
+  def datavector(self, flatten: bool=True) -> jax.Array:
+    return self.values.flatten() if flatten else self.values
+
+
+def sum_product(factors: list[Factor], dom: Domain) -> Factor:
+  """Compute the sum-product of a list of factors."""
+  attrs = sorted(set.union(*[set(f.domain) for f in factors]).union(set(dom)))
+  mapping = dict(zip(attrs, _EINSUM_LETTERS))
+  convert = lambda d: ''.join(mapping[a] for a in d.attributes)
+  formula = ','.join(convert(f.domain) for f in factors) + '->' + convert(dom)
+  values = jnp.einsum(
+      formula, *[f.values for f in factors], precision=jax.lax.Precision.HIGHEST
+  )
+  return Factor(dom, values)
+
+
+def logspace_sum_product(
+    potentials: list[Factor], dom: Domain,
+) -> Factor:
+  maxes = [f.max(f.domain.marginalize(dom).attributes) for f in potentials]
+  stable_potentials = [(f - m).exp() for f, m in zip(potentials, maxes)]
+  return sum_product(stable_potentials, dom).log() + sum(maxes)

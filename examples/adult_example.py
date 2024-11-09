@@ -1,11 +1,9 @@
 from mbi import (
     Dataset,
-    FactoredInference,
     Domain,
-    LocalInference,
-    MixtureInference,
-    PublicInference,
+    FactoredInference,
 )
+from mbi.experimental import LocalInference, MixtureInference, PublicInference
 import numpy as np
 from scipy import sparse
 

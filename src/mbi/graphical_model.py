@@ -6,6 +6,7 @@ import pickle
 import networkx as nx
 import itertools
 import pandas as pd
+import jax
 
 
 class GraphicalModel:
@@ -90,7 +91,7 @@ class GraphicalModel:
             factors.append(Factor(d, Q))
         result = variable_elimination(factors, elim)
         result = result.transpose(["%s-answer" % a for a in elim])
-        return result.datavector(flatten=False) * self.total / np.exp(logZ)
+        return result.normalize(self.total).datavector(flatten=False)
 
     def calculate_many_marginals(self, projections):
         """ Calculates marginals for all the projections in the list using
@@ -179,12 +180,7 @@ class GraphicalModel:
         if logZ:
             return beliefs[cl].logsumexp()
 
-        logZ = beliefs[cl].logsumexp()
-        for cl in self.cliques:
-            beliefs[cl] += np.log(self.total) - logZ
-            beliefs[cl] = beliefs[cl].exp(out=beliefs[cl])
-
-        return CliqueVector(beliefs)
+        return CliqueVector({ cl: beliefs[cl].normalize(self.total, log=True).exp() for cl in beliefs })
 
     def mle(self, marginals):
         """ Compute the model parameters from the given marginals
