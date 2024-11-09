@@ -4,22 +4,22 @@ import functools
 import attr
 
 
-@attr.s(frozen=True)
+@attr.dataclass(frozen=True)
 class Domain:
   """Dataclass for representing discrete domains."""
-  attributes: tuple = attr.ib(converter=tuple)
-  shape: tuple = attr.ib(converter=tuple)
-
-  @functools.cached_property
-  def config(self) -> dict[str, int]:
-    """Returns a dictionary of { attr : size } values."""
-    return dict(zip(self.attributes, self.shape))
+  attributes: tuple[str, ...] = attr.field(converter=tuple)
+  shape: tuple[int, ...] = attr.field(converter=tuple)
 
   def __post_init__(self):
     if len(self.attributes) == len(self.shape):
       raise ValueError('Dimensions must be equal.')
     if len(self.attributes) != len(set(self.attributes)):
       raise ValueError('Attributes must be unique.')
+
+  @functools.cached_property
+  def config(self) -> dict[str, int]:
+    """Returns a dictionary of { attr : size } values."""
+    return dict(zip(self.attributes, self.shape))
 
   @staticmethod
   def fromdict(config: dict[str, int]) -> 'Domain':
