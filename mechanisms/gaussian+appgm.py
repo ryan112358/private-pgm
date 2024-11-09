@@ -1,4 +1,4 @@
-from mbi import LocalInference
+from mbi.experimental import LocalInference
 import numpy as np
 import argparse
 from mbi import Dataset

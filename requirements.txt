@@ -3,4 +3,3 @@ scipy
 pandas
 networkx
 matplotlib
-nose

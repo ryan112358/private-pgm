@@ -3,11 +3,10 @@ from mbi import (
     Domain,
     GraphicalModel,
     callbacks,
-    FactorGraph,
-    RegionGraph,
     CliqueVector,
     Factor
 )
+from mbi.experimental import FactorGraph, RegionGraph
 from scipy.sparse.linalg import LinearOperator, eigsh, lsmr, aslinearoperator
 from scipy import optimize, sparse
 from functools import partial
