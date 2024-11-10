@@ -1,6 +1,13 @@
 import numpy as np
-from mbi import Factor
+from mbi import Domain, Factor
+import jax
+import functools
 
+@functools.partial(
+    jax.tree_util.register_dataclass,
+    meta_fields=[],
+    data_fields=['dictionary']
+)
 class CliqueVector(dict):
     """ This is a convenience class for simplifying arithmetic over the 
         concatenated vector of marginals and potentials.
@@ -43,6 +50,13 @@ class CliqueVector(dict):
             mu = data.project(cl)
             ans[cl] = Factor(mu.domain, mu.datavector())
         return CliqueVector(ans)
+
+    @property
+    def domain(self):
+        return functools.reduce(Domain.merge, [f.domain for f in self.values()])
+    
+    def normalize(self, total: float=1, log: bool=True):
+        return CliqueVector({ cl: self[cl].normalize(total, log) for cl in self})
 
     def combine(self, other):
         # combines this CliqueVector with other, even if they do not share the same set of factors

@@ -1,20 +1,19 @@
-import string
 from typing import TypeAlias, Collection, Callable
 
 import chex
 import jax
 import jax.numpy as jnp
 import attr
-
+import functools
 from mbi import Domain
 
 jax.config.update("jax_enable_x64", True)
 
-
-_EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
-Clique: TypeAlias = tuple[str, ...]
-
-
+@functools.partial(
+    jax.tree_util.register_dataclass,
+    meta_fields=['domain'], 
+    data_fields=['values']
+)
 @attr.dataclass(frozen=True)
 class Factor:
   """A factor over a domain."""
@@ -157,21 +156,3 @@ class Factor:
     return self.values.flatten() if flatten else self.values
 
 
-def sum_product(factors: list[Factor], dom: Domain) -> Factor:
-  """Compute the sum-product of a list of factors."""
-  attrs = sorted(set.union(*[set(f.domain) for f in factors]).union(set(dom)))
-  mapping = dict(zip(attrs, _EINSUM_LETTERS))
-  convert = lambda d: ''.join(mapping[a] for a in d.attributes)
-  formula = ','.join(convert(f.domain) for f in factors) + '->' + convert(dom)
-  values = jnp.einsum(
-      formula, *[f.values for f in factors], precision=jax.lax.Precision.HIGHEST
-  )
-  return Factor(dom, values)
-
-
-def logspace_sum_product(
-    potentials: list[Factor], dom: Domain,
-) -> Factor:
-  maxes = [f.max(f.domain.marginalize(dom).attributes) for f in potentials]
-  stable_potentials = [(f - m).exp() for f, m in zip(potentials, maxes)]
-  return sum_product(stable_potentials, dom).log() + sum(maxes)
