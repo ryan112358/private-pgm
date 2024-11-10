@@ -95,19 +95,18 @@ class MarginalLossFn:
   def __call__(self, marginals: CliqueVector) -> chex.Numeric:
     return self.loss_fn(marginals)
 
-  @classmethod
-  def from_linear_measurements(cls, measurements: list[LinearMeasurement]) -> 'MarginalLossFn':
-    cliques = [m.clique for m in measurements]
-    maximal_cliques = maximal_subset(cliques)
-    mapping = clique_mapping(maximal_cliques, cliques)
+def from_linear_measurements(measurements: list[LinearMeasurement]) -> 'MarginalLossFn':
+  cliques = [m.clique for m in measurements]
+  maximal_cliques = maximal_subset(cliques)
+  mapping = clique_mapping(maximal_cliques, cliques)
 
-    def loss_fn(marginals: CliqueVector) -> chex.Numeric:
-      loss = 0.0
-      for measurement in measurements:
-        cl = measurement.clique
-        mu = marginals[mapping[cl]].project(cl).datavector(flatten=True)
-        loss += measurement.loss_fn(mu)
-      return loss
+  def loss_fn(marginals: CliqueVector) -> chex.Numeric:
+    loss = 0.0
+    for measurement in measurements:
+      cl = measurement.clique
+      mu = marginals[mapping[cl]].project(cl).datavector(flatten=True)
+      loss += measurement.loss_fn(mu)
+    return loss
 
-    return cls(maximal_cliques, loss_fn)
+  return MarginalLossFn(maximal_cliques, loss_fn)
 

@@ -129,3 +129,20 @@ def message_passing_new(
       )
 
   return CliqueVector(beliefs)
+
+
+def variable_elimination(potentials: CliqueVector, clique: tuple[str, ...], total: float=1) -> Factor:
+  cliques = potentials.cliques + [clique]
+  domain = potentials.domain
+  elim = domain.invert(clique)
+  elim_order, _ = junction_tree_new.greedy_order(domain, cliques, elim=elim)
+
+  k = len(potentials)
+  psi = dict(zip(range(k), potentials.values()))
+  for z in elim_order:
+    psi2 = [psi.pop(i) for i in list(psi.keys()) if z in psi[i].domain]
+    psi[k] = sum(psi2).logsumexp([z])
+    k += 1
+  return sum(psi.values()).normalize(total, log=True).exp().project(clique)
+
+

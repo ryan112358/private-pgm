@@ -1,24 +1,38 @@
 import numpy as np
 from mbi import Domain, GraphicalModel, callbacks, CliqueVector, Factor
 from mbi import marginal_oracles, marginal_loss
-from scipy.sparse.linalg import LinearOperator, eigsh, lsmr, aslinearoperator
-from scipy import optimize, sparse
-from functools import partial
-from collections import defaultdict
 from typing import Callable
 import jax
-import functools
 import chex
 
+def minimum_variance_unbiased_total(measurements: list[marginal_loss.LinearMeasurement]) -> float:
+  # find the minimum variance estimate of the total given the measurements
+  estimates, variances = [], []
+  for M in measurements:
+    y = M.noisy_measurement
+    try:
+      # TODO: generalize to support any linear measurement that supports total query
+      if np.allclose(M.query(y), y):  # query = Identity
+        estimates.append(y.sum())
+        variances.append(M.stddev**2 * y.size)
+    except:
+      continue
+  estimates, variances = np.array(estimates), np.array(variances)
+  if len(estimates) == 0:
+    return 1
+  else:
+    variance = 1.0 / np.sum(1.0 / variances)
+    estimate = variance * np.sum(estimates / variances)
+    return max(1, estimate)
 
 def mirror_descent(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn,
     known_total: float,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.brute_force_marginals,
+    marginal_oracle=marginal_oracles.message_passing,
     iters: int = 1000,
-    stepsize: float | None = None:,
+    stepsize: float | None = None,
     callback_fn: Callable[[chex.Numeric], None] = print
 ):
   if potentials is None:

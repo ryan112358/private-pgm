@@ -1,11 +1,12 @@
 from mbi import (
-    Dataset,
-    Domain,
-    FactoredInference,
+  Dataset,
+  Domain,
+  FactoredInference,
+  synthetic_data,
+  marginal_loss,
+  estimation
 )
-from mbi.experimental import LocalInference, MixtureInference, PublicInference
 import numpy as np
-from scipy import sparse
 
 # load adult dataset
 
@@ -19,11 +20,11 @@ print(domain)
 np.random.seed(0)
 
 cliques = [
-    ("age", "education-num"),
-    ("marital-status", "race"),
-    ("sex", "hours-per-week"),
-    ("hours-per-week", "income>50K"),
-    ("native-country", "marital-status", "occupation"),
+  ("age", "education-num"),
+  ("marital-status", "race"),
+  ("sex", "hours-per-week"),
+  ("hours-per-week", "income>50K"),
+  ("native-country", "marital-status", "occupation"),
 ]
 
 
@@ -33,27 +34,22 @@ sigma = 2.0 / epsilon_split
 
 measurements = []
 for col in data.domain:
-    x = data.project(col).datavector()
-    y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
-    I = sparse.eye(x.size)
-    measurements.append((I, y, sigma, (col,)))
+  x = data.project(col).datavector()
+  y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
+  measurements.append(marginal_loss.LinearMeasurement(y, (col,)))
 
 # spend half of privacy budget to measure some more 2 and 3 way marginals
 
 for cl in cliques:
-    x = data.project(cl).datavector()
-    y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
-    I = sparse.eye(x.size)
-    measurements.append((I, y, sigma, cl))
+  x = data.project(cl).datavector()
+  y = x + np.random.laplace(loc=0, scale=sigma, size=x.size)
+  measurements.append(marginal_loss.LinearMeasurement(y, cl))
 
-# now perform inference to estimate the data distribution
-# We can either use Private-PGM (FactoredInference) or
-# Approx-Private-PGM (LocalInference), both share the same interface.
+# now estimate the data distribution from the noisy measurements
 
-engine = FactoredInference(domain, log=True, iters=2500)
-# engine = LocalInference(domain, log=True, iters=2500, marginal_oracle='convex')
-
-model = engine.estimate(measurements, total=total)
+estimated_total = estimation.minimum_variance_unbiased_total(measurements)
+loss_fn = marginal_loss.from_linear_measurements(measurements)
+marginals = estimation.mirror_descent(domain, loss_fn, known_total=estimated_total, iters=1000)
 
 # now answer new queries
 

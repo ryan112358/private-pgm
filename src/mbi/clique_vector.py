@@ -54,9 +54,19 @@ class CliqueVector(dict):
     @property
     def domain(self):
         return functools.reduce(Domain.merge, [f.domain for f in self.values()])
+
+    @property
+    def cliques(self):
+      return list(self.keys())
     
     def normalize(self, total: float=1, log: bool=True):
         return CliqueVector({ cl: self[cl].normalize(total, log) for cl in self})
+
+    def project(self, clique):
+      for cl in self.cliques:
+        if set(clique) <= set(cl):
+          return self[cl].project(clique)
+      raise ValueError(f'Cannot project on {clique}.')
 
     def combine(self, other):
         # combines this CliqueVector with other, even if they do not share the same set of factors

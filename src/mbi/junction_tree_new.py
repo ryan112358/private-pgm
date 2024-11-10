@@ -67,15 +67,15 @@ def _triangulated(graph: nx.Graph, order: list[str]) -> nx.Graph:
   return tri
 
 
-def _greedy_order(
-    domain: Domain, cliques: list[Clique], stochastic=True
+def greedy_order(
+    domain: Domain, cliques: list[Clique], stochastic: bool=False, elim: list[Clique] | None = None
 ) -> tuple[list[str], int]:
   """Compute a greedy elimination order."""
   order = []
-  unmarked = list(domain.attributes)
+  unmarked = elim or list(domain.attributes)
   cliques = set(cliques)
   total_cost = 0
-  for _ in range(len(domain)):
+  for _ in range(len(unmarked)):
     cost = OrderedDict()
     for a in unmarked:
       neighbors = [cl for cl in cliques if a in cl]
@@ -114,7 +114,7 @@ def make_junction_tree(
   graph = _make_graph(domain, cliques)
 
   if elimination_order is None:
-    elimination_order = _greedy_order(domain, cliques, stochastic=False)[0]
+    elimination_order = greedy_order(domain, cliques, stochastic=False)[0]
   elif isinstance(elimination_order, int):
     orders = [_greedy_order(domain, cliques, stochastic=False)] + [
         _greedy_order(domain, cliques, stochastic=True)
