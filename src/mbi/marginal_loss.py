@@ -43,7 +43,7 @@ def clique_mapping(
   >>> all_cliques = [('B', 'A'), ('B',), ('C',), ('B', 'C')]
   >>> mapping = clique_mapping(maximal_cliques, all_cliques)
   >>> print(mapping)
-  {('B', 'A'): ('A', 'B'), ('B',): ('A', 'B'), ('C',): ('A', 'B'), ('B', 'C'): ('B', 'C')}
+  {('B', 'A'): ('A', 'B'), ('B',): ('A', 'B'), ('C',): ('B', 'C'), ('B', 'C'): ('B', 'C')}
     
   Args:
     maximal_cliques: A list of maximal cliques.
