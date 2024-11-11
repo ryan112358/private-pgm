@@ -98,13 +98,12 @@ class MarginalLossFn:
 def from_linear_measurements(measurements: list[LinearMeasurement]) -> 'MarginalLossFn':
   cliques = [m.clique for m in measurements]
   maximal_cliques = maximal_subset(cliques)
-  mapping = clique_mapping(maximal_cliques, cliques)
 
   def loss_fn(marginals: CliqueVector) -> chex.Numeric:
     loss = 0.0
     for measurement in measurements:
       cl = measurement.clique
-      mu = marginals[mapping[cl]].project(cl).datavector(flatten=True)
+      mu = marginals.project(cl).datavector()
       loss += measurement.loss_fn(mu)
     return loss
 

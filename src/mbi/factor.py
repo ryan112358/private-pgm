@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import attr
 import functools
 from mbi import Domain
+import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 
@@ -24,18 +25,18 @@ class Factor:
     if self.values.shape != self.domain.shape:
       raise ValueError('values must be same shape as domain.')
 
-  # Consructors
+  # Constructors
   @classmethod
-  def zeros(cls, domain):
+  def zeros(cls, domain: Domain) -> 'Factor':
     return cls(domain, jnp.zeros(domain.shape))
 
   @classmethod
-  def ones(cls, domain):
+  def ones(cls, domain: Domain) -> 'Factor':
     return cls(domain, jnp.ones(domain.shape))
 
   @classmethod
-  def random(cls, domain, key=jax.random.PRNGKey(0)):
-    return cls(domain, jax.random.uniform(key, domain.shape))
+  def random(cls, domain: Domain) -> 'Factor':
+    return cls(domain, np.random.rand(*domain.shape))
 
   # Reshaping operations
   def transpose(self, attrs: Collection[str]) -> 'Factor':

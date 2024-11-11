@@ -1,5 +1,5 @@
 from mbi import CliqueVector, Dataset
-from mbi import junction_tree_new
+from mbi import junction_tree
 import pandas as pd
 import numpy as np
 
@@ -12,7 +12,7 @@ def from_marginals(marginals: CliqueVector, rows: int, method: str="round") -> D
   data = np.zeros((total, len(cols)), dtype=int)
   df = pd.DataFrame(data, columns=cols)
   cliques = [set(cl) for cl in marginals.cliques]
-  jtree, elimination_order = junction_tree_new.make_junction_tree(domain, cliques)
+  jtree, elimination_order = junction_tree.make_junction_tree(domain, cliques)
 
   def synthetic_col(counts, total):
     if method == "sample":
