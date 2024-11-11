@@ -6,7 +6,7 @@ import numpy as np
 def from_marginals(marginals: CliqueVector, rows: int, method: str="round") -> Dataset:
   """ Generate synthetic tabular data from the distribution.  
       Valid options for method are 'round' and 'sample'."""
-  total = rows
+  total = max(1, int(rows))
   domain = marginals.domain  # Maybe should pass this in (?)
   cols = domain.attrs
   data = np.zeros((total, len(cols)), dtype=int)

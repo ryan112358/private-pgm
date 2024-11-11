@@ -1,8 +1,6 @@
 from mbi import (
   Dataset,
   Domain,
-  FactoredInference,
-  synthetic_data,
   marginal_loss,
   estimation
 )
@@ -49,7 +47,7 @@ for cl in cliques:
 
 estimated_total = estimation.minimum_variance_unbiased_total(measurements)
 loss_fn = marginal_loss.from_linear_measurements(measurements)
-marginals = estimation.mirror_descent(domain, loss_fn, known_total=estimated_total, iters=1000)
+model = estimation.mirror_descent(domain, loss_fn, known_total=estimated_total, iters=2500, stepsize=4e-5)
 
 # now answer new queries
 

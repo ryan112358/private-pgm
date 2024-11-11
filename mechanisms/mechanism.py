@@ -1,7 +1,7 @@
 import numpy as np
-from autodp import privacy_calibrator
+#from autodp import privacy_calibrator
 from functools import partial
-from mechanisms.cdp2adp import cdp_rho
+from cdp2adp import cdp_rho
 from scipy.special import softmax
 
 
@@ -95,12 +95,7 @@ class Mechanism:
 
     def gaussian_noise_scale(self, l2_sensitivity, epsilon, delta):
         """ Return the Gaussian noise necessary to attain (epsilon, delta)-DP """
-        if self.bounded:
-            l2_sensitivity *= 2.0
-        return (
-            l2_sensitivity
-            * privacy_calibrator.ana_gaussian_mech(epsilon, delta)["sigma"]
-        )
+        raise ValueError('Temporarily Deprecated due to broken dependency')
 
     def laplace_noise_scale(self, l1_sensitivity, epsilon):
         """ Return the Laplace noise necessary to attain epsilon-DP """

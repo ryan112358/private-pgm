@@ -25,14 +25,14 @@ print(ybc)
 
 measurements = [marginal_loss.LinearMeasurement(yab, ['A', 'B']), marginal_loss.LinearMeasurement(ybc, ['B', 'C'])]
 
-loss_fn = marginal_loss.MarginalLossFn.from_linear_measurements(measurements)
+loss_fn = marginal_loss.from_linear_measurements(measurements)
 
 # estimate the data distribution
-marginals = estimation.mirror_descent(domain, loss_fn, known_total=1000, callback_fn=lambda _: None)
+model = estimation.mirror_descent(domain, loss_fn, known_total=1000)
 
 # recover consistent estimates of measurements
-ab2 = marginals.project(['A', 'B']).datavector()
-bc2 = marginals.project(['B', 'C']).datavector()
+ab2 = model.project(['A', 'B']).datavector()
+bc2 = model.project(['B', 'C']).datavector()
 
 print(ab2)
 print(bc2)
@@ -42,5 +42,5 @@ ac2 = model.project(['A', 'C']).datavector()
 #print(ac2)
 
 # generate synthetic data
-synth = synthetic_data.from_marginals(marginals, rows=10)
-print(synth.df)
+synth = model.synthetic_data()
+print(synth.df.head())

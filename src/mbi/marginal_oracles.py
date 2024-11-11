@@ -131,6 +131,7 @@ def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVec
 def variable_elimination(
     potentials: CliqueVector, clique: tuple[str, ...], total: float = 1
 ) -> Factor:
+    clique = tuple(clique)
     cliques = potentials.cliques + [clique]
     domain = potentials.active_domain
     elim = domain.invert(clique)

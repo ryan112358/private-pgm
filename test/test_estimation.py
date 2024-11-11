@@ -39,10 +39,10 @@ class TestEstimation(unittest.TestCase):
     measurements = fake_measurements(cliques)
     loss_fn = marginal_loss.from_linear_measurements(measurements)
 
-    marginals = estimation.mirror_descent(_DOMAIN, loss_fn, known_total=1.0, iters=500)
+    model = estimation.mirror_descent(_DOMAIN, loss_fn, known_total=1.0, iters=500)
     for M in measurements:
       expected = M.noisy_measurement
-      actual = marginals.project(M.clique).datavector() 
+      actual = model.project(M.clique).datavector() 
       np.testing.assert_allclose(actual, expected, atol=1e-2)
 
 

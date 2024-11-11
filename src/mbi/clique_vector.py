@@ -75,7 +75,7 @@ class CliqueVector:
   def project(self, clique: Clique) -> Factor:
     if self.supports(clique):
       return self[self.parent(clique)].project(clique)
-    raise ValueError(f'Cannot project onto unsupported {clique}.')
+    raise ValueError(f'Cannot project onto unsupported clique {clique}.')
 
   def combine(self, other: 'CliqueVector') -> 'CliqueVector':
     # combines this CliqueVector with other, even if they do not share the same set of factors
@@ -99,10 +99,9 @@ class CliqueVector:
     return self.__mul__(const)
 
   def __add__(self, other: chex.Numeric | 'CliqueVector') -> 'CliqueVector':
-    is_leaf = lambda node: isinstance(node, Factor)
     if isinstance(other, CliqueVector):
-      return jax.tree.map(Factor.__add__, self, other, is_leaf=is_leaf)
-    return jax.tree.map(lambda f: f*other, self, is_leaf=is_leaf)
+      return jax.tree.map(jnp.add, self, other)
+    return jax.tree.map(lambda f: f+other, self)
 
   def __sub__(self, other: chex.Numeric | 'CliqueVector') -> 'CliqueVector':
     return self + -1 * other
@@ -114,7 +113,8 @@ class CliqueVector:
     return jax.tree.map(jnp.log, self)
 
   def dot(self, other: 'CliqueVector') -> chex.Numeric:
-    dots = jax.tree.map(Factor.dot, self, other)
+    is_leaf = lambda node: isinstance(node, Factor)
+    dots = jax.tree.map(Factor.dot, self, other, is_leaf=is_leaf)
     return jax.tree.reduce(operator.add, dots)
 
   def size(self):
