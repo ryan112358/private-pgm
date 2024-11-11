@@ -30,6 +30,6 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install --upgrade pytest
+          pip install --upgrade pytest parameterized
           pytest test/*.py
           pytest --doctest-modules src/mbi/*.py
