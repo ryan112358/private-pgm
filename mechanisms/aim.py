@@ -115,6 +115,8 @@ class AIM(Mechanism):
       measurements.append(LinearMeasurement(y, cl, stddev=sigma))
 
     zeros = self.structural_zeros
+    # WARNING: this repostiory recently underwent a refactoring
+    # do not compare against this version of AIM until this comment is resolved.
     # TODO: add warm start and structural zeros back in
     model = estimation.mirror_descent(data.domain, measurements, iters=self.max_iters)
 
