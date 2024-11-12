@@ -5,7 +5,6 @@ from typing import Callable
 import jax
 import chex
 import attr
-import optax
 
 _DEFAULT_CALLBACK = lambda t, loss: print(loss) if t % 50 == 0 else None
 
