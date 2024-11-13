@@ -40,4 +40,4 @@ jobs:
       - name: Type checking
         run: |
           pip install pytype
-          pytype src/mbi/
+          pytype src/mbi/*.py
