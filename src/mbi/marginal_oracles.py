@@ -10,41 +10,41 @@ _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
 
 
 def sum_product(factors: list[Factor], dom: Domain) -> Factor:
-  """Compute the sum-product of a list of factors."""
-  attrs = sorted(set.union(*[set(f.domain) for f in factors]).union(set(dom)))
-  mapping = dict(zip(attrs, _EINSUM_LETTERS))
-  convert = lambda d: "".join(mapping[a] for a in d.attributes)
-  formula = ",".join(convert(f.domain) for f in factors) + "->" + convert(dom)
-  values = jnp.einsum(
-      formula, *[f.values for f in factors], precision=jax.lax.Precision.HIGHEST
-  )
-  return Factor(dom, values)
+    """Compute the sum-product of a list of factors."""
+    attrs = sorted(set.union(*[set(f.domain) for f in factors]).union(set(dom)))
+    mapping = dict(zip(attrs, _EINSUM_LETTERS))
+    convert = lambda d: "".join(mapping[a] for a in d.attributes)
+    formula = ",".join(convert(f.domain) for f in factors) + "->" + convert(dom)
+    values = jnp.einsum(
+        formula, *[f.values for f in factors], precision=jax.lax.Precision.HIGHEST
+    )
+    return Factor(dom, values)
 
 
 def logspace_sum_product(potentials: list[Factor], dom: Domain) -> Factor:
-  maxes = [f.max(f.domain.marginalize(dom).attributes) for f in potentials]
-  stable_potentials = [(f - m).exp() for f, m in zip(potentials, maxes)]
-  return sum_product(stable_potentials, dom).log() + sum(maxes)
+    maxes = [f.max(f.domain.marginalize(dom).attributes) for f in potentials]
+    stable_potentials = [(f - m).exp() for f, m in zip(potentials, maxes)]
+    return sum_product(stable_potentials, dom).log() + sum(maxes)
 
 
 def brute_force_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector:
-  P = sum(potentials.arrays.values()).normalize(total, log=True).exp()
-  marginals = {cl: P.project(cl) for cl in potentials.cliques}
-  return CliqueVector(potentials.domain, potentials.cliques, marginals)
+    P = sum(potentials.arrays.values()).normalize(total, log=True).exp()
+    marginals = {cl: P.project(cl) for cl in potentials.cliques}
+    return CliqueVector(potentials.domain, potentials.cliques, marginals)
 
 
 def einsum_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector:
-  inputs = list(potentials.arrays.values())
-  return CliqueVector(
-      potentials.domain,
-      potentials.cliques,
-      {
-          cl: logspace_sum_product(inputs, potentials[cl].domain)
-          .normalize(total, log=True)
-          .exp()
-          for cl in potentials.cliques
-      },
-  )
+    inputs = list(potentials.arrays.values())
+    return CliqueVector(
+        potentials.domain,
+        potentials.cliques,
+        {
+            cl: logspace_sum_product(inputs, potentials[cl].domain)
+            .normalize(total, log=True)
+            .exp()
+            for cl in potentials.cliques
+        },
+    )
 
 
 def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
@@ -56,10 +56,7 @@ def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
     maximal_cliques = junction_tree.maximal_cliques(jtree)
 
     mapping = clique_mapping(maximal_cliques, cliques)
-
-    beliefs = CliqueVector.zeros(domain, maximal_cliques).arrays
-    for cl in cliques:
-        beliefs[mapping[cl]] = beliefs[mapping[cl]] + potentials[cl]
+    beliefs = potentials.expand(maximal_cliques)
 
     messages = {}
     for i, j in message_order:
@@ -71,13 +68,7 @@ def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
         messages[(i, j)] = tau.logsumexp(sep)
         beliefs[j] = beliefs[j] + messages[(i, j)]
 
-    beliefs = CliqueVector(domain, cliques, beliefs).normalize(total, log=True).exp()
-
-    result = {}
-    for cl in cliques:
-        result[cl] = beliefs[mapping[cl]].project(cl)
-
-    return CliqueVector(domain, cliques, result)
+    return beliefs.normalize(total, log=True).exp().contract(cliques)
 
 
 def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVector:
@@ -104,7 +95,6 @@ def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVec
             if msg[0] == msg2[1] and msg[1] != msg2[0]:
                 incoming_messages[msg].append(msg2)
 
-    print(message_order)
     messages = {}
     for i, j in message_order:
         shared = domain.project(tuple(set(i) & set(j)))
