@@ -78,13 +78,13 @@ class CliqueVector:
 
     @classmethod
     def from_projectable(cls, data, cliques: list[Clique]):
-        arrays = {data.project(cl) for cl in cliques}
+        arrays = {cl: data.project(cl) for cl in cliques}
         return cls(data.domain, cliques, arrays)
 
     @functools.cached_property
     def active_domain(self):
         domains = [self.domain.project(cl) for cl in self.cliques]
-        return functools.reduce(Domain.merge, domains)
+        return functools.reduce(lambda a, b: a.merge(b), domains)
 
     # @functools.lru_cache(maxsize=None)
     def parent(self, clique: Clique) -> Clique | None:
@@ -100,7 +100,7 @@ class CliqueVector:
             return self[self.parent(clique)].project(clique, log=log)
         raise ValueError(f"Cannot project onto unsupported clique {clique}.")
 
-    def expand(self, cliques: list[str], behavior: str = "raise") -> "CliqueVector":
+    def expand(self, cliques: list[Clique]) -> "CliqueVector":
         """Re-expresses this CliqueVector over an expanded set of cliques.
 
         If the original CliqueVector represents the potentials of a Graphical Model,
@@ -109,10 +109,6 @@ class CliqueVector:
 
         Args:
             cliques: The new cliques the clique vector will be defined over.
-            behavior: Either 'raise' or 'ignore'.  If 'raise', raises an error if
-            there is an existing clique not supported by a new clique.  If 'ignore',
-            ignores such unsupported cliques and does not include them in the new
-            CliqueVector.
 
         Returns:
             An expanded CliqueVector defined over the given set of cliques.
@@ -127,7 +123,7 @@ class CliqueVector:
                 arrays[cl] = sum(self[cl2] for cl2 in mapping[cl]).expand(dom)
         return CliqueVector(self.domain, cliques, arrays)
 
-    def contract(self, cliques: list[str], log: bool = False) -> "CliqueVector":
+    def contract(self, cliques: list[Clique], log: bool = False) -> "CliqueVector":
         """Compute a supported CliqueVector from this."""
         arrays = {cl: self.project(cl, log=log) for cl in cliques}
         return CliqueVector(self.domain, cliques, arrays)

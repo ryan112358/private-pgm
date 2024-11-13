@@ -32,16 +32,6 @@ def message_passing_order(junction_tree: nx.Graph) -> list[tuple[Clique, Clique]
     return list(nx.topological_sort(graph))
 
 
-def separator_axes(mp_order):
-    """Return the separator axes for the given message passing order."""
-    return {(i, j): tuple(set(i) & set(j)) for i, j in mp_order}
-
-
-def _neighbors(junction_tree: nx.Graph) -> dict[Clique, set[Clique]]:
-    """Return the neighbors of each maximal clique in the tree."""
-    return {i: set(junction_tree.neighbors(i)) for i in maximal_cliques(junction_tree)}
-
-
 def _make_graph(domain: Domain, cliques: Collection[Clique]) -> nx.Graph:
     """Create a graph from the domain and cliques."""
     graph = nx.Graph()
@@ -69,7 +59,7 @@ def greedy_order(
     domain: Domain,
     cliques: list[Clique],
     stochastic: bool = False,
-    elim: list[Clique] | None = None,
+    elim: list[str] | None = None,
 ) -> tuple[list[str], int]:
     """Compute a greedy elimination order."""
     order = []
@@ -117,8 +107,8 @@ def make_junction_tree(
     if elimination_order is None:
         elimination_order = greedy_order(domain, cliques, stochastic=False)[0]
     elif isinstance(elimination_order, int):
-        orders = [_greedy_order(domain, cliques, stochastic=False)] + [
-            _greedy_order(domain, cliques, stochastic=True)
+        orders = [greedy_order(domain, cliques, stochastic=False)] + [
+            greedy_order(domain, cliques, stochastic=True)
             for _ in range(elimination_order)
         ]
         elimination_order = min(orders, key=lambda x: x[1])[0]

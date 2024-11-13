@@ -1,5 +1,5 @@
 import numpy as np
-from mbi import Domain, callbacks, CliqueVector, Factor, LinearMeasurement
+from mbi import Domain, CliqueVector, Factor, LinearMeasurement
 from mbi import marginal_oracles, marginal_loss, synthetic_data
 from typing import Callable
 import jax
