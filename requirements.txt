@@ -7,4 +7,3 @@ matplotlib
 jax
 jaxlib
 chex
-optax

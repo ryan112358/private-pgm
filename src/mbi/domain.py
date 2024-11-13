@@ -10,8 +10,8 @@ class Domain:
   attributes: tuple[str, ...] = attr.field(converter=tuple)
   shape: tuple[int, ...] = attr.field(converter=tuple)
 
-  def __post_init__(self):
-    if len(self.attributes) == len(self.shape):
+  def __attrs_post_init__(self):
+    if len(self.attributes) != len(self.shape):
       raise ValueError('Dimensions must be equal.')
     if len(self.attributes) != len(set(self.attributes)):
       raise ValueError('Attributes must be unique.')

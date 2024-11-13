@@ -18,7 +18,7 @@ class TestFactor(unittest.TestCase):
         self.assertEqual(res.domain, domain)
         self.assertEqual(res.values.shape, domain.shape)
 
-        self.assertTrue(np.allclose(res.sum("d").values*0.2, self.factor.values))
+        self.assertTrue(np.allclose(res.sum("d").values * 0.2, self.factor.values))
 
     def test_transpose(self):
         attrs = ["b", "c", "a"]

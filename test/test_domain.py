@@ -64,6 +64,16 @@ class TestDomain(unittest.TestCase):
             self.assertEqual(a, b)
             self.assertEqual(self.domain[a], c)
 
+    def test_repeated_attributes(self):
+        with self.assertRaises(ValueError):
+            Domain(["a", "a"], [10, 20])
+
+    def test_intersect_disjoint_domains(self):
+        other_domain = Domain(["e", "f"], [5, 6])
+        intersection = self.domain.intersect(other_domain)
+        self.assertEqual(intersection.attributes, ())
+        self.assertEqual(intersection.shape, ())
+
 
 if __name__ == "__main__":
     unittest.main()

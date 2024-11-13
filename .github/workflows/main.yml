@@ -32,4 +32,10 @@ jobs:
         run: |
           pip install --upgrade pytest parameterized
           pytest test/*.py
+
+      - name: Doc tests
           pytest --doctest-modules src/mbi/*.py
+  
+      - name: Type checking
+          pip install pytype
+          pytype src/mbi/
