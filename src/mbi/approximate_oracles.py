@@ -1,6 +1,15 @@
 """Approximate marginal oracles with convex counting numbers.
 
 See the paper ["Relaxed Marginal Consistency for Differentially Private Query Answering"](https://arxiv.org/pdf/2109.06153) for more details.
+
+This file implements one approximate marginal inference oracle: Convex-GBP
+with fixed counting numbers of 1.0 for all regions.  We experimented with
+others, but do not officially support them in this library.  If interested,
+please see the following snapshot of this repository:
+
+https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot
+
+Pull requests are welcome to add support for other approximate oracles.
 """
 
 import networkx as nx
