@@ -34,8 +34,10 @@ jobs:
           pytest test/*.py
 
       - name: Doc tests
+        run: |
           pytest --doctest-modules src/mbi/*.py
   
       - name: Type checking
+        run: |
           pip install pytype
-          pytype src/mbi/
+          pytype src/mbi/*.py
