@@ -54,7 +54,7 @@ class TestEstimation(unittest.TestCase):
         loss_fn = marginal_loss.from_linear_measurements(measurements)
 
         model = estimation.mirror_descent(
-            _DOMAIN, loss_fn, known_total=1.0, iters=250, stepsize=0.001
+            _DOMAIN, loss_fn, known_total=1.0, iters=250, stepsize=0.01
         )
         for M in measurements:
             expected = M.noisy_measurement
