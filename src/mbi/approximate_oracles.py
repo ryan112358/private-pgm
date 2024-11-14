@@ -101,12 +101,7 @@ def convex_generalized_belief_propagation(
     )
 
     # Hardcode assumption that counting numbers are 1.0 for all regions.
-    pot = {}
-    for r in regions:
-        if r in cliques:
-            pot[r] = potentials[r]
-        else:
-            pot[r] = Factor.zeros(domain.project(r))
+    pot = potentials.expand(regions)
 
     cc = {}
     for r in regions:
