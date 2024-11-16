@@ -77,6 +77,8 @@ def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVec
 
     jtree = junction_tree.make_junction_tree(domain, cliques)[0]
     message_order = junction_tree.message_passing_order(jtree)
+    # TODO: upstream this logic to message_passing_order function
+    message_order = [(i,j) for i,j in message_order if len(set(i) & set(j)) > 0]
     maximal_cliques = junction_tree.maximal_cliques(jtree)
 
     mapping = clique_mapping(maximal_cliques, cliques)

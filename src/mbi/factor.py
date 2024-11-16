@@ -10,6 +10,11 @@ import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 
+def _try_convert(values):
+    try:
+        return jnp.array(values)
+    except:
+        return values  # useful if values is a Jax tracer object
 
 @functools.partial(
     jax.tree_util.register_dataclass, meta_fields=["domain"], data_fields=["values"]
@@ -19,7 +24,7 @@ class Factor:
     """A factor over a domain."""
 
     domain: Domain
-    values: jax.Array = attr.field(converter=jnp.array)
+    values: jax.Array = attr.field(converter=_try_convert)
 
     def __post_init__(self):
         if self.values.shape != self.domain.shape:
