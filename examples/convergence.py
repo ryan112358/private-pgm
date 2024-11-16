@@ -16,6 +16,8 @@ def default_params():
     params = {}
     params["estimator"] = "MD"
     params["iters"] = 2000
+    # Interior gradient does better with Lipschitz=1, likely some inconistency
+    # with normalization somewhere.
     params["lipschitz"] = 0.00005 # needs to be tuned for now
     return params
 
