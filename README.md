@@ -1,14 +1,31 @@
-# Graphical-model based estimation and inference for differential privacy
+# Marginal-based estimation and inference for differential privacy
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5548533.svg)](https://doi.org/10.5281/zenodo.5548533)
 [![Continuous integration](https://github.com/ryan112358/private-pgm/actions/workflows/main.yml/badge.svg)](https://github.com/ryan112358/private-pgm/actions/workflows/main.yml)
 
+# Summary
+
+This is a general-purpose library for estimating discrete distributions from noisy
+observations of their marginals.  To that end, we provide scalable algorithms for solving convex optimization problems over the marginal polytope.  From that, we obtain an undirected graphical model (i.e., a Markov random field) which can be used to (1) obtain more accurate estimates of the observed noisy marginals, (2) estimate answers to new queries (e.g., marginals) based on a maximum entropy assumption, and (3) generate synthetic data that approximately preserves those marginals.  
+
+The library is designed with the following core principles in mind:
+
+* **Consistency:** This library produces consistent estimates of measured and unmeasured queries, (i.e., answers that could arise from some global data distribution).
+* **Utility**: The estimation algorithms make the best use of the noisy measurements
+by combining all sources of information in a principled manner (e.g., by maximizing the likelihood of the noisy observations).  The algorithms work well in practice.
+* **Scalability**: The library scales effectively to high-dimensional datasets.
+* **Flexibility**: The library supports generic loss functions defined over the low-dimensional marginals of a data distribution.  We provide APIs and utilities for constructing a loss function based on the broad class of noisy linear measurements of the marginals.  Flexibility beyond this is possible and easy to configure.  
+* **Extensibility:** The library is designed to be built upon by future work.  We focus on the important but narrow problem of estimating a data distribution from noisy measurements, and provide a good solution for that.  This is only one component of a strong mechanism, and must be combined with principled methods for selecting *which* queries should be privately measured based on the data, privacy budget, downstream task, and other considerations.
+* **Simplicity:** The library is simple to use, toy examples only require a few lines of code, and fairly powerful mechanisms can be developed on top of this library with surprisingly little code.  
+
 Published articles: 
+
+- McKenna, Ryan, Terrance Liu, "A simple recipe for private synthetic data generation."
+[https://differentialprivacy.org/synth-data-1/](https://differentialprivacy.org/synth-data-1)
 
 - McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. 2021. "Winning the NIST Contest: A scalable and general approach to differentially private synthetic data."  *Journal of Privacy and Confidentiality* 11 (3).  [![DOI:10.29012/jpc.778](https://zenodo.org/badge/DOI/10.29012/jpc.778.svg)](https://doi.org/10.29012/jpc.778) 
 
 - McKenna, Ryan, Daniel Sheldon, and Gerome Miklau. "Graphical-model based estimation and inference for differential privacy." In Proceedings of the 36th International Conference on Machine Learning. 2019. https://arxiv.org/abs/1901.09136
-
 
 - McKenna, Ryan, Siddhant Pradhan, Daniel Sheldon, and Gerome Miklau. "Relaxed Marginal Consistency for Differentially Private Query Answering".  In Proceedings of the 35th Conference on Nueral Information Processing Systems, 2021. https://arxiv.org/pdf/2109.06153
 
@@ -22,25 +39,14 @@ This library recently underwent major refactorings.  Below are a list of notable
 * JAX is now used as the numerical backend rather than numpy.  This means the code now natively supports running on GPUs, although the scalability advantages have not yet been tested.
 * To more naturally support JAX with JIT compilation, the code has been reorganized into a more functional design.  This design follows closely from how we describe the approach mathematically in our papers.
 * Classes now have more narrowly defined scope, and have been removed where they did not provide significant utility.  Dataclasses are used liberally throughout the code.
-* A new belief propagation algorithm is used which is more space efficient than the prior one in settings where the maximal cliques in the Junction Tree are larger than the measured cliques.
+* A new belief propagation algorithm is used which is more space efficient than the prior one in settings where the maximal cliques in the Junction Tree are larger than the measured cliques.  This new algorithm is also significantly faster when running on GPUs in some cases.
 * Expanded test coverage for marginal inference, we correctly handle a number of tricky edge cases.
 * Added type information to most functions for better documentation.  Also added example usages to some functions in the form of doctests.  More will be added in the future.
 * Setup continuous integration tests on GitHub.
 
+Currently, not all functionality that was previously supported been integrated into the new design.  However, the core features that are used by the majority of the use cases have been.  These left out functionalities are discussed in the end of this document. 
 
-Currently, not all functionality that was previously supported been integrated into the new design.  However, the core features that are used by the majority of the use cases have been. These left out functionalities will be added back in on a best effort basis, including:
-
-* **Marginal Inference Utilities**
-    * Calculate many marginals (theoretically more efficient than calling "project" multiple times)
-    * Answering Kronecker product queries
-* **Estimation Algorithms**: 
-    * Regularized Dual Averaging and Interior Gradient
-    * Calculation of Lipschitz constant for L2 losses
-    * Fitting graphical model parameters without noise.
-* **Other Marginal-Based Inference Algorithms**:
-    * We did not refactor other marginal-based inference algorithms in terms of the current design.  [PublicInference](https://ppai21.github.io/files/26-paper.pdf), [MixtureInference](https://arxiv.org/abs/2103.06641), and [Approx-PGM](https://arxiv.org/abs/2109.06153) are still implemented in terms of the old API, and are in the experimental subpackage.  Approx-PGM may be moved over to the main directory int eh future, while the others will remain in experimental and may be updated to match the API in the future.
-
-# Codebase summary
+# Codebase organization
 
 The core library is implemented in "src/mbi" where mbi stands for "marginal-based inference".  The files in the "examples" folder are meant to demonstrate how to use Private-PGM for different problems.  These files are typically not designed to run on arbitrary datasets and/or workloads.  They are more useful if you are trying to learn how to use this code base and would like to build your own mechanisms on top of it.
 
@@ -85,7 +91,10 @@ Then measure the AB marginal and BC marginal using the Laplace mechanism
 Now feed these noisy measurements into the inference engine using the Mirror Descent (MD) algorithm
 
 ```
->>> measurements = [LinearMeasurement(yab, ('A', 'B'), sigma), LinearMeasurement(ybc, ('B', 'C'), sigma)]
+>>> measurements = [
+    LinearMeasurement(yab, ('A', 'B'), sigma), 
+    LinearMeasurement(ybc, ('B', 'C'), sigma)
+]
 >>> model = estimation.mirror_descent(domain, measurements)
 ```
 
@@ -105,7 +114,7 @@ $ pip install git+https://github.com/ryan112358/private-pgm.git
 
 # Manual Setup
 
-We officially support python3, and have the following dependencies: numpy, scipy, pandas, matplotlib, and networkx.  These can be installed with pip as follows:
+We require Python>=3.9.  Dependencies can be installed via the standard pip install command:
 
 ```
 $ pip install -r requirements.txt
@@ -117,24 +126,37 @@ Additionally, you have to add the src folder to the PYTHONPATH.  If you are usin
 PYTHONPATH=$PYTHONPATH:/path/to/private-pgm/src
 ```
 
-This allows you to import modules from this package like ``` from mbi import FactoredInference ``` no matter what directory you are working in.  Once this is done, check to make sure the tests are passing
+This allows you to import modules from this package like ``` from mbi import Domain ``` no matter what directory you are working in.  Once this is done, check to make sure the tests are passing
 
 ```
 $ cd /path/to/private-pgm/test
 $ pytest
-........................................
-----------------------------------------------------------------------
-Ran 40 tests in 5.009s
+test_approximate_oracles.py ............                                            [  4%]
+test_dataset.py ..                                                                  [  4%]
+test_domain.py ..........                                                           [  8%]
+test_estimation.py ................................................                 [ 24%]
+test_factor.py ......                                                               [ 26%]
+test_marginal_oracles.py .......................................................... [ 46%]
+................................................................................... [ 74%]
+...........................................................................         [100%]
 
-OK
+================================== 294 passed in 30.65s ===================================
 ```
 
-# Documentation
+# Contributing to this repository
 
-This package contains the following public-facing classes: **Domain, Dataset, Factor**
+Contributions to this repository are welcome and encouraged.
 
-* **Domain**: contains information about the attributes in the dataset and the number of possible values for each attribute.  **NOTE**: It is implicitly assumed that the set of possible values for an attribute is { 0, ..., n-1 }.
+* Adding new functionality (new estimators, synthetic data generators, etc.).
+* Filing bugs if you run into any errors or unexpected performance characteristics.
+* Improving documentation.
+* Checking in mechanisms you built on top of this library.
+* Code that got cut during the migration might be nice to add back in under the new design.
+>* Calculate many marginals (theoretically more efficient than calling "project" multiple times)
+>* Answering Kronecker product queries
+>* Some approximate marginal inference oracles that were previously implemented did not get moved over, only the one we presented in our paper.
+>* Some examples were deleted rather than ported, since they took dependencies on other github repositories.  
+>* Calculation of Lipschitz constant for L2 losses
+>* We did not refactor other marginal-based estimation algorithms in terms of the current design.  [PublicInference](https://ppai21.github.io/files/26-paper.pdf) and [MixtureInference](https://arxiv.org/abs/2103.06641), are still implemented in terms of the old API, and are in the experimental subpackage.  
 
-* **Dataset**: a class for storing tabular data.  Can convert to the vector representation of the data by calling **datavector()** and can project the data onto a subset of attributes by calling **project()**.  **NOTE**: This class requires the underlying data to conform to the domain (i.e., the set of possible values for an attribute should be { 0, ..., n-1 }).
 
-* **Factor**: A representation of a multi-dimensional array that also stores domain information.  Is used by GraphicalModel.

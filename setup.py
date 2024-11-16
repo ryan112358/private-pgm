@@ -5,8 +5,8 @@ with open('requirements.txt') as f:
 
 setup(
     name='private-pgm',
-    version='0.0.2',
-    description='Graphical-model based estimation and inference for differential privacy.',
+    version='1.0.0',
+    description='Marginal-based estimation and inference for differential privacy',
     url='git@github.com:ryan112358/private-pgm.git',
     author='Ryan McKenna',
     author_email='rmckenna21@gmail.com',
