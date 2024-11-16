@@ -1,5 +1,5 @@
-from mbi import Dataset, FactoredInference
-from mbi import mechanism
+from mbi import Dataset, LinearMeasurement
+from mbi import estimation
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -14,18 +14,9 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
-    params["dataset"] = "adult"
-    params["engines"] = ["MD", "RDA"]
-    params["iters"] = 10000
-    params["epsilon"] = 1.0
-    params["delta"] = 0.0
-    params["bounded"] = True
-    params["frequency"] = 1
-    params["seed"] = 0
-    params["save"] = None
-    params["load"] = None
-    params["plot"] = None
-
+    params["estimator"] = "MD"
+    params["iters"] = 2000
+    params["lipschitz"] = 0.00005 # needs to be tuned for now
     return params
 
 
@@ -33,75 +24,39 @@ if __name__ == "__main__":
     description = ""
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
-    parser.add_argument("--dataset", choices=["adult"], help="dataset to use")
     parser.add_argument(
-        "--engines",
-        nargs="+",
+        "--estimator",
         choices=["MD", "MD2", "RDA", "LBFGS", "EM", "IG"],
-        help="inference engines",
+        help="estimator",
     )
     parser.add_argument("--iters", type=int, help="number of iterations")
-    parser.add_argument("--epsilon", type=float, help="privacy  parameter")
-    parser.add_argument("--delta", type=float, help="privacy parameter")
-    parser.add_argument(
-        "--bounded", type=bool, help="bounded or unbounded privacy definition"
-    )
-    parser.add_argument("--frequency", type=int, help="logging frequency")
-    parser.add_argument("--seed", type=int, help="random seed")
-    parser.add_argument("--save", type=str, help="path to save results")
-    parser.add_argument(
-        "--load", type=str, help="path to load results from (skips experiment)"
-    )
-    parser.add_argument("--plot", type=str, help="path to save plot")
+    parser.add_argument("--lipschitz", type=float, help="lipschitz constant")
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()
 
-    if args.load:
-        results = pickle.load(open(args.load, "rb"))
-    else:
-        data = Dataset.load("../data/adult.csv", "../data/adult-domain.json")
-        projections = [
-            ["race", "capital-loss", "income>50K"],
-            ["marital-status", "capital-gain", "income>50K"],
-            ["race", "native-country", "income>50K"],
-            ["workclass", "sex", "hours-per-week"],
-            ["fnlwgt", "marital-status", "relationship"],
-            ["workclass", "education-num", "occupation"],
-            ["age", "relationship", "sex"],
-            ["occupation", "sex", "hours-per-week"],
-            ["occupation", "relationship", "income>50K"],
-        ]
+    data = Dataset.load("../data/adult.csv", "../data/adult-domain.json")
+    projections = [
+        ["race", "capital-loss", "income>50K"],
+        ["marital-status", "capital-gain", "income>50K"],
+        ["race", "native-country", "income>50K"],
+        ["workclass", "sex", "hours-per-week"],
+        ["fnlwgt", "marital-status", "relationship"],
+        ["workclass", "education-num", "occupation"],
+        ["age", "relationship", "sex"],
+        ["occupation", "sex", "hours-per-week"],
+        ["occupation", "relationship", "income>50K"],
+    ]
 
-        measurements = []
-        for p in projections:
-            Q = sparse.eye(data.domain.size(p))
-            measurements.append((p, Q))
+    measurements = []
+    for p in projections:
+        y = data.project(p).datavector()
+        y = y + np.random.normal(loc=0, scale=10, size=y.size)
+        measurements.append(LinearMeasurement(y, p))
 
-        aux = {
-            "iters": args.iters,
-            "eps": args.epsilon,
-            "delta": args.delta,
-            "bounded": args.bounded,
-            "frequency": args.frequency,
-            "seed": args.seed,
-        }
-        results = {}
-        for engine in args.engines:
-            results[engine] = mechanism.run(data, measurements, engine=engine, **aux)[
-                1
-            ].results
-
-    if args.save:
-        pickle.dump(results, open(args.save, "wb"))
-
-    if args.plot:
-        best = min(results[engine].l2_loss.min() for engine in args.engines)
-        for engine in args.engines:
-            df = results[engine]
-            plt.plot(df.time, df.l2_loss, label=engine)
-        plt.loglog()
-        plt.xlabel("Time (seconds)")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.savefig(args.plot)
+    if args.estimator == "RDA":
+      model = estimation.dual_averaging(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters)
+    if args.estimator == "MD":
+      model = estimation.mirror_descent(data.domain, measurements, iters=args.iters)
+    if args.estimator == "IG":
+      model = estimation.interior_gradient(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters)

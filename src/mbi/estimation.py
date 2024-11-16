@@ -232,9 +232,10 @@ def mle_from_marginals(marginals: CliqueVector, known_total: float) -> Graphical
     Returns:
         A GraphicalModel object with the final potentials and marginals.
     """
+    # TODO: wire in something here (custom vjp) for more efficient grad
     negative_log_likelihood = lambda mu: -marginals.dot(mu.log())
     loss_fn = marginal_loss.MarginalLossFn(marginals.cliques, negative_log_likelihood)
-    return lbfgs(marginals.domain, loss_fn, known_total)
+    return lbfgs(marginals.domain, loss_fn, known_total, callback_fn=lambda *_: None, iters=150)
 
 
 def dual_averaging(
@@ -277,10 +278,9 @@ def dual_averaging(
     @jax.jit
     def update(w, v, gbar, c):
         u = (1 - c) * w + c * v
-        g = jax.grad(loss_fn)(u) * (1.0 / known_total)
+        g = jax.grad(loss_fn)(u)
         gbar = (1 - c) * gbar + c * g
-        # not quite sure on the normalization by known_total here
-        theta = -t * (t + 1) / (4 * L + beta) * gbar
+        theta = -t * (t + 1) / (4 * L + beta) / known_total * gbar
         v = marginal_oracle(theta, known_total)
         w = (1 - c) * w + c * v
         return w, v, gbar
@@ -290,8 +290,10 @@ def dual_averaging(
     for t in range(1, iters + 1):
         c = 2.0 / (t + 1)
         w, v, gbar = update(w, v, gbar, c)
+        if (t-1) % 50 == 0:
+          callback_fn(t-1, loss_fn(w))
 
-    return mle_from_marginals(w, known_total)
+    return w # mle_from_marginals(w, known_total)
 
 
 def interior_gradient(
@@ -352,5 +354,7 @@ def interior_gradient(
     theta = potentials
     for t in range(1, iters + 1):
         theta, c, x, y, z = update(theta, c, x, y, z)
+        if t % 50 == 0:
+          callback_fn(t, loss_fn(x))
 
-    return mle_from_marginals(x, known_total)
+    return  x #mle_from_marginals(x, known_total)
