@@ -92,7 +92,7 @@ def mirror_descent(
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing,
+    marginal_oracle=marginal_oracles.message_passing_new,
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[int, chex.Numeric], None] = _DEFAULT_CALLBACK,
