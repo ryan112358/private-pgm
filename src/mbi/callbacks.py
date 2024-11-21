@@ -1,7 +1,7 @@
 import attr
+import jax
 from mbi import LinearMeasurement, Dataset, CliqueVector
 from mbi import marginal_loss
-
 
 @attr.dataclass
 class Callback:
@@ -57,5 +57,9 @@ def default(
         loss_fns["L1 Error"] = marginal_loss.from_linear_measurements(
             ground_truth, norm="l1"
         )
+
+
+    loss_fns = { key: jax.jit(loss_fns[key].__call__) for key in loss_fns }
+    loss_fns['Primal Feasibility'] = jax.jit(marginal_loss.primal_feasibility)
 
     return Callback(loss_fns, frequency)

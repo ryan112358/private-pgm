@@ -108,3 +108,23 @@ def from_linear_measurements(measurements: list[LinearMeasurement], norm:str = "
         return loss
 
     return MarginalLossFn(maximal_cliques, loss_fn)
+
+
+def primal_feasibility(mu: CliqueVector) -> chex.Numeric:
+    ans = 0
+    count = 0
+    for r in mu.cliques:
+        for s in mu.cliques:
+            if r == s:
+                break
+            d = tuple(set(r) & set(s))
+            if len(d) > 0:
+                x = mu[r].project(d).datavector()
+                y = mu[s].project(d).datavector()
+                err = jnp.linalg.norm(x - y, 1)
+                ans += err
+                count += 1
+    try:
+        return ans / count
+    except:
+        return 0

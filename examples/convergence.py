@@ -14,6 +14,9 @@ def default_params():
     :returns: a dictionary of default parameter settings for each command line argument
     """
     params = {}
+    # Seems to be some instability with RDA and IG even with tuned Lipschitz.
+    # They make faster progress than MD at first, but plateau at a suboptimal
+    # value or start getting NaNs after many iterations.
     params["estimator"] = "MD"
     params["iters"] = 2000
     # Interior gradient does better with Lipschitz=1, likely some inconistency
