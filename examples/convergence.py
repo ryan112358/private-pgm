@@ -1,5 +1,5 @@
 from mbi import Dataset, LinearMeasurement
-from mbi import estimation
+from mbi import estimation, callbacks
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -56,9 +56,11 @@ if __name__ == "__main__":
         y = y + np.random.normal(loc=0, scale=10, size=y.size)
         measurements.append(LinearMeasurement(y, p))
 
+    callback_fn = callbacks.default(measurements, data)
+
     if args.estimator == "RDA":
-      model = estimation.dual_averaging(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters)
+      model = estimation.dual_averaging(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters, callback_fn=callback_fn)
     if args.estimator == "MD":
-      model = estimation.mirror_descent(data.domain, measurements, iters=args.iters)
+      model = estimation.mirror_descent(data.domain, measurements, iters=args.iters, callback_fn=callback_fn)
     if args.estimator == "IG":
-      model = estimation.interior_gradient(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters)
+      model = estimation.interior_gradient(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters, callback_fn=callback_fn)

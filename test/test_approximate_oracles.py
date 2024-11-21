@@ -21,13 +21,13 @@ _CLIQUE_SETS = [
 ]
 
 
-def fake_measurements(cliques, norm="l2"):
+def fake_measurements(cliques):
     P = Factor.random(_DOMAIN)
     P = P / P.sum()
     measurements = []
     for cl in cliques:
         y = P.project(cl).datavector()
-        measurements.append(LinearMeasurement(y, cl, loss=norm))
+        measurements.append(LinearMeasurement(y, cl))
     return measurements
 
 

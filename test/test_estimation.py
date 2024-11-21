@@ -19,13 +19,13 @@ _CLIQUE_SETS = [
 ]
 
 
-def fake_measurements(cliques, norm="l2"):
+def fake_measurements(cliques):
     P = Factor.random(_DOMAIN)
     P = P / P.sum()
     measurements = []
     for cl in cliques:
         y = P.project(cl).datavector()
-        measurements.append(marginal_loss.LinearMeasurement(y, cl, loss=norm))
+        measurements.append(marginal_loss.LinearMeasurement(y, cl))
     return measurements
 
 
@@ -50,8 +50,8 @@ class TestEstimation(unittest.TestCase):
 
     @parameterized.expand(itertools.product(_CLIQUE_SETS))
     def test_mirror_descent_l1(self, cliques):
-        measurements = fake_measurements(cliques, norm="l1")
-        loss_fn = marginal_loss.from_linear_measurements(measurements)
+        measurements = fake_measurements(cliques)
+        loss_fn = marginal_loss.from_linear_measurements(measurements, norm="l1")
 
         model = estimation.mirror_descent(
             _DOMAIN, loss_fn, known_total=1.0, iters=250, stepsize=0.01

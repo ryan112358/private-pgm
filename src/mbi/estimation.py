@@ -95,7 +95,7 @@ def mirror_descent(
     marginal_oracle=marginal_oracles.message_passing_new,
     iters: int = 1000,
     stepsize: float | None = None,
-    callback_fn: Callable[[int, chex.Numeric], None] = _DEFAULT_CALLBACK,
+    callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):
     """Optimization using the Mirror Descent algorithm.
 
@@ -135,7 +135,7 @@ def mirror_descent(
 
         theta2 = theta - alpha * dL
         if stepsize is not None:
-            return theta2, loss, alpha
+            return theta2, loss, alpha, mu
 
         mu2 = marginal_oracle(theta2, known_total)
         loss2 = loss_fn(mu2)
@@ -145,12 +145,12 @@ def mirror_descent(
         theta = jax.lax.cond(sufficient_decrease, lambda: theta2, lambda: theta)
         loss = jax.lax.select(sufficient_decrease, loss2, loss)
 
-        return theta, loss, alpha
+        return theta, loss, alpha, mu
 
     alpha = 2.0 if stepsize is None else stepsize 
     for t in range(iters):
-        potentials, loss, alpha = update(potentials, alpha)
-        callback_fn(t, loss)
+        potentials, loss, alpha, mu = update(potentials, alpha)
+        callback_fn(mu)
 
     marginals = marginal_oracle(potentials, known_total)
     return GraphicalModel(potentials, marginals, known_total)
@@ -163,7 +163,7 @@ def lbfgs(
     potentials: CliqueVector | None = None,
     marginal_oracle=marginal_oracles.message_passing_new,
     iters: int = 1000,
-    callback_fn: Callable[[int, chex.Numeric], None] = _DEFAULT_CALLBACK,
+    callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):
     """Gradient-based optimization on the potentials (theta) via L-BFGS.
 
@@ -216,7 +216,7 @@ def lbfgs(
     state = optimizer.init(potentials)
     for t in range(iters):
         potentials, state, loss = update(potentials, state)
-        callback_fn(t, loss)
+        #callback_fn(t, loss)
 
     marginals = marginal_oracle(potentials, known_total)
     return GraphicalModel(potentials, marginals, known_total)
@@ -246,7 +246,7 @@ def dual_averaging(
     potentials: CliqueVector | None = None,
     marginal_oracle=marginal_oracles.message_passing_new,
     iters: int = 1000,
-    callback_fn: Callable[[int, chex.Numeric], None] = _DEFAULT_CALLBACK,
+    callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ) -> GraphicalModel:
     """Optimization using the Regularized Dual Averaging (RDA) algorithm.
 
@@ -263,7 +263,7 @@ def dual_averaging(
             that supports the cliques in the loss_fn.
         marginal_oracle: The function to use to compute marginals from potentials.
         iters: The maximum number of optimization iterations.
-        callback_fn: A function to call at each iteration with the iteration number
+        callback_fn: A function to call with intermediate solution at each iteration.
 
     Returns:
         A GraphicalModel object with the final potentials and marginals.
@@ -290,8 +290,7 @@ def dual_averaging(
     for t in range(1, iters + 1):
         c = 2.0 / (t + 1)
         w, v, gbar = update(w, v, gbar, c)
-        if (t-1) % 50 == 0:
-          callback_fn(t-1, loss_fn(w))
+        callback_fn(w)
 
     return w # mle_from_marginals(w, known_total)
 
@@ -305,7 +304,7 @@ def interior_gradient(
     marginal_oracle=marginal_oracles.message_passing_new,
     iters: int = 1000,
     stepsize: float | None = None,
-    callback_fn: Callable[[int, chex.Numeric], None] = _DEFAULT_CALLBACK,
+    callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):
     """Optimization using the Interior Point Gradient Descent algorithm.
 
@@ -354,7 +353,6 @@ def interior_gradient(
     theta = potentials
     for t in range(1, iters + 1):
         theta, c, x, y, z = update(theta, c, x, y, z)
-        if t % 50 == 0:
-          callback_fn(t, loss_fn(x))
+        callback_fn(x)
 
     return  x #mle_from_marginals(x, known_total)

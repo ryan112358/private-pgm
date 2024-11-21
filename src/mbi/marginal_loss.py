@@ -76,16 +76,6 @@ class LinearMeasurement:
     clique: Clique = attr.field(converter=tuple)
     stddev: float = 1.0
     query: Callable[[jax.Array], jax.Array] = lambda x: x
-    loss: str = "l2"
-
-    def loss_fn(self, mu: jax.Array) -> jax.Array:
-        diff = self.query(mu) - self.noisy_measurement
-        if self.loss == "l2":
-            return (diff @ diff) / (2 * self.stddev)
-        elif self.loss == "l1":
-            return jnp.sum(jnp.abs(diff)) / self.stddev
-        else:
-            raise ValueError("Unknown loss function.")
 
 
 @attr.dataclass(frozen=True)
@@ -99,16 +89,22 @@ class MarginalLossFn:
         return self.loss_fn(marginals)
 
 
-def from_linear_measurements(measurements: list[LinearMeasurement]) -> "MarginalLossFn":
+def from_linear_measurements(measurements: list[LinearMeasurement], norm:str = "l2") -> MarginalLossFn:
+    if norm not in ["l1", "l2"]:
+        raise ValueError(f"Unknown norm {norm}.")
     cliques = [m.clique for m in measurements]
     maximal_cliques = maximal_subset(cliques)
 
     def loss_fn(marginals: CliqueVector) -> chex.Numeric:
         loss = 0.0
-        for measurement in measurements:
-            cl = measurement.clique
-            mu = marginals.project(cl).datavector()
-            loss += measurement.loss_fn(mu)
+        for M in measurements:
+            mu = marginals.project(M.clique).datavector()
+            diff = M.query(mu) - M.noisy_measurement
+            if norm == "l2":
+                loss += (diff @ diff) / (2 * M.stddev)
+            elif norm == "l1":
+                loss += jnp.sum(jnp.abs(diff)) / M.stddev
+           
         return loss
 
     return MarginalLossFn(maximal_cliques, loss_fn)
