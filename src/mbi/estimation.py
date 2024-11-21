@@ -84,6 +84,9 @@ def _initialize(domain, loss_fn, known_total, potentials):
     if potentials is None:
         potentials = CliqueVector.zeros(domain, loss_fn.cliques)
 
+    if not all(potentials.supports(cl) for cl in loss_fn.cliques):
+        raise ValueError('Initial potentials do not support the loss function')
+
     return loss_fn, known_total, potentials
 
 
@@ -187,7 +190,7 @@ def lbfgs(
       known_total: The known or estimated number of records in the data.
         If loss_fn is provided as a list of LinearMeasurements, this argument
         is optional.  Otherwise, it is required.
-      potentials: The initial potentials.  Must be defind over a set of cliques
+      potentials: The initial potentials.  Must be defined over a set of cliques
         that supports the cliques in the loss_fn.
       marginal_oracle: The function to use to compute marginals from potentials.
       iters: The maximum number of optimization iterations.
@@ -197,26 +200,30 @@ def lbfgs(
         domain, loss_fn, known_total, potentials
     )
 
-    # TODO: confirm that potentials.cliques supports loss_fn.cliques.
-
     theta_loss = lambda theta: loss_fn(marginal_oracle(theta, known_total))
     theta_loss_and_grad = jax.value_and_grad(theta_loss)
 
     @jax.jit
     def update(theta, opt_state):
+        # TODO: this can be done more efficiently by leveraging jax.vjp or jax.jvp
+        # or maybe it doesn't matter that we recompute mu under JIT?
+        mu = marginal_oracle(theta, known_total)
         loss, grad = theta_loss_and_grad(theta)
         updates, opt_state = optimizer.update(
             grad, opt_state, theta, value=loss, grad=grad, value_fn=theta_loss
         )
-        return optax.apply_updates(theta, updates), opt_state, loss
+        return optax.apply_updates(theta, updates), opt_state, loss, mu
 
+    # When using this function to do L2 minimization, setting the learning rate
+    # manually is sometimes required to make progress.
     optimizer = optax.lbfgs(
-        memory_size=1, linesearch=optax.scale_by_backtracking_linesearch(128)
+        memory_size=1, 
+        linesearch=optax.scale_by_backtracking_linesearch(128, max_learning_rate=1.0)
     )
     state = optimizer.init(potentials)
     for t in range(iters):
-        potentials, state, loss = update(potentials, state)
-        #callback_fn(t, loss)
+        potentials, state, loss, mu = update(potentials, state)
+        callback_fn(mu)
 
     marginals = marginal_oracle(potentials, known_total)
     return GraphicalModel(potentials, marginals, known_total)

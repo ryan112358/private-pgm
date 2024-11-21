@@ -33,7 +33,7 @@ if __name__ == "__main__":
         "--estimator",
         choices=["MD", "MD2", "RDA", "LBFGS", "EM", "IG"],
         help="estimator",
-    )
+    ) 
     parser.add_argument("--iters", type=int, help="number of iterations")
     parser.add_argument("--lipschitz", type=float, help="lipschitz constant")
 
@@ -67,3 +67,5 @@ if __name__ == "__main__":
       model = estimation.mirror_descent(data.domain, measurements, iters=args.iters, callback_fn=callback_fn)
     if args.estimator == "IG":
       model = estimation.interior_gradient(data.domain, measurements, lipschitz=args.lipschitz, iters=args.iters, callback_fn=callback_fn)
+    if args.estimator == "LBFGS":
+        model = estimation.lbfgs(data.domain, measurements, iters=args.iters, callback_fn=callback_fn)
