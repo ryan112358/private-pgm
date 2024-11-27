@@ -144,7 +144,7 @@ def mirror_descent(
         loss2 = loss_fn(mu2)
 
         sufficient_decrease = loss - loss2 >= 0.5 * alpha * dL.dot(mu - mu2)
-        alpha = jax.lax.select(sufficient_decrease, alpha, 0.5 * alpha)
+        alpha = jax.lax.select(sufficient_decrease, 1.01 * alpha, 0.5 * alpha)
         theta = jax.lax.cond(sufficient_decrease, lambda: theta2, lambda: theta)
         loss = jax.lax.select(sufficient_decrease, loss2, loss)
 
