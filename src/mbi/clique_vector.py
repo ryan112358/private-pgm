@@ -58,26 +58,31 @@ class CliqueVector:
 
     @classmethod
     def zeros(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+        cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.zeros(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
     def ones(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+        cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.ones(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
     def uniform(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+        cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.uniform(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
     def random(cls, domain: Domain, cliques: list[Clique]):
+        cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.random(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
     def from_projectable(cls, data, cliques: list[Clique]):
+        cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: data.project(cl) for cl in cliques}
         return cls(data.domain, cliques, arrays)
 
@@ -137,6 +142,9 @@ class CliqueVector:
 
     def __rmul__(self, const: chex.Numeric) -> "CliqueVector":
         return self.__mul__(const)
+
+    def __truediv__(self, const: chex.Numeric) -> "CliqueVector":
+        return self.__mul__(1 / const)
 
     def __add__(self, other: chex.Numeric | "CliqueVector") -> "CliqueVector":
         if isinstance(other, CliqueVector):

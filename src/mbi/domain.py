@@ -1,4 +1,4 @@
-from collections.abc import Collection, Iterator
+from collections.abc import Sequence, Iterator
 import functools
 
 import attr
@@ -37,7 +37,7 @@ class Domain:
         """
         return Domain(config.keys(), config.values())
 
-    def project(self, attributes: str | Collection[str]) -> "Domain":
+    def project(self, attributes: str | Sequence[str]) -> "Domain":
         """Project the domain onto a subset of attributes.
 
         Args:
@@ -52,7 +52,7 @@ class Domain:
         shape = tuple(self.config[a] for a in attributes)
         return Domain(attributes, shape)
 
-    def marginalize(self, attrs: Collection[str]) -> "Domain":
+    def marginalize(self, attrs: Sequence[str]) -> "Domain":
         """Marginalize out some attributes from the domain (opposite of project).
 
         Example Usage:
@@ -96,7 +96,7 @@ class Domain:
         """
         return self.project([a for a in self.attributes if a in other.attributes])
 
-    def axes(self, attrs: Collection[str]) -> tuple[int, ...]:
+    def axes(self, attrs: Sequence[str]) -> tuple[int, ...]:
         """Return the axes tuple for the given attributes.
 
         Args:
@@ -126,7 +126,7 @@ class Domain:
         extra = other.marginalize(self.attributes)
         return Domain(self.attributes + extra.attributes, self.shape + extra.shape)
 
-    def size(self, attributes: Collection[str] | None = None) -> int:
+    def size(self, attributes: Sequence[str] | None = None) -> int:
         """Return the total size of the domain.
 
         Example:

@@ -278,16 +278,18 @@ def dual_averaging(
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
+    D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy
+    Q = 0 # upper bound on variance of stochastic gradients
+    gamma = Q / D
 
-    beta = 0
     L = lipschitz
 
     @jax.jit
-    def update(w, v, gbar, c):
+    def update(w, v, gbar, c, beta):
         u = (1 - c) * w + c * v
-        g = jax.grad(loss_fn)(u)
+        g = jax.grad(loss_fn)(u)  / known_total
         gbar = (1 - c) * gbar + c * g
-        theta = -t * (t + 1) / (4 * L + beta) / known_total * gbar
+        theta = -t * (t + 1) / (4 * L + beta) * gbar
         v = marginal_oracle(theta, known_total)
         w = (1 - c) * w + c * v
         return w, v, gbar
@@ -296,10 +298,11 @@ def dual_averaging(
     gbar = CliqueVector.zeros(domain, loss_fn.cliques)
     for t in range(1, iters + 1):
         c = 2.0 / (t + 1)
-        w, v, gbar = update(w, v, gbar, c)
+        beta = gamma * (t+1)**1.5 / 2
+        w, v, gbar = update(w, v, gbar, c, beta)
         callback_fn(w)
 
-    return w # mle_from_marginals(w, known_total)
+    return mle_from_marginals(w, known_total)
 
 
 def interior_gradient(
@@ -362,4 +365,4 @@ def interior_gradient(
         theta, c, x, y, z = update(theta, c, x, y, z)
         callback_fn(x)
 
-    return  x #mle_from_marginals(x, known_total)
+    return mle_from_marginals(x, known_total)
