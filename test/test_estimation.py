@@ -123,4 +123,4 @@ class TestEstimation(unittest.TestCase):
         for cl in cliques:
             expected = mu.project(cl).datavector()
             actual = model.project(cl).datavector()
-            np.testing.assert_allclose(actual, expected, atol=1e-2)
+            np.testing.assert_allclose(actual, expected, atol=100 / total)

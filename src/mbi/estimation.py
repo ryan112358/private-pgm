@@ -150,7 +150,12 @@ def mirror_descent(
 
         return theta, loss, alpha, mu
 
-    alpha = 2.0 if stepsize is None else stepsize 
+    # A reasonable initial learning rate seems to be 2.0 L / known_total,
+    # where L is the Lipschitz constant.  Starting from a value too high
+    # can be fine in some cases, but lead to incorrect behavior in others.
+    # We don't currently take L as an argument, but for the most common case,
+    # where our loss function is || mu - y ||_2^2, we have L = 1.
+    alpha = 2.0 / known_total if stepsize is None else stepsize 
     for t in range(iters):
         potentials, loss, alpha, mu = update(potentials, alpha)
         callback_fn(mu)
@@ -217,7 +222,7 @@ def lbfgs(
     # When using this function to do L2 minimization, setting the learning rate
     # manually is sometimes required to make progress.
     optimizer = optax.lbfgs(
-        memory_size=1, 
+        memory_size=1,
         linesearch=optax.scale_by_backtracking_linesearch(128, max_learning_rate=1.0)
     )
     state = optimizer.init(potentials)
@@ -242,7 +247,7 @@ def mle_from_marginals(marginals: CliqueVector, known_total: float) -> Graphical
     # TODO: wire in something here (custom vjp) for more efficient grad
     negative_log_likelihood = lambda mu: -marginals.dot(mu.log())
     loss_fn = marginal_loss.MarginalLossFn(marginals.cliques, negative_log_likelihood)
-    return lbfgs(marginals.domain, loss_fn, known_total, callback_fn=lambda *_: None, iters=150)
+    return lbfgs(marginals.domain, loss_fn, known_total, callback_fn=lambda *_: None, iters=250)
 
 
 def dual_averaging(
@@ -282,12 +287,12 @@ def dual_averaging(
     Q = 0 # upper bound on variance of stochastic gradients
     gamma = Q / D
 
-    L = lipschitz
+    L = lipschitz / known_total
 
     @jax.jit
     def update(w, v, gbar, c, beta):
         u = (1 - c) * w + c * v
-        g = jax.grad(loss_fn)(u)  / known_total
+        g = jax.grad(loss_fn)(u) / known_total
         gbar = (1 - c) * gbar + c * g
         theta = -t * (t + 1) / (4 * L + beta) * gbar
         v = marginal_oracle(theta, known_total)
@@ -365,4 +370,4 @@ def interior_gradient(
         theta, c, x, y, z = update(theta, c, x, y, z)
         callback_fn(x)
 
-    return mle_from_marginals(x, known_total)
+    return x # mle_from_marginals(x, known_total)

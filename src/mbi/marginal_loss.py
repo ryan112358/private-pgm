@@ -65,7 +65,7 @@ def clique_mapping(
 
 @functools.partial(
     jax.tree_util.register_dataclass,
-    meta_fields=["clique", "stddev", "query", "loss"],
+    meta_fields=["clique", "stddev", "query"],
     data_fields=["values"],
 )
 @attr.dataclass(frozen=True)

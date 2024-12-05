@@ -2,6 +2,7 @@ import attr
 import jax
 from mbi import LinearMeasurement, Dataset, CliqueVector
 from mbi import marginal_loss
+import pandas as pd
 
 @attr.dataclass
 class Callback:
@@ -24,7 +25,7 @@ class Callback:
     def summary(self):
         return pd.DataFrame(
             columns=["step"] + list(self.loss_fns.keys()), data=self._logs
-        )
+        ).astype(float)
 
 def default(
     measurements: list[LinearMeasurement],
@@ -61,5 +62,11 @@ def default(
 
     loss_fns = { key: jax.jit(loss_fns[key].__call__) for key in loss_fns }
     loss_fns['Primal Feasibility'] = jax.jit(marginal_loss.primal_feasibility)
+
+    def grad_norm(mu):
+        grad = jax.grad(loss_fns["L2 Loss"])(mu)
+        return grad.dot(grad)**0.5
+
+    loss_fns['Gradient Norm'] = grad_norm
 
     return Callback(loss_fns, frequency)
