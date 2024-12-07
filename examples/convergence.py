@@ -21,13 +21,11 @@ def default_params():
     # Seems to be some instability with RDA and IG even with tuned Lipschitz.
     # They make faster progress than MD at first, but plateau at a suboptimal
     # value or start getting NaNs after many iterations.
-    params["estimator"] = "MD"
+    params["estimator"] = ["MD"]
     params["iters"] = 10000
     params["stddev"] = 10
-    # Interior gradient does better with Lipschitz=1, likely some inconistency
-    # with normalization somewhere.
     # True Lipschitz constant should be 1 for Q = I
-    params["lipschitz"] = 1.0  # 0.00005 # needs to be tuned for now
+    params["lipschitz"] = 1.0  
     return params
 
 
@@ -37,8 +35,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=description, formatter_class=formatter)
     parser.add_argument(
         "--estimator",
-        choices=["MD", "MD2", "RDA", "LBFGS", "EM", "IG"],
-        help="estimator",
+        choices=["MD", "RDA", "LBFGS", "IG"],
+        nargs="+",
+        help="estimators",
     )
     parser.add_argument("--iters", type=int, help="number of iterations")
     parser.add_argument("--lipschitz", type=float, help="lipschitz constant")
@@ -67,63 +66,63 @@ if __name__ == "__main__":
         y = y + np.random.normal(loc=0, scale=args.stddev, size=y.size)
         measurements.append(LinearMeasurement(y, p))
 
-    callback_fn = callbacks.default(measurements, data)
-    marginal_oracle = marginal_oracles.message_passing_new
+    best = 0 if args.stddev == 0 else np.inf
+    summaries = {}
+    for estimator in args.estimator:
+        callback_fn = callbacks.default(measurements, data)
+        if estimator == "MD":
+            model = estimation.mirror_descent(
+                data.domain,
+                measurements,
+                iters=args.iters,
+                callback_fn=callback_fn,
+            )
+        if estimator == "RDA":
+            model = estimation.dual_averaging(
+                data.domain,
+                measurements,
+                lipschitz=args.lipschitz,
+                iters=args.iters,
+                callback_fn=callback_fn,
+            )
+        if estimator == "IG":
+            model = estimation.interior_gradient(
+                data.domain,
+                measurements,
+                lipschitz=args.lipschitz,
+                iters=args.iters,
+                callback_fn=callback_fn,
+            )
+        if estimator == "LBFGS":
+            model = estimation.lbfgs(
+                data.domain,
+                measurements,
+                iters=args.iters,
+                callback_fn=callback_fn,
+            )
 
-    if args.estimator == "RDA":
-        model = estimation.dual_averaging(
-            data.domain,
-            measurements,
-            lipschitz=args.lipschitz,
-            iters=args.iters,
-            callback_fn=callback_fn,
-            marginal_oracle=marginal_oracle,
-        )
-    if args.estimator == "MD":
-        model = estimation.mirror_descent(
-            data.domain,
-            measurements,
-            iters=args.iters,
-            callback_fn=callback_fn,
-            marginal_oracle=marginal_oracle,
-        )
-    if args.estimator == "IG":
-        model = estimation.interior_gradient(
-            data.domain,
-            measurements,
-            lipschitz=args.lipschitz,
-            iters=args.iters,
-            callback_fn=callback_fn,
-            marginal_oracle=marginal_oracle,
-        )
-    if args.estimator == "LBFGS":
-        model = estimation.lbfgs(
-            data.domain,
-            measurements,
-            iters=args.iters,
-            callback_fn=callback_fn,
-            marginal_oracle=marginal_oracle,
-        )
+        summary = callback_fn.summary
+        if args.stddev > 0:
+            best = min(best, summary["L2 Loss"].min())
+            summary = summary.iloc[: summary.shape[0] // 5]
+        summaries[estimator] = summary
 
-    summary = callback_fn.summary
-    if args.stddev == 0:
-        best = 0  # known minimum
-    else:
-        best = summary["L2 Loss"].min()  # approximate minimum
-        summary = summary.iloc[: summary.shape[0] // 5]
 
-    xs = summary["step"] + 1
-    ys = summary["L2 Loss"] - best
-    coef = np.polyfit(np.log(xs), np.log(ys), deg=1)
-    est = np.exp(coef[1]) * xs ** coef[0]
+    for estimator in args.estimator:
+        summary = summaries[estimator]
+        xs = summary["step"] + 1
+        ys = summary["L2 Loss"] - best
+        coef = np.polyfit(np.log(xs), np.log(ys), deg=1)
+        est = np.exp(coef[1]) * xs ** coef[0]
 
-    plt.plot(xs, ys)
-    plt.plot(xs, est, label="$O(1 / t^{%.1f})$" % (-coef[0]))
+        plt.plot(xs, ys, label='%s: O(1 / t^{%.1f})' % (estimator, -coef[0]))
+
     plt.xlabel("$t$")
     plt.ylabel("$L_t-L_*$")
     # plt.yscale("log")
     plt.loglog()
     plt.legend()
-    plt.savefig(f"{args.estimator}.png")
+    stddev = args.stddev
+    plt.savefig(f"{stddev=}.png")
 
-    IPython.embed()
+    # IPython.embed()

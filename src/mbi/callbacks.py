@@ -10,7 +10,7 @@ class Callback:
     frequency: int = 50
     # Internal state
     _step: int = 0
-    _logs: list = []
+    _logs: list = attr.field(factory=list)
 
     def __call__(self, marginals: CliqueVector):
         if self._step == 0:

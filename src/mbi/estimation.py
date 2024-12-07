@@ -256,7 +256,7 @@ def dual_averaging(
     lipschitz: float,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_new,
+    marginal_oracle=marginal_oracles.message_passing,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ) -> GraphicalModel:
@@ -316,7 +316,7 @@ def interior_gradient(
     lipschitz: float | None = None,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_new,
+    marginal_oracle=marginal_oracles.message_passing,
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
