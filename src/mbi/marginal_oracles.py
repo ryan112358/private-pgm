@@ -25,10 +25,30 @@ def sum_product(factors: list[Factor], dom: Domain) -> Factor:
     return Factor(dom, values)
 
 
-def logspace_sum_product(potentials: list[Factor], dom: Domain) -> Factor:
-    maxes = [f.max(f.domain.marginalize(dom).attributes) for f in potentials]
-    stable_potentials = [(f - m).exp() for f, m in zip(potentials, maxes)]
-    return sum_product(stable_potentials, dom).log() + sum(maxes)
+def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
+    """Numerically stable algorithm for computing sum product in log space.
+
+    This seems to be the most stable algorithm for doing this computation that doesn't
+    require materializing sum(log_factors).  Materializing sum(log_factors) will
+    in general give better numerical stability, but it comes at the cost of
+    increased memory usage.
+
+    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map 
+    to compute log sum product sequentially.  This will also have the dual
+    benefit of using less memory than jnp.einsum in some hard cases.
+
+    https://github.com/jax-ml/jax/issues/24915
+
+    https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy
+    """
+    maxes = [f.max(f.domain.marginalize(dom).attributes) for f in log_factors]
+    stable_factors = [(f - m).exp() for f, m in zip(log_factors, maxes)]
+    return sum_product(stable_factors, dom).log() + sum(maxes)
+
+
+def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
+    summed = sum(log_factors)
+    return summed.logsumexp(summed.domain.marginalize(dom).attributes)
 
 
 def brute_force_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector:
