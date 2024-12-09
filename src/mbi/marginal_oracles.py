@@ -1,3 +1,21 @@
+"""Functions for computing marginals from log-space potentials.
+
+The functions in this library should all produce numerically identical
+outputs on well-behaved inputs, but may have different stability characteristics
+on poorly-behaved inputs, and different rutnime/memory performance characteristics.
+
+The currently supported marginal_oracles in this libarary are:
+    * brute_force_marginals
+    * einsum_marginals
+    * message_passing_stable
+    * message_passing_fast
+
+We recommend using message_passing_stable with accelerated estimation algorithms like
+Interior Gradient, but using message_passing_fast with mirror descent.  A marginal oracle
+is a function that consumes a vector of log-space potentials over an arbitrary set of cliques
+and returns a vector of marginals defined over those same set of cliques.
+"""
+
 import string
 import jax
 import jax.numpy as jnp
@@ -10,7 +28,20 @@ _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
 
 
 def sum_product(factors: list[Factor], dom: Domain) -> Factor:
-    """Compute the sum-product of a list of factors."""
+    """Compute the sum-of-products of a list of Factors using einsum.
+
+    Args:
+        factors: A list of Factors.
+        dom: The target domain of the output factor.
+
+    Returns:
+        sum_{S \ D} prod_i F_i,
+        where
+            * F_i = factors[i]
+            * D = dom
+            * S = union of domains of F_i
+    """
+
     attrs = sorted(set.union(*[set(f.domain) for f in factors]).union(set(dom)))
     mapping = dict(zip(attrs, _EINSUM_LETTERS))
     convert = lambda d: "".join(mapping[a] for a in d.attributes)
@@ -40,6 +71,17 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
     https://github.com/jax-ml/jax/issues/24915
 
     https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy
+
+    Args:
+        log_factors: a list of log-space factors.
+        dom: The desired domain of the output factor.
+
+    Returns:
+        log sum_{S \ D} prod_i exp(F_i),
+        where 
+            * F_i = log_factors[i], 
+            * D is the input domain,
+            * S is the union of the domains of F_i
     """
     maxes = [f.max(f.domain.marginalize(dom).attributes) for f in log_factors]
     stable_factors = [(f - m).exp() for f, m in zip(log_factors, maxes)]
@@ -47,17 +89,29 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
 
 
 def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
+    """More stable implementation of logspace_sum_product.
+        
+    This ipmlementation may (or may not) materialize a Factor over the domain
+    of all elements of log_factors.  Without JIT, it will materialize this "super-factor".
+    Under JIT, there may be some instances where the compiler can figure out
+    that it does not need to materialize this intermediate to compute the final output.
+    """
     summed = sum(log_factors)
     return summed.logsumexp(summed.domain.marginalize(dom).attributes)
 
 
 def brute_force_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector:
+    """Compute marginals from (log-space) potentials by materializing the full joint distribution."""
     P = sum(potentials.arrays.values()).normalize(total, log=True).exp()
     marginals = {cl: P.project(cl) for cl in potentials.cliques}
     return CliqueVector(potentials.domain, potentials.cliques, marginals)
 
 
 def einsum_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector:
+    """Compute marginals from (log-space) potentials by using einsum.
+
+    This is a "brute-force" approach and is not recommended in practice.
+    """
     inputs = list(potentials.arrays.values())
     return CliqueVector(
         potentials.domain,
@@ -72,8 +126,23 @@ def einsum_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector
 
 
 @jax.jit
-def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
-    """Message passing marginal inference."""
+def message_passing_stable(potentials: CliqueVector, total: float = 1) -> CliqueVector:
+    """Compute marginals from (log-space) potentials using the message passing algorithm.
+
+    This implementation operates completely in logspace, until the last step where it
+    exponentiates the log-beliefs to get marginals.  It is very stable numerically,
+    but in general could materialize factors defined over "super-cliques", which
+    are the nodes in the junction tree implied by the cliques in potentials.
+    Thus, it may require more memory than "message_passing_fast" below.
+
+    Args:
+        potentials: The (log-space) potentials of a graphical model.
+        total: The normalization factor.
+
+    Returns:
+        The marginals of the graphical model, defined over the same set of cliques
+        as the input potentials.  Each marginal is non-negative and sums to "total".
+    """
     domain, cliques = potentials.domain, potentials.cliques
 
     jtree = junction_tree.make_junction_tree(domain, cliques)[0]
@@ -96,8 +165,26 @@ def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
     return beliefs.normalize(total, log=True).exp().contract(cliques)
 
 @jax.jit
-def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVector:
-    """Message passing marginal inference."""
+def message_passing_fast(potentials: CliqueVector, total: float = 1) -> CliqueVector:
+    """Compute marginals from (log-space) potentials using the message passing algorithm.
+
+    This implementation leverages the "einsum" primitve to compute clique marginals
+    without materializing marginals over the super cliques first (nodes in the
+    junction tree).  It can be much faster and more memory efficient than
+    message_passing_stable, but there are some cases where this
+    implementation is not as stable.
+
+    See the stackoverflow thread for the key difficulty here.
+    https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy
+
+    Args:
+        potentials: The (log-space) potentials of a graphical model.
+        total: The normalization factor.
+
+    Returns:
+        The marginals of the graphical model, defined over the same set of cliques
+        as the input potentials.  Each marginal is non-negative and sums to "total".
+    """
     domain, cliques = potentials.active_domain, potentials.cliques
 
     jtree = junction_tree.make_junction_tree(domain, cliques)[0]
@@ -148,6 +235,17 @@ def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVec
 def variable_elimination(
     potentials: CliqueVector, clique: tuple[str, ...], total: float = 1
 ) -> Factor:
+    """Compute an out-of-model/unsupported marginal from the potentials.
+
+    Args:
+        potentials: The (log-space) potentials of a Graphical Model.
+        clique: The subset of attributes whose marginal you want.
+        total: The normalization factor.
+
+    Returns:
+        The marginal defined over the domain of the input clique, where
+        each entry is non-negative and sums to the input total.
+    """
     clique = tuple(clique)
     cliques = potentials.cliques + [clique]
     domain = potentials.active_domain
