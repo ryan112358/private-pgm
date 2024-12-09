@@ -71,6 +71,7 @@ def einsum_marginals(potentials: CliqueVector, total: float = 1) -> CliqueVector
     )
 
 
+@jax.jit
 def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
     """Message passing marginal inference."""
     domain, cliques = potentials.domain, potentials.cliques
@@ -94,7 +95,7 @@ def message_passing(potentials: CliqueVector, total: float = 1) -> CliqueVector:
 
     return beliefs.normalize(total, log=True).exp().contract(cliques)
 
-
+@jax.jit
 def message_passing_new(potentials: CliqueVector, total: float = 1) -> CliqueVector:
     """Message passing marginal inference."""
     domain, cliques = potentials.active_domain, potentials.cliques

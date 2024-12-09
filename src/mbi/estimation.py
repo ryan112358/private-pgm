@@ -12,7 +12,6 @@ intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
 
-
 import numpy as np
 from mbi import Domain, CliqueVector, Factor, LinearMeasurement
 from mbi import marginal_oracles, marginal_loss, synthetic_data
@@ -85,7 +84,7 @@ def _initialize(domain, loss_fn, known_total, potentials):
         potentials = CliqueVector.zeros(domain, loss_fn.cliques)
 
     if not all(potentials.supports(cl) for cl in loss_fn.cliques):
-        raise ValueError('Initial potentials do not support the loss function')
+        raise ValueError("Initial potentials do not support the loss function")
 
     return loss_fn, known_total, potentials
 
@@ -129,7 +128,6 @@ def mirror_descent(
         domain, loss_fn, known_total, potentials
     )
 
-
     @jax.jit
     def update(theta, alpha):
 
@@ -155,13 +153,40 @@ def mirror_descent(
     # can be fine in some cases, but lead to incorrect behavior in others.
     # We don't currently take L as an argument, but for the most common case,
     # where our loss function is || mu - y ||_2^2, we have L = 1.
-    alpha = 2.0 / known_total if stepsize is None else stepsize 
+    alpha = 2.0 / known_total if stepsize is None else stepsize
     for t in range(iters):
         potentials, loss, alpha, mu = update(potentials, alpha)
         callback_fn(mu)
 
     marginals = marginal_oracle(potentials, known_total)
     return GraphicalModel(potentials, marginals, known_total)
+
+
+def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
+    loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
+
+    @jax.jit
+    def update(params, opt_state):
+        loss, grad = loss_and_grad_fn(params)
+
+        updates, opt_state = optimizer.update(
+            grad, opt_state, params, value=loss, grad=grad, value_fn=loss_fn
+        )
+
+        return optax.apply_updates(params, updates), opt_state, loss
+
+    optimizer = optax.lbfgs(
+        memory_size=1,
+        linesearch=optax.scale_by_zoom_linesearch(128, max_learning_rate=1),
+    )
+    state = optimizer.init(params)
+    prev_loss = float("inf")
+    for t in range(iters):
+        params, state, loss = update(params, state)
+        callback_fn(params)
+        # if loss == prev_loss: break
+        prev_loss = loss
+    return params
 
 
 def lbfgs(
@@ -182,7 +207,7 @@ def lbfgs(
     without noise (i.e., when you know the exact marginals).  In this case,
     the loss function with respect to theta is convex, and therefore this approach
     enjoys convergence guarantees.  With generic marginal loss functions that arise
-    for instance iwth noise marginals, the loss function is typically convex with
+    for instance ith noisy marginals, the loss function is typically convex with
     respect to mu, but not with respect to theta.  Therefore, this optimizer is not
     guaranteed to converge to the global optimum in all cases.  In practice, it
     tends to work well in these settings despite non-convexities.  This approach
@@ -207,34 +232,22 @@ def lbfgs(
 
     theta_loss = lambda theta: loss_fn(marginal_oracle(theta, known_total))
     theta_loss_and_grad = jax.value_and_grad(theta_loss)
-
-    @jax.jit
-    def update(theta, opt_state):
-        # TODO: this can be done more efficiently by leveraging jax.vjp or jax.jvp
-        # or maybe it doesn't matter that we recompute mu under JIT?
-        mu = marginal_oracle(theta, known_total)
-        loss, grad = theta_loss_and_grad(theta)
-        updates, opt_state = optimizer.update(
-            grad, opt_state, theta, value=loss, grad=grad, value_fn=theta_loss
-        )
-        return optax.apply_updates(theta, updates), opt_state, loss, mu
-
-    # When using this function to do L2 minimization, setting the learning rate
-    # manually is sometimes required to make progress.
-    optimizer = optax.lbfgs(
-        memory_size=1,
-        linesearch=optax.scale_by_backtracking_linesearch(128, max_learning_rate=1.0)
+    theta_callback_fn = lambda theta: callback_fn(marginal_oracle(theta, known_total))
+    potentials = _optimize(
+        theta_loss_and_grad, potentials, iters=iters, callback_fn=theta_callback_fn
     )
-    state = optimizer.init(potentials)
-    for t in range(iters):
-        potentials, state, loss, mu = update(potentials, state)
-        callback_fn(mu)
-
-    marginals = marginal_oracle(potentials, known_total)
-    return GraphicalModel(potentials, marginals, known_total)
+    return GraphicalModel(
+        potentials, marginal_oracle(potentials, known_total), known_total
+    )
 
 
-def mle_from_marginals(marginals: CliqueVector, known_total: float) -> GraphicalModel:
+def mle_from_marginals(
+    marginals: CliqueVector,
+    known_total: float,
+    iters: int = 250,
+    marginal_oracle=marginal_oracles.message_passing,
+    callback_fn=lambda *_: None,
+) -> GraphicalModel:
     """Compute the MLE Graphical Model from the marginals.
 
     Args:
@@ -244,10 +257,16 @@ def mle_from_marginals(marginals: CliqueVector, known_total: float) -> Graphical
     Returns:
         A GraphicalModel object with the final potentials and marginals.
     """
-    # TODO: wire in something here (custom vjp) for more efficient grad
-    negative_log_likelihood = lambda mu: -marginals.dot(mu.log())
-    loss_fn = marginal_loss.MarginalLossFn(marginals.cliques, negative_log_likelihood)
-    return lbfgs(marginals.domain, loss_fn, known_total, callback_fn=lambda *_: None, iters=250)
+
+    def loss_and_grad_fn(theta):
+        mu = marginal_oracle(theta, known_total)
+        return -marginals.dot(mu.log()), mu - marginals
+
+    potentials = CliqueVector.zeros(marginals.domain, marginals.cliques)
+    potentials = _optimize(loss_and_grad_fn, potentials, iters=iters)
+    return GraphicalModel(
+        potentials, marginal_oracle(potentials, known_total), known_total
+    )
 
 
 def dual_averaging(
@@ -284,7 +303,7 @@ def dual_averaging(
         domain, loss_fn, known_total, potentials
     )
     D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy
-    Q = 0 # upper bound on variance of stochastic gradients
+    Q = 0  # upper bound on variance of stochastic gradients
     gamma = Q / D
 
     L = lipschitz / known_total
@@ -303,7 +322,7 @@ def dual_averaging(
     gbar = CliqueVector.zeros(domain, loss_fn.cliques)
     for t in range(1, iters + 1):
         c = 2.0 / (t + 1)
-        beta = gamma * (t+1)**1.5 / 2
+        beta = gamma * (t + 1) ** 1.5 / 2
         w, v, gbar = update(w, v, gbar, c, beta)
         callback_fn(w)
 
@@ -370,4 +389,4 @@ def interior_gradient(
         theta, c, x, y, z = update(theta, c, x, y, z)
         callback_fn(x)
 
-    return x # mle_from_marginals(x, known_total)
+    return mle_from_marginals(x, known_total)
