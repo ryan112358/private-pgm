@@ -1,9 +1,8 @@
-from mbi.experimental import LocalInference
+from mbi import approximate_oracles, LinearMeasurement, estimation, callbacks
 import numpy as np
 import argparse
 from mbi import Dataset
 import itertools
-from autodp import privacy_calibrator
 import os
 import pandas as pd
 from scipy import sparse
@@ -85,18 +84,36 @@ if __name__ == "__main__":
             for i in prng.choice(len(workload), args.num_marginals, replace=False)
         ]
 
-    sigma = privacy_calibrator.gaussian_mech(args.epsilon, args.delta)[
-        "sigma"
-    ] * np.sqrt(len(workload))
+    try:
+        from autodp import privacy_calibrator
+        sigma = privacy_calibrator.gaussian_mech(args.epsilon, args.delta)[
+            "sigma"
+        ] * np.sqrt(len(workload))
+    except:
+        print('AutoDP not installed or configurd correctly, using sigma=50')
+        sigma = 50
     measurements = []
     for cl in workload:
         Q = sparse.eye(data.domain.size(cl))
         x = data.project(cl).datavector()
         y = x + np.random.normal(loc=0, scale=sigma, size=x.size)
-        measurements.append((Q, y, sigma, cl))
+        measurements.append(LinearMeasurement(y, cl, sigma))
 
-    engine = LocalInference(data.domain, iters=args.pgm_iters, log=True)
-    model = engine.estimate(measurements)
+    callback_fn = callbacks.default(measurements, data)
+    stepsize = 5e-4
+    model = estimation.mirror_descent(
+        data.domain,
+        measurements,
+        # This should be a stateful marginal_oracle.  In particular, the messages
+        # should persist each time this function is called in order to get
+        # good convergence with only one step.  This is a regression introduced
+        # during the refactoring.
+        marginal_oracle=approximate_oracles.convex_generalized_belief_propagation,
+        iters=args.pgm_iters,
+        callback_fn=callback_fn,
+        stepsize=stepsize / 2**i,
+        potentials=potentials
+    )
 
     errors = []
     for proj in workload:

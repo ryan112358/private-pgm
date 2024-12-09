@@ -20,8 +20,8 @@ def _variable_elimination_oracle(
 _ORACLES = [
     marginal_oracles.brute_force_marginals,
     marginal_oracles.einsum_marginals,
-    marginal_oracles.message_passing,
-    marginal_oracles.message_passing_new,
+    marginal_oracles.message_passing_stable,
+    marginal_oracles.message_passing_fast,
     _variable_elimination_oracle,
 ]
 
