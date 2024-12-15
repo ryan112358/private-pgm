@@ -12,10 +12,15 @@ https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot
 Pull requests are welcome to add support for other approximate oracles.
 """
 
+import jax
 import networkx as nx
 import itertools
 from scipy.cluster.hierarchy import DisjointSet
 from mbi import Domain, CliqueVector, Factor
+from typing import TypeAlias
+import functools
+
+Clique: TypeAlias = tuple[str, ...]
 
 
 def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
@@ -84,9 +89,13 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
 
     return regions, cliques, messages, message_order, parents, children
 
-
+@functools.partial(jax.jit, static_argnames=['iters'])
 def convex_generalized_belief_propagation(
-    potentials: CliqueVector, total: float = 1, iters: int = 1, damping: float = 0.5
+    potentials: CliqueVector,
+    total: float = 1,
+    state: dict[tuple[Clique, Clique], Factor] | None = None,
+    iters: int = 1,
+    damping: float = 0.5,
 ) -> CliqueVector:
     """Convex generalized belief propagation for approximmate marginal inference.
 
@@ -98,6 +107,8 @@ def convex_generalized_belief_propagation(
     Args:
         potentials: A CliqueVector object containing the potentials of the graphical model.
         total: The total number of records in the dataset.
+        state: The state of the message passing algorithm (i.e., the messages).  Useful when
+            calling this within an iterative procedure for warm starting purposes.
         iters: The number of iterations to run the algorithm.
         damping: The damping factor for the messages.
 
@@ -108,6 +119,8 @@ def convex_generalized_belief_propagation(
     regions, cliques, messages, message_order, parents, children = build_graph(
         domain, cliques
     )
+    if state is not None:
+        messages = state
 
     # Hardcode assumption that counting numbers are 1.0 for all regions.
     pot = potentials.expand(regions)
@@ -161,4 +174,4 @@ def convex_generalized_belief_propagation(
                 .exp()
             )
 
-    return CliqueVector(domain, cliques, mu)
+    return CliqueVector(domain, cliques, mu), messages

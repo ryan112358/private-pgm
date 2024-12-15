@@ -109,10 +109,10 @@ if __name__ == "__main__":
         # good convergence with only one step.  This is a regression introduced
         # during the refactoring.
         marginal_oracle=approximate_oracles.convex_generalized_belief_propagation,
+        stateful=True,
         iters=args.pgm_iters,
         callback_fn=callback_fn,
-        stepsize=stepsize / 2**i,
-        potentials=potentials
+        stepsize=stepsize,
     )
 
     errors = []

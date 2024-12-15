@@ -36,7 +36,7 @@ class TestApproximateOracles(unittest.TestCase):
     @parameterized.expand(itertools.product(_ORACLES, _CLIQUE_SETS))
     def test_shapes(self, oracle, cliques):
         zeros = CliqueVector.zeros(_DOMAIN, cliques)
-        marginals = oracle(zeros)
+        marginals, _ = oracle(zeros)
         self.assertEqual(marginals.domain, _DOMAIN)
         self.assertEqual(marginals.cliques, cliques)
         self.assertEqual(set(zeros.arrays.keys()), set(marginals.arrays.keys()))
@@ -50,7 +50,13 @@ class TestApproximateOracles(unittest.TestCase):
         measurements = fake_measurements(cliques)
 
         model = estimation.mirror_descent(
-            _DOMAIN, measurements, known_total=1.0, iters=250, marginal_oracle=oracle
+            _DOMAIN,
+            measurements,
+            known_total=1.0,
+            iters=250,
+            marginal_oracle=oracle,
+            stateful=True,
+            stepsize=1.0,
         )
         for M in measurements:
             expected = M.noisy_measurement

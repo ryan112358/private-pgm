@@ -92,9 +92,11 @@ def _initialize(domain, loss_fn, known_total, potentials):
 def mirror_descent(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+    *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
     marginal_oracle=marginal_oracles.message_passing_fast,
+    stateful: bool = False,
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
@@ -116,6 +118,8 @@ def mirror_descent(
         potentials: The initial potentials.  Must be defind over a set of cliques
             that supports the cliques in the loss_fn.
         marginal_oracle: The function to use to compute marginals from potentials.
+        stateful: flag specifying whether the marginal_oracle is stateful or not
+            (e.g., whether messages should be preserved from one call to the next).
         iters: The maximum number of optimization iterations.
         stepsize: The step size for the optimization.  If not provided, this algorithm
             will use a line search to automatically choose appropriate step sizes.
@@ -128,17 +132,22 @@ def mirror_descent(
         domain, loss_fn, known_total, potentials
     )
 
-    @jax.jit
-    def update(theta, alpha):
+    if not stateful:
+        stateless_oracle = marginal_oracle
+        marginal_oracle = lambda theta, total, state: (stateless_oracle(theta, total), state)
+    elif stepsize is None:
+        raise ValueError('Stepsize should be manually tuned when using a stateful oracle.')
 
-        mu = marginal_oracle(theta, known_total)
+    @jax.jit
+    def update(theta, alpha, state = None):
+        mu, state = marginal_oracle(theta, known_total, state)
         loss, dL = jax.value_and_grad(loss_fn)(mu)
 
         theta2 = theta - alpha * dL
         if stepsize is not None:
-            return theta2, loss, alpha, mu
+            return theta2, loss, alpha, mu, state
 
-        mu2 = marginal_oracle(theta2, known_total)
+        mu2, _ = marginal_oracle(theta2, known_total, state)
         loss2 = loss_fn(mu2)
 
         sufficient_decrease = loss - loss2 >= 0.5 * alpha * dL.dot(mu - mu2)
@@ -146,7 +155,7 @@ def mirror_descent(
         theta = jax.lax.cond(sufficient_decrease, lambda: theta2, lambda: theta)
         loss = jax.lax.select(sufficient_decrease, loss2, loss)
 
-        return theta, loss, alpha, mu
+        return theta, loss, alpha, mu, state
 
     # A reasonable initial learning rate seems to be 2.0 L / known_total,
     # where L is the Lipschitz constant.  Starting from a value too high
@@ -154,11 +163,12 @@ def mirror_descent(
     # We don't currently take L as an argument, but for the most common case,
     # where our loss function is || mu - y ||_2^2, we have L = 1.
     alpha = 2.0 / known_total if stepsize is None else stepsize
+    mu, state = marginal_oracle(potentials, known_total, state=None)
     for t in range(iters):
-        potentials, loss, alpha, mu = update(potentials, alpha)
+        potentials, loss, alpha, mu, state = update(potentials, alpha, state)
         callback_fn(mu)
 
-    marginals = marginal_oracle(potentials, known_total)
+    marginals, _ = marginal_oracle(potentials, known_total, state)
     return GraphicalModel(potentials, marginals, known_total)
 
 
