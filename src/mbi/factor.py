@@ -1,4 +1,4 @@
-from typing import TypeAlias, Collection, Callable
+from typing import TypeAlias, Sequence, Callable
 
 import chex
 import jax
@@ -44,7 +44,7 @@ class Factor:
         return cls(domain, np.random.rand(*domain.shape))
 
     # Reshaping operations
-    def transpose(self, attrs: Collection[str]) -> "Factor":
+    def transpose(self, attrs: Sequence[str]) -> "Factor":
         if set(attrs) != set(self.domain.attrs):
             raise ValueError("attrs must be same as domain attributes")
         newdom = self.domain.project(attrs)
@@ -64,7 +64,7 @@ class Factor:
 
     # Functions that aggregate along some subset of axes
     def _aggregate(
-        self, fn: Callable, attrs: Collection[str] | None = None
+        self, fn: Callable, attrs: Sequence[str] | None = None
     ) -> "Factor":
         attrs = self.domain.attrs if attrs is None else attrs
         axes = self.domain.axes(attrs)
@@ -72,13 +72,13 @@ class Factor:
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
-    def max(self, attrs: Collection[str] | None = None) -> "Factor":
+    def max(self, attrs: Sequence[str] | None = None) -> "Factor":
         return self._aggregate(jnp.max, attrs)
 
-    def sum(self, attrs: Collection[str] | None = None) -> "Factor":
+    def sum(self, attrs: Sequence[str] | None = None) -> "Factor":
         return self._aggregate(jnp.sum, attrs)
 
-    def logsumexp(self, attrs: Collection[str] | None = None) -> "Factor":
+    def logsumexp(self, attrs: Sequence[str] | None = None) -> "Factor":
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
     def project(self, attrs: str | tuple[str, ...], log: bool = False) -> "Factor":
