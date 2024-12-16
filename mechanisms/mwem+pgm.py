@@ -1,9 +1,8 @@
 import numpy as np
 import itertools
-from mbi import Dataset, GraphicalModel, FactoredInference
+from mbi import Dataset, LinearMeasurement, estimation, callbacks, junction_tree
 from scipy.special import softmax
-from scipy import sparse
-from mechanisms.cdp2adp import cdp_rho
+from cdp2adp import cdp_rho
 import argparse
 
 
@@ -23,8 +22,8 @@ There are two additional improvements not described in the original Private-PGM 
 def worst_approximated(
     workload_answers, est, workload, eps, penalty=True, bounded=False
 ):
-    """ Select a (noisy) worst-approximated marginal for measurement.
-    
+    """Select a (noisy) worst-approximated marginal for measurement.
+
     :param workload_answers: a dictionary of true answers to the workload
         keys are cliques
         values are numpy arrays, corresponding to the counts in the marginal
@@ -42,6 +41,14 @@ def worst_approximated(
     prob = softmax(0.5 * eps / sensitivity * (errors - errors.max()))
     key = np.random.choice(len(errors), p=prob)
     return workload[key]
+
+
+def hypothetical_model_size(domain, cliques):
+    jtree, _ = junction_tree.make_junction_tree(domain, cliques)
+    maximal_cliques = junction_tree.maximal_cliques(jtree)
+    cells = sum(domain.size(cl) for cl in maximal_cliques)
+    size_mb = cells * 8 / 2**20
+    return size_mb
 
 
 def mwem_pgm(
@@ -65,8 +72,8 @@ def mwem_pgm(
     :param workload: A list of cliques (attribute tuples) to include in the workload (default: all pairs of attributes)
     :param rounds: The number of rounds of MWEM to run (default: number of attributes)
     :param maxsize_mb: [New] a limit on the size of the model (in megabytes), used to filter out candidate cliques from selection.
-        Used to avoid MWEM+PGM failure modes (intractable model sizes).   
-        Set to np.inf if you would like to run MWEM as originally described without this modification 
+        Used to avoid MWEM+PGM failure modes (intractable model sizes).
+        Set to np.inf if you would like to run MWEM as originally described without this modification
         (Note it may exceed resource limits if run for too many rounds)
 
     Implementation Notes:
@@ -93,31 +100,34 @@ def mwem_pgm(
     domain = data.domain
     total = data.records if bounded else None
 
-    def size(cliques):
-        return GraphicalModel(domain, cliques).size * 8 / 2 ** 20
-
     workload_answers = {cl: data.project(cl).datavector() for cl in workload}
 
-    engine = FactoredInference(data.domain, log=False, iters=pgm_iters, warm_start=True)
     measurements = []
-    est = engine.estimate(measurements, total)
+    est = estimation.mirror_descent(domain, measurements, known_total=total)
+    #import IPython; IPython.embed()
     cliques = []
     for i in range(1, rounds + 1):
         # [New] Only consider candidates that keep the model sufficiently small
         candidates = [
-            cl for cl in workload if size(cliques + [cl]) <= maxsize_mb * i / rounds
+            cl for cl in workload if hypothetical_model_size(domain, cliques + [cl]) <= maxsize_mb * i / rounds
         ]
         ax = worst_approximated(workload_answers, est, candidates, exp_eps)
-        print("Round", i, "Selected", ax, "Model Size (MB)", est.size * 8 / 2 ** 20)
+        model_size = hypothetical_model_size(domain, cliques)
+        print("Round", i, "Selected", ax, "Model Size (MB)", model_size)
         n = domain.size(ax)
         x = data.project(ax).datavector()
         if noise == "laplace":
             y = x + np.random.laplace(loc=0, scale=marginal_sensitivity * sigma, size=n)
         else:
             y = x + np.random.normal(loc=0, scale=marginal_sensitivity * sigma, size=n)
-        Q = sparse.eye(n)
-        measurements.append((Q, y, 1.0, ax))
-        est = engine.estimate(measurements, total)
+        measurements.append(LinearMeasurement(y, ax))
+        est = estimation.mirror_descent(
+            domain,
+            measurements,
+            known_total=total,
+            potentials=est.potentials,
+            callback_fn = callbacks.default(measurements, data)
+        )
         cliques.append(ax)
 
     print("Generating Data...")

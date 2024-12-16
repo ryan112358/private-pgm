@@ -84,7 +84,7 @@ def _initialize(domain, loss_fn, known_total, potentials):
         potentials = CliqueVector.zeros(domain, loss_fn.cliques)
 
     if not all(potentials.supports(cl) for cl in loss_fn.cliques):
-        raise ValueError("Initial potentials do not support the loss function")
+        potentials = potentials.expand(loss_fn.cliques)
 
     return loss_fn, known_total, potentials
 

@@ -260,8 +260,9 @@ def variable_elimination(
         k += 1
     # this expand covers the case when clique is not in the active domain
     newdom = potentials.domain.project(clique)
+    zero = Factor(Domain([], []), 0)
     return (
-        sum(psi.values())
+        sum(psi.values(), start=zero)
         .expand(newdom)
         .normalize(total, log=True)
         .exp()

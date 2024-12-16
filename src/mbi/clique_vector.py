@@ -89,7 +89,7 @@ class CliqueVector:
     @functools.cached_property
     def active_domain(self):
         domains = [self.domain.project(cl) for cl in self.cliques]
-        return functools.reduce(lambda a, b: a.merge(b), domains)
+        return functools.reduce(lambda a, b: a.merge(b), domains, Domain([], []))
 
     # @functools.lru_cache(maxsize=None)
     def parent(self, clique: Clique) -> Clique | None:
@@ -163,7 +163,7 @@ class CliqueVector:
     def dot(self, other: "CliqueVector") -> chex.Numeric:
         is_leaf = lambda node: isinstance(node, Factor)
         dots = jax.tree.map(Factor.dot, self, other, is_leaf=is_leaf)
-        return jax.tree.reduce(operator.add, dots)
+        return jax.tree.reduce(operator.add, dots, 0)
 
     def size(self):
         return sum(self.domain.size(cl) for cl in self.cliques)
