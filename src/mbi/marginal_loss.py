@@ -89,7 +89,20 @@ class MarginalLossFn:
         return self.loss_fn(marginals)
 
 
-def from_linear_measurements(measurements: list[LinearMeasurement], norm:str = "l2") -> MarginalLossFn:
+def from_linear_measurements(
+    measurements: list[LinearMeasurement], norm: str = "l2", normalize: bool = False
+) -> MarginalLossFn:
+    """Construct a MarginalLossFn from a list of LinearMeasurements.
+
+    Args:
+        measurements: A list of LinearMeasurements.
+        norm: Either "l1" or "l2".
+        normalize: Flag determining if the loss function should be normalized
+            by the length of linear measurements and estimated total.
+
+    Returns:
+        The MarginalLossFn L(mu) = sum_{c} || Q_c mu_c - y_c || (possibly squared or normalized).
+    """
     if norm not in ["l1", "l2"]:
         raise ValueError(f"Unknown norm {norm}.")
     cliques = [m.clique for m in measurements]
@@ -104,7 +117,12 @@ def from_linear_measurements(measurements: list[LinearMeasurement], norm:str = "
                 loss += (diff @ diff) / (2 * M.stddev)
             elif norm == "l1":
                 loss += jnp.sum(jnp.abs(diff)) / M.stddev
-           
+
+        if normalize:
+            total = marginals.project([]).datavector(flatten=False)
+            loss = loss / len(measurements) / total
+            if norm == "l2":
+                loss = jnp.sqrt(loss)
         return loss
 
     return MarginalLossFn(maximal_cliques, loss_fn)
@@ -121,7 +139,8 @@ def primal_feasibility(mu: CliqueVector) -> chex.Numeric:
             if len(d) > 0:
                 x = mu[r].project(d).datavector()
                 y = mu[s].project(d).datavector()
-                err = jnp.linalg.norm(x - y, 1)
+                denom = 0.5 * x.sum() + 0.5 * y.sum()
+                err = jnp.linalg.norm(x - y, 1) / denom
                 ans += err
                 count += 1
     try:

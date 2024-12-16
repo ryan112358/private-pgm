@@ -36,7 +36,7 @@ def default_params():
     params["num_marginals"] = None
     params["max_cells"] = 10000
     params["noise"] = "gaussian"
-    params["pgm_iters"] = 2500
+    params["pgm_iters"] = 5000
     params["restarts"] = 1
     params["seed"] = 0
     params["save"] = None
@@ -90,7 +90,7 @@ if __name__ == "__main__":
             "sigma"
         ] * np.sqrt(len(workload))
     except:
-        print('AutoDP not installed or configurd correctly, using sigma=50')
+        print('AutoDP not installed or configured correctly, using sigma=50')
         sigma = 50
     measurements = []
     for cl in workload:
