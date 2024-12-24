@@ -34,7 +34,7 @@ _CLIQUE_SETS = [
     [("a", "b", "c", "d")],  # full materialization
     [("d",)],  # singleton
     [("a", "b", "c"), ("c", "b", "a"), ("b", "d")],  # (permuted) duplicates
-    # [],  empty is currently not supported
+    []
 ]
 
 _ALL_CLIQUES = itertools.chain.from_iterable(
@@ -51,8 +51,12 @@ class TestMarginalOracles(unittest.TestCase):
         self.assertEqual(marginals.domain, _DOMAIN)
         self.assertEqual(marginals.cliques, cliques)
         self.assertEqual(set(zeros.arrays.keys()), set(marginals.arrays.keys()))
-        for cl in cliques:
-            self.assertEqual(marginals[cl].domain.attrs, cl)
+        if not cliques:
+            self.assertEqual(marginals.cliques, [])
+            self.assertEqual(marginals.arrays, {})
+        else:
+            for cl in cliques:
+                self.assertEqual(marginals[cl].domain.attrs, cl)
 
     @parameterized.expand(itertools.product(_ORACLES, _CLIQUE_SETS, [1, 100]))
     def test_uniform(self, oracle, cliques, total=1):
