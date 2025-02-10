@@ -40,7 +40,7 @@ def from_marginals(
 
     for col in order[1:]:
         relevant = [cl for cl in cliques if col in cl]
-        relevant = used.intersection(set.union(*relevant))
+        relevant = used.intersection(set().union(*relevant))
         proj = tuple(relevant)
         used.add(col)
         # Will this work without having the maximal cliques of the junction tree?
