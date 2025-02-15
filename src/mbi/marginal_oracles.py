@@ -35,7 +35,7 @@ def sum_product(factors: list[Factor], dom: Domain) -> Factor:
         dom: The target domain of the output factor.
 
     Returns:
-        sum_{S \ D} prod_i F_i,
+        sum_{S - D} prod_i F_i,
         where
             * F_i = factors[i]
             * D = dom
@@ -77,7 +77,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
         dom: The desired domain of the output factor.
 
     Returns:
-        log sum_{S \ D} prod_i exp(F_i),
+        log sum_{S - D} prod_i exp(F_i),
         where 
             * F_i = log_factors[i], 
             * D is the input domain,

@@ -178,7 +178,7 @@ class AIM(Mechanism):
 
         print("Generating Data...")
         model = estimation.mirror_descent(
-            data.domain, measurements, iters=self.max_iters
+            data.domain, measurements, iters=self.max_iters, potentials=potentials
         )
         synth = model.synthetic_data(rows=num_synth_rows)
 
