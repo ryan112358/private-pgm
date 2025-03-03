@@ -62,6 +62,8 @@ def clique_mapping(
                 break
     return mapping
 
+def identity_fn(x: jax.Array) -> jax.Array:
+    return x
 
 @functools.partial(
     jax.tree_util.register_dataclass,
@@ -75,7 +77,7 @@ class LinearMeasurement:
     noisy_measurement: jax.Array = attr.field(converter=jnp.array)
     clique: Clique = attr.field(converter=tuple)
     stddev: float = 1.0
-    query: Callable[[jax.Array], jax.Array] = lambda x: x
+    query: Callable[[jax.Array], jax.Array] = identity_fn
 
 
 @attr.dataclass(frozen=True)
