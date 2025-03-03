@@ -40,14 +40,6 @@ def downward_closure(Ws):
     return list(sorted(ans, key=len))
 
 
-def hypothetical_model_size(domain, cliques):
-    jtree, _ = junction_tree.make_junction_tree(domain, cliques)
-    maximal_cliques = junction_tree.maximal_cliques(jtree)
-    cells = sum(domain.size(cl) for cl in maximal_cliques)
-    size_mb = cells * 8 / 2**20
-    return size_mb
-
-
 def compile_workload(workload):
     weights = {cl: wt for (cl, wt) in workload}
     workload_cliques = weights.keys()
@@ -66,7 +58,7 @@ def filter_candidates(candidates, model, size_limit):
     free_cliques = downward_closure(model.cliques)
     for cl in candidates:
         cond1 = (
-            hypothetical_model_size(model.domain, model.cliques + [cl]) <= size_limit
+            junction_tree.hypothetical_model_size(model.domain, model.cliques + [cl]) <= size_limit
         )
         cond2 = cl in free_cliques
         if cond1 or cond2:

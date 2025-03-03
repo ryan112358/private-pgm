@@ -11,6 +11,7 @@ from mbi import Domain
 Clique: TypeAlias = tuple[str, ...]
 
 
+
 def maximal_cliques(junction_tree: nx.Graph) -> list[Clique]:
     """Return the list of maximal cliques in the model."""
     return list(nx.dfs_preorder_nodes(junction_tree))
@@ -122,3 +123,12 @@ def make_junction_tree(
         complete.add_edge(c1, c2, weight=-wgt)
     spanning = nx.minimum_spanning_tree(complete)
     return spanning, elimination_order
+
+def hypothetical_model_size(domain: Domain, cliques: list[Clique]) -> float:
+    """Size of the full junction tree parameters, measured in megabytes."""
+    jtree, _ = make_junction_tree(domain, cliques)
+    max_cliques = maximal_cliques(jtree)
+    cells = sum(domain.size(cl) for cl in max_cliques)
+    size_mb = cells * 8 / 2**20
+    return size_mb
+
