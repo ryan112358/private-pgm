@@ -124,3 +124,16 @@ class TestEstimation(unittest.TestCase):
             expected = mu.project(cl).datavector()
             actual = model.project(cl).datavector()
             np.testing.assert_allclose(actual, expected, atol=100 / total)
+
+    def test_estimator_protocol(self):
+        measurements = fake_measurements([("a", "b"), ("b", "c")])
+        loss_fn = marginal_loss.from_linear_measurements(measurements)
+        estimators = [
+            estimation.mirror_descent,
+            estimation.lbfgs,
+            estimation.dual_averaging,
+            estimation.interior_gradient,
+        ]
+        for estimator in estimators:
+            model = estimator(_DOMAIN, loss_fn, known_total=1.0, iters=10)
+            self.assertIsInstance(model, estimation.GraphicalModel)

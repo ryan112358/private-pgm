@@ -20,8 +20,20 @@ import jax
 import chex
 import attr
 import optax
+from typing import Protocol, runtime_checkable, Callable
 
 _DEFAULT_CALLBACK = lambda t, loss: print(loss) if t % 50 == 0 else None
+
+
+@runtime_checkable
+class Estimator(Protocol):
+    def __call__(
+        self,
+        domain: Domain,
+        loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+        **kwargs,
+    ) -> GraphicalModel:
+        ...
 
 
 # API may change, we'll see
@@ -100,7 +112,7 @@ def mirror_descent(
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-):
+) -> GraphicalModel:
     """Optimization using the Mirror Descent algorithm.
 
     This is a first-order proximal optimization algorithm for solving
@@ -207,7 +219,7 @@ def lbfgs(
     marginal_oracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-):
+) -> GraphicalModel:
     """Gradient-based optimization on the potentials (theta) via L-BFGS.
 
     This optimizer works by calculating the gradients with respect to the
@@ -349,7 +361,7 @@ def interior_gradient(
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-):
+) -> GraphicalModel:
     """Optimization using the Interior Point Gradient Descent algorithm.
 
     Interior Gradient is an accelerated proximal algorithm for solving a smooth
