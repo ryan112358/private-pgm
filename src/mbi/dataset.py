@@ -63,6 +63,14 @@ class Dataset:
 
     def datavector(self, flatten=True):
         """return the database in vector-of-counts form"""
-        bins = [range(n + 1) for n in self.domain.shape]
-        ans = np.histogramdd(self.df.values, bins, weights=self.weights)[0]
-        return ans.flatten() if flatten else ans
+        if flatten is not True:
+            bins = [range(n + 1) for n in self.domain.shape]
+            return np.histogramdd(self.df.to_numpy(), bins, weights=self.weights)[0]
+
+        # Faster implementation using a contiguous array (assuming the domain matches the data)
+        arr = self.df.to_numpy()
+        shape_row = arr.shape[1]
+        rowtype = np.dtype((np.void, arr.dtype.itemsize * shape_row))
+        arr_flat = np.ascontiguousarray(arr).view(rowtype)
+        arr_flat = arr_flat.reshape(-1, arr_flat.shape[1])
+        return np.unique(arr_flat, axis=0, return_counts=True)[1]
