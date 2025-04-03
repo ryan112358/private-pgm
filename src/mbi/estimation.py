@@ -15,8 +15,9 @@ support the cliques of the marginal-based loss function can be used here.
 import numpy as np
 from mbi import Domain, CliqueVector, Factor, LinearMeasurement
 from mbi import marginal_oracles, marginal_loss, synthetic_data
-from typing import Callable
+from typing import Any, Callable, NamedTuple
 import jax
+import jax.numpy as jnp
 import chex
 import attr
 import optax
@@ -400,3 +401,209 @@ def interior_gradient(
         callback_fn(x)
 
     return mle_from_marginals(x, known_total)
+
+class AcceleratedStepSearchState(NamedTuple):
+    """State of the step search.
+
+    Attributes:
+        x: parameters defining the optimization algorithm (see Roulet and
+        d'Aspremont Algorithm 2).
+        z: same as x, see ref.
+        u: dual variable corresponding to z.
+        prev_stepsize: reciprocal of the estimate of the Lipshitz-continuity
+        parameter of the gradient of the objective at the previous iteration of
+        the algorithm.
+        stepsize: reciprocal of the estimate of the Lipshitz-continuity parameter
+        of the gradient of the objective at the current iteration of the
+        algorithm.
+        prev_theta: numerical value decreasing along iterates at the previous
+        iteration of the algorithm, see ref.
+        accept: whether the step is accepted or not.
+        iter_search: iteration count of the search
+
+    References:
+        Nesterov, [Universal Gradient Methods for Convex Optimization
+        Problems](https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf)
+
+        Roulet and d'Aspremont, [Sharpness, Restart and
+        Acceleration](https://arxiv.org/pdf/1702.03828)
+    """
+
+    x: CliqueVector
+    z: CliqueVector
+    u: CliqueVector
+    prev_stepsize: jnp.ndarray | float
+    stepsize: jnp.ndarray | float
+    prev_theta: jnp.ndarray | float
+    accept: jnp.ndarray | bool
+    iter_search: jnp.ndarray | int
+
+
+def _universal_accelerated_method_step_init(
+    fun: Callable[[CliqueVector], jnp.ndarray],
+    dual_init_params,
+    dual_proj: Callable[..., Any],
+    max_iter_search: int = 30,
+    target_acc: float = 0.0,
+    stepsize: float = 1.0,
+    norm: int = 2,
+    linesearch=True,
+) -> tuple[
+    AcceleratedStepSearchState,
+    Callable[[AcceleratedStepSearchState], bool],
+    Callable[[AcceleratedStepSearchState], AcceleratedStepSearchState],
+]:
+    """Accelerated first order method adapted to any smoothness.
+
+    Minimizes fun(x) over a constraint set M.
+
+    The algorithm requires an oracle "dual_proj(g)" that computes
+    argmin_y <g, y> + h(y)
+    s.t. y in M
+    where h is a distance generating function.
+
+    This method is inspired from ref 1 and the algorithm is described in
+    essentially described in Algorithm 2 of ref 2. One difference is that we
+    keep track of the dual variable returned by the dual_proj to avoid mapping
+    back and forth between the primal and dual spaces.
+
+    This function provides the initial state and the continuation and body
+    functions for the step the method (which searches for a valid stepsize each
+    time).
+
+    Args:
+        fun: objective to minimize.
+        dual_init_params: initial parameters in dual space.
+        dual_proj: projection onto some constraint set according to a bregman
+        divergence.
+        max_iter_search: maximal number of iterations to run the search.
+        target_acc: target accuracy of the method. If `fun` is non-smooth, this
+        needs to be set > 0. Convergence beyond that target accuracy is not
+        guaranteed. If the function is smooth, set `target_acc=0`.
+        stepsize: initial estimate of the stepsize.
+        norm: type of norm measuring the smoothness of `fun`.
+        linesearch: if true, uses linesearch to determine acceptance of step,
+        otherwise use constant stepsize given by `stepsize`.
+
+    Returns:
+        (init_carry, cond_fun, body_fun) where
+        init_carry: initial state of the step search.
+        cond_fun: continuation criterion when searching for next step.
+        body_fun: step when searching step.
+
+    References:
+        1 Nesterov, [Universal Gradient Methods for Convex Optimization
+        Problems](https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf)
+
+        2 Roulet and d'Aspremont, [Sharpness, Restart and
+        Acceleration](https://arxiv.org/pdf/1702.03828)
+    """
+
+    def cond_fun(carry: AcceleratedStepSearchState) -> bool | jnp.ndarray:
+        """Continuation criterion when searching for next step."""
+        return jnp.logical_not(
+            jnp.logical_or(carry.accept, carry.iter_search >= max_iter_search),
+        )
+
+    def body_fun(
+        carry: AcceleratedStepSearchState,
+    ) -> AcceleratedStepSearchState:
+        """Step when searching step."""
+        # Computes new theta
+        prev_theta, prev_smooth_estim = carry.prev_theta, 1/carry.prev_stepsize
+        smooth_estim, stepsize = 1/carry.stepsize, carry.stepsize
+        aux = 1 + 4 * smooth_estim / (prev_theta**2 * prev_smooth_estim)
+        new_theta = 2 / (1 + jnp.sqrt(aux))
+        # We hardcode the first iteration to be prev_theta=-1
+        theta = jnp.where(carry.prev_theta < 0., 1.0, new_theta)
+
+        # Computes sequences of params
+        y = (1 - theta) * carry.x + theta * carry.z
+        value_y, grad_y = jax.value_and_grad(fun)(y)
+        u = carry.u - stepsize / theta * grad_y
+        z = dual_proj(u)
+        x = (1 - theta) * carry.x + theta * z
+
+        # Check condition
+        if linesearch:
+            new_value = fun(x)
+            if norm == 1:
+                sq_norm_diff = optax.tree_utils.tree_l1_norm(
+                    optax.tree_utils.tree_sub(x, y)
+                )**2
+            elif norm == 2:
+                sq_norm_diff = optax.tree_utils.tree_l2_norm(
+                    optax.tree_utils.tree_sub(x, y), squared=True
+                )
+            else:
+                raise ValueError(f'norm={norm} not supported')
+            taylor_approx = (
+                value_y + grad_y.dot(x - y) + 0.5 * smooth_estim * sq_norm_diff
+            )
+            accept = new_value <= (taylor_approx + 0.5 * target_acc * theta)
+            new_stepsize = 1.1*stepsize
+        else:
+            accept = True
+            new_stepsize = stepsize
+
+        candidate = AcceleratedStepSearchState(
+            x=x,
+            z=z,
+            u=u,
+            prev_stepsize=stepsize,
+            stepsize=new_stepsize,
+            prev_theta=theta,
+            accept=accept,
+            iter_search=jnp.asarray(0),
+        )
+        base = carry._replace(
+            stepsize=0.5 * carry.stepsize, iter_search=carry.iter_search + 1
+        )
+        return jax.tree.map(lambda x, y: jnp.where(accept, x, y), candidate, base)
+
+    x = z = dual_proj(dual_init_params)
+    u = dual_init_params
+    init_carry = AcceleratedStepSearchState(
+        x=x,
+        z=z,
+        u=u,
+        prev_stepsize=stepsize,
+        stepsize=stepsize,
+        prev_theta=jnp.asarray(-1.0),
+        accept=jnp.asarray(False),
+        iter_search=jnp.asarray(0),
+    )
+    return init_carry, cond_fun, body_fun
+
+
+def universal_accelerated_method(
+    domain: Domain,
+    loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+    known_total: float | None = None,
+    potentials: CliqueVector | None = None,
+    marginal_oracle=marginal_oracles.message_passing_stable,
+    iters: int = 1000,
+    callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+):
+    """Optimization using the Universal Accelerated MD algorithm."""
+    loss_fn, known_total, potentials = _initialize(
+        domain, loss_fn, known_total, potentials
+    )
+
+    carry, cond_fun, body_fun = _universal_accelerated_method_step_init(
+        fun=loss_fn,
+        dual_init_params=potentials,
+        dual_proj=lambda x: marginal_oracle(x, known_total),
+        max_iter_search=30,
+        target_acc=0.0,
+        stepsize=1.0/known_total,
+        norm=2,
+        linesearch=True,
+    )
+    for _ in range(iters):
+        # jax.lax.while_loop traces the body function, so no need to jit it.
+        carry = jax.lax.while_loop(cond_fun, body_fun, carry)
+        carry = carry._replace(accept=jnp.asarray(False))
+        callback_fn(carry.x)
+    sol = carry.x
+    return mle_from_marginals(sol, known_total)
