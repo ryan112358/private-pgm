@@ -49,6 +49,19 @@ class TestEstimation(unittest.TestCase):
             np.testing.assert_allclose(actual, expected, atol=1e-2)
 
     @parameterized.expand(itertools.product(_CLIQUE_SETS))
+    def test_universal_accelerated_method(self, cliques):
+        measurements = fake_measurements(cliques)
+        loss_fn = marginal_loss.from_linear_measurements(measurements)
+
+        model = estimation.universal_accelerated_method(
+                _DOMAIN, loss_fn, known_total=1.0, iters=250
+        )
+        for M in measurements:
+            expected = M.noisy_measurement
+            actual = model.project(M.clique).datavector()
+            np.testing.assert_allclose(actual, expected, atol=1e-2)
+
+    @parameterized.expand(itertools.product(_CLIQUE_SETS))
     def test_mirror_descent_l1(self, cliques):
         measurements = fake_measurements(cliques)
         loss_fn = marginal_loss.from_linear_measurements(measurements, norm="l1")
