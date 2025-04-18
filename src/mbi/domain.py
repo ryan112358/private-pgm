@@ -52,9 +52,9 @@ class Domain:
         """Constructs a Domain object from a dictionary.
 
         Example Usage:
-            >>> domain = Domain.fromdict({'a': 10, 'b': 20})
-            >>> print(domain)
-            Domain(a: 10, b: 20)
+        >>> domain = Domain.fromdict({'a': 10, 'b': 20})
+        >>> print(domain)
+    Domain(a: 10, b: 20)
 
         Args:
             config: A dictionary mapping attribute names (str) to their sizes (int).
