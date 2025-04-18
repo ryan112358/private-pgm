@@ -6,8 +6,36 @@ import attr
 
 @attr.dataclass(frozen=True)
 class Domain:
-    """Dataclass for representing discrete domains."""
+    """Represents the discrete domain of a set of variables.
 
+    This class defines the names and possible number of states (cardinality)
+    for each variable in a specific scope. It is primarily used to define the
+    domain over which graphical model factors (like `Factor`) are defined.
+
+    Attributes:
+        attributes: A tuple of strings, where each string is the name of a
+                    variable (e.g., ('Age', 'Education')).
+        shape: A tuple of integers, where each integer represents the number
+               of possible discrete states for the corresponding attribute in
+               the `attributes` tuple (e.g., (5, 10)). The length of `shape`
+               must match the length of `attributes`.
+
+    Example Usage:
+        >>> # Create a domain directly
+        >>> domain1 = Domain(attributes=('A', 'B'), shape=(2, 3))
+        >>> print(domain1)
+        Domain(A: 2, B: 3)
+
+        >>> # Create a domain from a dictionary
+        >>> domain2 = Domain.fromdict({'C': 4, 'D': 5})
+        >>> print(domain2)
+        Domain(C: 4, D: 5)
+
+        >>> # Project onto a subset of attributes
+        >>> projected_domain = domain2.project(['C'])
+        >>> print(projected_domain)
+        Domain(C: 4)
+    """
     attributes: tuple[str, ...] = attr.field(converter=tuple)
     shape: tuple[int, ...] = attr.field(converter=tuple)
 

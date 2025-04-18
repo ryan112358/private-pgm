@@ -21,8 +21,98 @@ def _try_convert(values):
 )
 @attr.dataclass(frozen=True)
 class Factor:
-    """A factor over a domain."""
+    """Represents a factor (or potential function) over a discrete domain.
 
+    A factor maps each possible configuration of variables in its domain to a
+    non-negative value. It is essentially a multi-dimensional array where the
+    dimensions are defined by a `Domain` object. Factors are fundamental
+    components in probabilistic graphical models and are used extensively
+    within this library for representing marginal distributions or intermediate
+    results during inference.
+
+    This implementation uses JAX arrays (`jax.Array`) for the underlying numerical
+    storage, leveraging JAX's capabilities for performance and automatic
+    differentiation.
+
+    Attributes:
+        domain: A `Domain` object specifying the variables included in the factor
+                and their respective cardinalities (number of states). This defines
+                the scope and shape of the factor.
+        values: A `jax.Array` containing the numerical values of the factor.
+                The shape of this array must strictly match the `shape` attribute
+                of the `domain` object (e.g., if domain is Domain(['A', 'B'], (2, 3)),
+                values must have shape (2, 3)).
+
+    Relationship with Domain:
+        A `Factor` is always defined with respect to a `Domain`. The `Domain`
+        provides the semantic meaning to the dimensions of the `values` array.
+        Operations between factors often involve merging or aligning their domains.
+
+    Key Operations:
+        - Creation: `Factor.zeros(domain)`, `Factor.ones(domain)`, `Factor.random(domain)`
+          allow easy instantiation of factors with specific initial values.
+        - Reshaping: `transpose(attrs)` reorders the dimensions according to the
+          provided attribute order. `expand(domain)` broadcasts the factor to a
+          larger domain.
+        - Aggregation/Marginalization: `sum(attrs)`, `logsumexp(attrs)`, `max(attrs)`
+          aggregate the factor's values along specified dimensions (attributes).
+          `project(attrs)` marginalizes the factor down to a subset of attributes.
+        - Element-wise: `exp()`, `log()`, `normalize()` apply element-wise
+          mathematical functions. `normalize()` scales the factor values to sum
+          to a specific total (default is 1.0).
+        - Binary Ops: Standard arithmetic operators (`+`, `-`, `*`, `/`) are overloaded
+          for operations between two factors or between a factor and a scalar.
+          These operations automatically handle domain merging and expansion
+          to ensure compatibility.
+
+    Example Usage:
+        >>> # Create domains
+        >>> domain_ab = Domain.fromdict({'A': 2, 'B': 3})
+        >>> domain_bc = Domain.fromdict({'B': 3, 'C': 4})
+
+        >>> # Create factors
+        >>> factor_a = Factor.ones(domain_ab)
+        >>> print(factor_a.domain)
+        Domain(A: 2, B: 3)
+        >>> print(factor_a.values.shape)
+        (2, 3)
+
+        >>> factor_b = Factor.random(domain_bc)
+        >>> print(factor_b.domain)
+        Domain(B: 3, C: 4)
+
+        >>> # Factor multiplication automatically handles domain merging and expansion
+        >>> factor_c = factor_a * factor_b
+        >>> print(factor_c.domain)
+        Domain(A: 2, B: 3, C: 4)
+        >>> print(factor_c.values.shape)
+        (2, 3, 4)
+
+        >>> # Marginalization using sum (summing out 'A' and 'C')
+        >>> factor_marg_b = factor_c.sum(['A', 'C'])
+        >>> print(factor_marg_b.domain)
+        Domain(B: 3)
+        >>> print(factor_marg_b.values.shape)
+        (3,)
+
+        >>> # Projection is equivalent to marginalization
+        >>> factor_proj_b = factor_c.project(['B'])
+        >>> print(factor_proj_b.domain)
+        Domain(B: 3)
+        >>> jnp.allclose(factor_marg_b.values, factor_proj_b.values)
+        True
+
+        >>> # Element-wise operation
+        >>> factor_exp = factor_a.exp()
+        >>> print(factor_exp.values)
+        [[2.71828183 2.71828183 2.71828183]
+         [2.71828183 2.71828183 2.71828183]]
+
+        >>> # Normalization
+        >>> factor_norm = factor_a.normalize()
+        >>> print(factor_norm.sum().values) # Should sum to 1.0
+        1.0
+    """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
 
