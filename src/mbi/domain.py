@@ -54,7 +54,7 @@ class Domain:
         Example Usage:
             >>> domain = Domain.fromdict({'a': 10, 'b': 20})
             >>> print(domain)
-        Domain(a: 10, b: 20)
+            Domain(a: 10, b: 20)
 
         Args:
             config: A dictionary mapping attribute names (str) to their sizes (int).
