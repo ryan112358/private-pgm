@@ -23,32 +23,100 @@ def _try_convert(values):
 class Factor:
     """Represents a factor (or potential function) over a discrete domain.
 
-    A factor maps assignments of variables in its domain to non-negative real numbers.
-    It is often used to represent marginal distributions, conditional probability
-    tables, or intermediate results in probabilistic graphical models.
+    A factor maps each possible configuration of variables in its domain to a
+    non-negative value. It is essentially a multi-dimensional array where the
+    dimensions are defined by a `Domain` object. Factors are fundamental
+    components in probabilistic graphical models and are used extensively
+    within this library for representing marginal distributions or intermediate
+    results during inference.
 
-    The factor is associated with a `Domain` object that specifies the variables
-    and their cardinalities. The actual numerical values are stored in a JAX array.
+    This implementation uses JAX arrays (`jax.Array`) for the underlying numerical
+    storage, leveraging JAX's capabilities for performance and automatic
+    differentiation.
 
     Attributes:
-        domain: A `Domain` object specifying the variables (attributes) and their
-            shapes (cardinalities) covered by this factor.
+        domain: A `Domain` object specifying the variables included in the factor
+                and their respective cardinalities (number of states). This defines
+                the scope and shape of the factor.
         values: A `jax.Array` containing the numerical values of the factor.
-            The shape of this array must match the shape specified by the `domain`.
-    """
+                The shape of this array must strictly match the `shape` attribute
+                of the `domain` object (e.g., if domain is Domain(['A', 'B'], (2, 3)),
+                values must have shape (2, 3)).
 
+    Relationship with Domain:
+        A `Factor` is always defined with respect to a `Domain`. The `Domain`
+        provides the semantic meaning to the dimensions of the `values` array.
+        Operations between factors often involve merging or aligning their domains.
+
+    Key Operations:
+        - Creation: `Factor.zeros(domain)`, `Factor.ones(domain)`, `Factor.random(domain)`
+          allow easy instantiation of factors with specific initial values.
+        - Reshaping: `transpose(attrs)` reorders the dimensions according to the
+          provided attribute order. `expand(domain)` broadcasts the factor to a
+          larger domain.
+        - Aggregation/Marginalization: `sum(attrs)`, `logsumexp(attrs)`, `max(attrs)`
+          aggregate the factor's values along specified dimensions (attributes).
+          `project(attrs)` marginalizes the factor down to a subset of attributes.
+        - Element-wise: `exp()`, `log()`, `normalize()` apply element-wise
+          mathematical functions. `normalize()` scales the factor values to sum
+          to a specific total (default is 1.0).
+        - Binary Ops: Standard arithmetic operators (`+`, `-`, `*`, `/`) are overloaded
+          for operations between two factors or between a factor and a scalar.
+          These operations automatically handle domain merging and expansion
+          to ensure compatibility.
+
+    Example Usage:
+        >>> # Create domains
+        >>> domain_ab = Domain.fromdict({'A': 2, 'B': 3})
+        >>> domain_bc = Domain.fromdict({'B': 3, 'C': 4})
+
+        >>> # Create factors
+        >>> factor_a = Factor.ones(domain_ab)
+        >>> print(factor_a.domain)
+        Domain(A: 2, B: 3)
+        >>> print(factor_a.values.shape)
+        (2, 3)
+
+        >>> factor_b = Factor.random(domain_bc)
+        >>> print(factor_b.domain)
+        Domain(B: 3, C: 4)
+
+        >>> # Factor multiplication automatically handles domain merging and expansion
+        >>> factor_c = factor_a * factor_b
+        >>> print(factor_c.domain)
+        Domain(A: 2, B: 3, C: 4)
+        >>> print(factor_c.values.shape)
+        (2, 3, 4)
+
+        >>> # Marginalization using sum (summing out 'A' and 'C')
+        >>> factor_marg_b = factor_c.sum(['A', 'C'])
+        >>> print(factor_marg_b.domain)
+        Domain(B: 3)
+        >>> print(factor_marg_b.values.shape)
+        (3,)
+
+        >>> # Projection is equivalent to marginalization
+        >>> factor_proj_b = factor_c.project(['B'])
+        >>> print(factor_proj_b.domain)
+        Domain(B: 3)
+        >>> jnp.allclose(factor_marg_b.values, factor_proj_b.values)
+        True
+
+        >>> # Element-wise operation
+        >>> factor_exp = factor_a.exp()
+        >>> print(factor_exp.values)
+        [[2.71828183 2.71828183 2.71828183]
+         [2.71828183 2.71828183 2.71828183]]
+
+        >>> # Normalization
+        >>> factor_norm = factor_a.normalize()
+        >>> print(factor_norm.sum().values) # Should sum to 1.0
+        1.0
+    """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
 
     def __post_init__(self):
-        """Validates the Factor object after initialization.
-
-        Ensures that the shape of the `values` array matches the shape defined
-        by the `domain`.
-
-        Raises:
-            ValueError: If the shape of `values` does not match `domain.shape`.
-        """
         if self.values.shape != self.domain.shape:
             raise ValueError("values must be same shape as domain.")
 
@@ -67,24 +135,6 @@ class Factor:
 
     # Reshaping operations
     def transpose(self, attrs: Sequence[str]) -> "Factor":
-        """Rearranges the axes (attributes) of the factor according to a new order.
-
-        This operation changes the order of attributes in the factor's domain and
-        correspondingly permutes the axes of the underlying `values` array. It does
-        not change the numerical values themselves, only their arrangement.
-
-        Args:
-            attrs: A sequence of attribute names (str) representing the desired
-                new order of attributes. Must contain the same attributes as the
-                factor's current domain.
-
-        Returns:
-            A new Factor object with the transposed domain and values.
-
-        Raises:
-            ValueError: If `attrs` does not contain exactly the same set of
-                attributes as the factor's domain.
-        """
         if set(attrs) != set(self.domain.attrs):
             raise ValueError("attrs must be same as domain attributes")
         newdom = self.domain.project(attrs)
@@ -92,26 +142,7 @@ class Factor:
         values = jnp.moveaxis(self.values, range(len(ax)), ax)
         return Factor(newdom, values)
 
-    def expand(self, domain: Domain) -> "Factor":
-        """Expands the factor's domain to include additional attributes.
-
-        The factor's values are broadcasted to the new, larger domain. The original
-        values are repeated along the new dimensions introduced by the expanded domain.
-        This is useful for aligning factors before binary operations like multiplication
-        or addition.
-
-        Args:
-            domain: The target `Domain` object to expand to. This domain must
-                contain all attributes of the factor's current domain.
-
-        Returns:
-            A new Factor object defined over the expanded `domain`.
-
-        Raises:
-            ValueError: If the target `domain` does not contain all attributes
-                of the factor's current domain.
-        """
-        # Note: Added type hint for domain argument
+    def expand(self, domain):
         if not domain.contains(self.domain):
             raise ValueError("Expanded domain must contain domain.")
         dims = len(domain) - len(self.domain)
@@ -141,24 +172,6 @@ class Factor:
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
     def project(self, attrs: str | tuple[str, ...], log: bool = False) -> "Factor":
-        """Projects the factor onto a subset of attributes by marginalization.
-
-        This operation aggregates the factor's values over the attributes *not*
-        included in the `attrs` argument. By default, it performs summation.
-        If `log=True`, it performs log-sum-exp aggregation, suitable for factors
-        representing log-probabilities. The resulting factor's domain contains
-        only the specified `attrs`, in their canonical order from the original domain.
-
-        Args:
-            attrs: A single attribute name (str) or a tuple of attribute names
-                to project onto.
-            log: If True, performs aggregation using log-sum-exp instead of sum.
-                Defaults to False.
-
-        Returns:
-            A new Factor object representing the marginal distribution (or
-            log-marginal) over the specified attributes.
-        """
         if isinstance(attrs, str):
             attrs = (attrs,)
         marginalized = self.domain.marginalize(attrs).attrs
@@ -167,34 +180,17 @@ class Factor:
 
     # Functions that operate element-wise
     def exp(self, out=None) -> "Factor":
-        # TODO(docstring): Add docstring for exp
         return Factor(self.domain, jnp.exp(self.values))
 
     def log(self, out=None) -> "Factor":
-        # TODO(docstring): Add docstring for log
         return Factor(self.domain, jnp.log(self.values))
 
     def normalize(self, total: float = 1.0, log: bool = False) -> "Factor":
-        """Normalizes the factor so that its values sum to a specified total.
-
-        Scales the factor's values proportionally so that their sum equals `total`.
-        If `log=True`, it assumes the factor represents log-probabilities and performs
-        normalization in log-space (i.e., adds a constant such that the
-        log-sum-exp of the values equals `log(total)`).
-
-        Args:
-            total: The target sum for the normalized factor's values. Defaults to 1.0.
-            log: If True, performs normalization in log-space. Defaults to False.
-
-        Returns:
-            A new Factor object with normalized values.
-        """
         if log:
             return self + jnp.log(total) - self.logsumexp()
         return self * total / self.sum()
 
     def copy(self) -> "Factor":
-        # TODO(docstring): Add docstring for copy
         return self
 
     def __float__(self):
@@ -218,80 +214,39 @@ class Factor:
         return self._binaryop(jnp.divide, other)
 
     def __mul__(self, other: "Factor" | chex.Numeric) -> "Factor":
-        """Multiplies this factor by another factor or a scalar.
-
-        If multiplying by another Factor (`other`), the domains are merged. Both factors
-        are expanded to this merged domain, and then their values are multiplied
-        element-wise.
-        If multiplying by a scalar (`other`), the scalar is broadcast and multiplied
-        with each element of this factor's `values`.
+        """Multiply two factors together.
 
         Example Usage:
-            >>> domain1 = Domain(('a', 'b'), (2, 3))
-            >>> domain2 = Domain(('b', 'c'), (3, 4))
-            >>> f1 = Factor(domain1, jnp.ones((2, 3)))
-            >>> f2 = Factor(domain2, jnp.ones((3, 4)) * 2)
-            >>> f3 = f1 * f2
-            >>> print(f3.domain)
-            Domain(a: 2, b: 3, c: 4)
-            >>> print(f3.values.shape)
-            (2, 3, 4)
-            >>> print(f3.values[0, 0, 0])
-            2.0
-            >>> f4 = f1 * 3.0
-            >>> print(f4.domain)
-            Domain(a: 2, b: 3)
-            >>> print(f4.values[0, 0])
-            3.0
+        >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
+        >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
+        >>> f3 = f1 * f2
+        >>> print(f3.domain)
+        Domain(a: 2, b: 3, c: 4)
 
         Args:
-            other: The Factor or scalar (chex.Numeric) to multiply by.
+          other: the other factor to multiply
 
         Returns:
-            A new Factor representing the element-wise product. The domain of the
-            new factor is the merge of the input domains if `other` is a Factor,
-            or the same as this factor's domain if `other` is a scalar.
+          the product of the two factors
         """
         return self._binaryop(jnp.multiply, other)
 
     def __add__(self, other: "Factor" | chex.Numeric) -> "Factor":
-        """Adds this factor to another factor or a scalar.
-
-        If adding another Factor (`other`), the domains are merged. Both factors
-        are expanded to this merged domain, and then their values are added
-        element-wise.
-        If adding a scalar (`other`), the scalar is broadcast and added
-        to each element of this factor's `values`.
-
-        Args:
-            other: The Factor or scalar (chex.Numeric) to add.
-
-        Returns:
-            A new Factor representing the element-wise sum. The domain of the
-            new factor is the merge of the input domains if `other` is a Factor,
-            or the same as this factor's domain if `other` is a scalar.
-        """
         return self._binaryop(jnp.add, other)
 
     def __radd__(self, other: chex.Numeric) -> "Factor":
-        # TODO(docstring): Add docstring for radd
         return self + other
 
     def __rsub__(self, other: chex.Numeric) -> "Factor":
-        # TODO(docstring): Add docstring for rsub
         return self + (-1 * other)
 
     def __rmul__(self, other: chex.Numeric) -> "Factor":
-        # TODO(docstring): Add docstring for rmul
         return self * other
 
-    def dot(self, other: "Factor") -> float:
-        # TODO(docstring): Add docstring for dot
-        # Note: Changed return type hint to float based on implementation
+    def dot(self, other: "Factor") -> "Factor":
         if self.domain != other.domain:
             raise ValueError(f"Domains do not match {self.domain} != {other.domain}")
         return jnp.sum(self.values * other.values)
 
     def datavector(self, flatten: bool = True) -> jax.Array:
-        # TODO(docstring): Add docstring for datavector
         return self.values.flatten() if flatten else self.values

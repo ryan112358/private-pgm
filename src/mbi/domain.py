@@ -6,32 +6,40 @@ import attr
 
 @attr.dataclass(frozen=True)
 class Domain:
-    """Represents the domain of a discrete dataset.
+    """Represents the discrete domain of a set of variables.
 
-    A domain defines the attributes (variables) and their possible discrete values
-    (represented by their counts or shapes). It is used to manage the structure
-    of datasets and marginal tables.
+    This class defines the names and possible number of states (cardinality)
+    for each variable in a specific scope. It is primarily used to define the
+    domain over which graphical model factors (like `Factor`) are defined.
 
     Attributes:
-        attributes: A tuple of strings representing the names of the attributes
-            (columns or variables) in the domain.
-        shape: A tuple of integers representing the number of unique values (cardinality)
-            for each corresponding attribute in `attributes`.
-    """
+        attributes: A tuple of strings, where each string is the name of a
+                    variable (e.g., ('Age', 'Education')).
+        shape: A tuple of integers, where each integer represents the number
+               of possible discrete states for the corresponding attribute in
+               the `attributes` tuple (e.g., (5, 10)). The length of `shape`
+               must match the length of `attributes`.
 
+    Example Usage:
+        >>> # Create a domain directly
+        >>> domain1 = Domain(attributes=('A', 'B'), shape=(2, 3))
+        >>> print(domain1)
+        Domain(A: 2, B: 3)
+
+        >>> # Create a domain from a dictionary
+        >>> domain2 = Domain.fromdict({'C': 4, 'D': 5})
+        >>> print(domain2)
+        Domain(C: 4, D: 5)
+
+        >>> # Project onto a subset of attributes
+        >>> projected_domain = domain2.project(['C'])
+        >>> print(projected_domain)
+        Domain(C: 4)
+    """
     attributes: tuple[str, ...] = attr.field(converter=tuple)
     shape: tuple[int, ...] = attr.field(converter=tuple)
 
     def __attrs_post_init__(self):
-        """Validates the Domain object after initialization.
-
-        Ensures that the number of attributes matches the number of shape dimensions
-        and that all attribute names are unique.
-
-        Raises:
-            ValueError: If the length of `attributes` and `shape` do not match,
-                or if `attributes` contains duplicate names.
-        """
         if len(self.attributes) != len(self.shape):
             raise ValueError("Dimensions must be equal.")
         if len(self.attributes) != len(set(self.attributes)):
@@ -39,47 +47,31 @@ class Domain:
 
     @functools.cached_property
     def config(self) -> dict[str, int]:
-        """Returns a dictionary mapping attribute names to their sizes (cardinalities).
-
-        Returns:
-            A dictionary where keys are attribute names (str) and values are their
-            corresponding sizes (int).
-        """
+        """Returns a dictionary of { attr : size } values."""
         return dict(zip(self.attributes, self.shape))
 
     @staticmethod
     def fromdict(config: dict[str, int]) -> "Domain":
-        """Constructs a Domain object from a dictionary.
+        """Construct a Domain object from a dictionary of { attr : size } values.
 
         Example Usage:
-        >>> domain = Domain.fromdict({'a': 10, 'b': 20})
-        >>> print(domain)
-    Domain(a: 10, b: 20)
+        >>> print(Domain.fromdict({'a': 10, 'b': 20}))
+        Domain(a: 10, b: 20)
 
         Args:
-            config: A dictionary mapping attribute names (str) to their sizes (int).
-
+          config: a dictionary of { attr : size } values
         Returns:
-            A new Domain object created from the provided dictionary.
+          the Domain object
         """
         return Domain(config.keys(), config.values())
 
     def project(self, attributes: str | Sequence[str]) -> "Domain":
-        """Projects the domain onto a subset of attributes.
-
-        Creates a new Domain containing only the specified attributes and their
-        corresponding shapes.
+        """Project the domain onto a subset of attributes.
 
         Args:
-            attributes: A single attribute name (str) or a sequence of attribute
-                names (Sequence[str]) to project onto.
-
+          attributes: the attributes to project onto
         Returns:
-            A new Domain object representing the projection.
-
-        Raises:
-            ValueError: If any of the specified attributes are not present in this
-                domain.
+          the projected Domain object
         """
         if isinstance(attributes, str):
             attributes = [attributes]
@@ -89,144 +81,93 @@ class Domain:
         return Domain(attributes, shape)
 
     def marginalize(self, attrs: Sequence[str]) -> "Domain":
-        """Marginalizes out specified attributes from the domain.
-
-        This is the opposite of `project`. It creates a new Domain containing all
-        attributes *except* the ones specified.
+        """Marginalize out some attributes from the domain (opposite of project).
 
         Example Usage:
-            >>> d1 = Domain(('a', 'b'), (10, 20))
-            >>> print(d1.marginalize(['a']))
+        >>> D1 = Domain(['a','b'], [10,20])
+        >>> print(D1.marginalize(['a']))
         Domain(b: 20)
 
         Args:
-            attrs: A sequence of attribute names (Sequence[str]) to remove.
-
+          attrs: the attributes to marginalize out.
         Returns:
-            A new Domain object representing the domain after marginalization.
+          the marginalized Domain object
         """
         proj = [a for a in self.attributes if a not in attrs]
         return self.project(proj)
 
     def contains(self, other: "Domain") -> bool:
-        """Checks if this domain completely contains another domain.
-
-        Containment means that all attributes of the `other` domain are present
-        in this domain. The shapes associated with common attributes are not checked.
-
-        Args:
-            other: The Domain object to check for containment.
-
-        Returns:
-            True if all attributes of `other` are present in this domain,
-            False otherwise.
-        """
+        """Determine if this domain contains another."""
         return set(other.attributes) <= set(self.attributes)
 
-    def canonical(self, attrs: Sequence[str]) -> tuple[str, ...]:
-        """Returns the canonical ordering of a subset of attributes.
-
-        Provides the order of the given attributes as they appear in this domain's
-        `attributes` tuple.
-
-        Args:
-            attrs: A sequence of attribute names (Sequence[str]) present in the domain.
-
-        Returns:
-            A tuple of attribute names in their canonical order based on this domain.
-        """
-        # Note: Added Sequence[str] and tuple[str, ...] type hints for clarity.
+    def canonical(self, attrs):
+        """Return the canonical ordering of the attributes."""
         return tuple(a for a in self.attributes if a in attrs)
 
-    def invert(self, attrs: Sequence[str]) -> list[str]:
-        """Returns the attributes in this domain that are *not* in the given list.
-
-        Args:
-            attrs: A sequence of attribute names (Sequence[str]).
-
-        Returns:
-            A list of attribute names from this domain that are not present in `attrs`.
-        """
-        # Note: Added Sequence[str] and list[str] type hints for clarity.
+    def invert(self, attrs):
+        """returns the attributes in the domain not in the list"""
         return [a for a in self.attributes if a not in attrs]
 
     def intersect(self, other: "Domain") -> "Domain":
-        """Computes the intersection of this domain with another domain.
-
-        Creates a new Domain containing only the attributes that are present in
-        *both* this domain and the `other` domain. The shape for the common
-        attributes is taken from this domain.
+        """Intersect this Domain object with another.
 
         Example Usage:
-            >>> d1 = Domain(('a', 'b'), (10, 20))
-            >>> d2 = Domain(('b', 'c'), (20, 30))
-            >>> print(d1.intersect(d2))
+        >>> D1 = Domain(['a','b'], [10,20])
+        >>> D2 = Domain(['b','c'], [20,30])
+        >>> print(D1.intersect(D2))
         Domain(b: 20)
 
         Args:
-            other: The Domain object to intersect with.
-
+          other: another Domain object
         Returns:
-            A new Domain object representing the intersection.
+          the intersection of the two domains
         """
         return self.project([a for a in self.attributes if a in other.attributes])
 
     def axes(self, attrs: Sequence[str]) -> tuple[int, ...]:
-        """Returns the numerical axes corresponding to the given attributes.
-
-        Provides the integer indices of the specified attributes within this domain's
-        `attributes` tuple. This is useful for indexing operations (e.g., in NumPy).
+        """Return the axes tuple for the given attributes.
 
         Args:
-            attrs: A sequence of attribute names (Sequence[str]) present in the domain.
-
+          attrs: the attributes
         Returns:
-            A tuple of integers representing the axes (indices) of the attributes.
+          a tuple with the corresponding axes
         """
         return tuple(self.attributes.index(a) for a in attrs)
 
     def merge(self, other: "Domain") -> "Domain":
-        """Merges this domain with another domain.
+        """Merge this Domain object with another.
 
-        Combines the attributes and shapes of both domains. If an attribute exists
-        in both, the shape from this domain is used. Attributes unique to `other`
-        are appended.
+        :param other: another Domain object
+        :return: a new domain object covering the full domain
 
         Example:
-            >>> d1 = Domain(('a', 'b'), (10, 20))
-            >>> d2 = Domain(('b', 'c'), (20, 30))
-            >>> print(d1.merge(d2))
+        >>> D1 = Domain(['a','b'], [10,20])
+        >>> D2 = Domain(['b','c'], [20,30])
+        >>> print(D1.merge(D2))
         Domain(a: 10, b: 20, c: 30)
 
         Args:
-            other: The Domain object to merge with this one.
-
+          other: another Domain object
         Returns:
-            A new Domain object representing the combined domain.
+          a new domain object covering the combined domain.
         """
         extra = other.marginalize(self.attributes)
         return Domain(self.attributes + extra.attributes, self.shape + extra.shape)
 
     def size(self, attributes: Sequence[str] | None = None) -> int:
-        """Calculates the total size (number of possible configurations) of the domain.
-
-        If specific attributes are provided, calculates the size of the projected
-        domain defined by those attributes. Otherwise, calculates the size of the
-        entire domain by multiplying the shapes of all attributes.
+        """Return the total size of the domain.
 
         Example:
-            >>> d1 = Domain(('a', 'b'), (10, 20))
-            >>> d1.size()
+        >>> D1 = Domain(['a','b'], [10,20])
+        >>> D1.size()
         200
-        >>> d1.size(['a'])
+        >>> D1.size(['a'])
         10
 
         Args:
-            attributes: An optional sequence of attribute names (Sequence[str]).
-                If None, calculates the size of the full domain.
-
+          attributes: A subset of attributes whose total size should be returned.
         Returns:
-            The total size (int) of the specified domain subset or the full domain.
+          the total size of the domain
         """
         if attributes is None:
             return functools.reduce(lambda x, y: x * y, self.shape, 1)
@@ -234,11 +175,6 @@ class Domain:
 
     @property
     def attrs(self):
-        """Provides access to the tuple of attribute names.
-
-        Returns:
-            A tuple containing the names of the attributes in the domain.
-        """
         return self.attributes
 
     def __contains__(self, name: str) -> bool:
@@ -246,42 +182,14 @@ class Domain:
         return name in self.attributes
 
     def __getitem__(self, a: str) -> int:
-        """Allows accessing the shape (size) of an attribute using dictionary-like lookup.
-
-        Args:
-            a: The name of the attribute (str).
-
-        Returns:
-            The size (int) of the specified attribute.
-
-        Raises:
-            KeyError: If the attribute `a` is not found in the domain.
-        """
         return self.config[a]
 
     def __iter__(self) -> Iterator[str]:
-        """Provides an iterator over the attribute names of the domain.
-
-        Allows iterating directly over the Domain object to get its attribute names.
-
-        Yields:
-            Attribute names (str) in the order they are defined.
-        """
         return self.attributes.__iter__()
 
     def __len__(self) -> int:
-        """Returns the number of attributes in the domain.
-
-        Returns:
-            The count (int) of attributes defined in the domain.
-        """
         return len(self.attributes)
 
     def __str__(self) -> str:
-        """Returns a user-friendly string representation of the Domain object.
-
-        Returns:
-            A string in the format "Domain(attr1: shape1, attr2: shape2, ...)".
-        """
         inner = ", ".join(["%s: %d" % x for x in zip(self.attributes, self.shape)])
         return "Domain(%s)" % inner
