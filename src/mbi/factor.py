@@ -21,8 +21,31 @@ def _try_convert(values):
 )
 @attr.dataclass(frozen=True)
 class Factor:
-    """A factor over a domain."""
+    """Represents a factor defined over a discrete domain.
 
+    A factor can be thought of as a potential function or an unnormalized
+    probability distribution over a set of discrete variables defined by a
+    `Domain` object. It maps each configuration of the domain to a value.
+
+    Attributes:
+        domain (Domain): The discrete domain over which the factor is defined.
+        values (jax.Array): A JAX array containing the factor's values. The shape
+            of this array matches the shape specified by the `domain`.
+
+    Supported Operations:
+        - Creation: `zeros`, `ones`, `random` for creating factors.
+        - Reshaping: `transpose`, `expand` for modifying the domain/shape.
+        - Aggregation: `sum`, `logsumexp`, `project` for marginalizing attributes.
+        - Element-wise: `exp`, `log`, `normalize` for value transformations.
+        - Binary Ops: `+`, `-`, `*`, `/`, `dot` for combining factors.
+
+    Example Usage:
+    >>> from mbi import Domain  # Needed for doctest context
+    >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
+    >>> factor = Factor.ones(domain)
+    >>> print(factor.domain)
+    Domain(X: 2, Y: 3)
+    """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
 
