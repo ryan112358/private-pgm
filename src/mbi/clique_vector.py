@@ -4,32 +4,9 @@ import jax
 import jax.numpy as jnp
 import functools
 import attr
-from typing import TypeAlias
 import operator
 import chex
-
-Clique: TypeAlias = tuple[str, ...]
-
-
-def reverse_clique_mapping(
-    maximal_cliques: list[Clique], all_cliques: list[Clique]
-) -> dict[Clique, list[Clique]]:
-    """Creates a mapping from maximal cliques to a list of cliques they contain.
-
-    Args:
-      maximal_cliques: A list of maximal cliques.
-      all_cliques: A list of all cliques.
-
-    Returns:
-      A mapping from maximal cliques to cliques they contain.
-    """
-    mapping = {cl: [] for cl in maximal_cliques}
-    for cl in all_cliques:
-        for cl2 in maximal_cliques:
-            if set(cl) <= set(cl2):
-                mapping[cl2].append(cl)
-                break
-    return mapping
+from mbi.clique_utils import Clique, reverse_clique_mapping
 
 
 @functools.partial(
