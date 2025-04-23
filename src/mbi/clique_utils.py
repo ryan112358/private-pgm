@@ -19,8 +19,11 @@ def reverse_clique_mapping(
     >>> maximal_cliques = [('A', 'B', 'C'), ('C', 'D')]
     >>> all_cliques = [('A', 'B'), ('C',), ('D',), ('A', 'C')]
     >>> mapping = reverse_clique_mapping(maximal_cliques, all_cliques)
-    >>> sorted(mapping.items())
-    [(('A', 'B', 'C'), [('A', 'B'), ('C',), ('A', 'C')]), (('C', 'D'), [('D',)])]
+    >>> # Sort inner lists for stable comparison
+    >>> expected = [(('A', 'B', 'C'), sorted([('A', 'B'), ('C',), ('A', 'C')])), (('C', 'D'), sorted([('D',)]))]
+    >>> result = sorted([(k, sorted(v)) for k, v in mapping.items()])
+    >>> result == expected
+    True
     """
     mapping = {cl: [] for cl in maximal_cliques}
     for cl in all_cliques:
@@ -29,6 +32,11 @@ def reverse_clique_mapping(
                 mapping[cl2].append(cl)
                 break
     return mapping
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(verbose=True) # Add verbose=True for more detailed output
 
 
 def maximal_subset(cliques: list[Clique]) -> list[Clique]:
