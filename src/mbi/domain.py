@@ -6,7 +6,26 @@ import attr
 
 @attr.dataclass(frozen=True)
 class Domain:
-    """Dataclass for representing discrete domains."""
+    """Represents a discrete domain defined by attributes and their corresponding shapes.
+
+    This class encapsulates the structure of a dataset's domain, where each attribute
+    represents a feature or variable, and its shape defines the number of possible
+    discrete values it can take.
+
+    Key Attributes:
+        attributes (tuple[str, ...]): A tuple containing the names of the attributes
+            in the domain.
+        shape (tuple[int, ...]): A tuple containing the size (number of unique
+            values) for each corresponding attribute in the `attributes` tuple.
+
+    Supported Operations:
+        - project: Reduces the domain to a specified subset of attributes.
+        - marginalize: Removes specified attributes from the domain.
+        - intersect: Finds the common attributes between this domain and another.
+        - merge: Combines this domain with another, adding new attributes.
+        - size: Calculates the total number of possible configurations in the domain
+          or a subset of its attributes.
+    """
 
     attributes: tuple[str, ...] = attr.field(converter=tuple)
     shape: tuple[int, ...] = attr.field(converter=tuple)

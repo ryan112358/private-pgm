@@ -21,7 +21,29 @@ def _try_convert(values):
 )
 @attr.dataclass(frozen=True)
 class Factor:
-    """A factor over a domain."""
+    """Represents a factor, which is a function or table of values defined over a Domain.
+
+    This class encapsulates a multi-dimensional array (`values`) whose dimensions
+    are described by a `Domain` object (`domain`). Factors are fundamental building
+    blocks for representing probability distributions and performing computations in
+    graphical models and related areas.
+
+    Key Attributes:
+        domain (Domain): The domain object defining the attributes and their shapes
+            over which this factor is defined.
+        values (jax.Array): A JAX array containing the numerical values of the factor.
+            The shape of this array must match the shape defined by the `domain`.
+
+    Supported Operations:
+        - Creation: `zeros`, `ones`, `random` for creating factors with specific values.
+        - Reshaping: `transpose` (reorder dimensions), `expand` (add new dimensions).
+        - Aggregation: `sum`, `max`, `logsumexp` (aggregate over specified attributes),
+          `project` (marginalize onto a subset of attributes).
+        - Element-wise: `exp`, `log`, `normalize` (apply functions to each value).
+        - Binary Operations: Standard arithmetic operations (`+`, `-`, `*`, `/`) and
+          `dot` product between factors (or a factor and a scalar), handling domain
+          alignment automatically.
+    """
 
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
