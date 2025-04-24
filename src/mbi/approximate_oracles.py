@@ -17,10 +17,44 @@ import networkx as nx
 import itertools
 from scipy.cluster.hierarchy import DisjointSet
 from mbi import Domain, CliqueVector, Factor
-from typing import TypeAlias
+from typing import TypeAlias, Protocol, Any
 import functools
 
 Clique: TypeAlias = tuple[str, ...]
+
+
+class StatefulMarginalOracle(Protocol):
+    """
+    Defines the callable signature for stateful marginal oracle functions.
+
+    A stateful marginal oracle computes (approximate) marginals from
+    log-space potentials while also managing an internal state, often
+    for optimization in iterative algorithms (e.g., preserving messages
+    in message passing).
+    """
+    def __call__(
+        self,
+        potentials: CliqueVector,
+        total: float = 1.0,
+        state: Any = None,
+    ) -> tuple[CliqueVector, Any]:
+        """
+        Computes marginals from log-space potentials and manages state.
+
+        Args:
+            potentials: A CliqueVector representing the log-space potentials
+                of a graphical model.
+            total: The normalization factor, typically the total number of
+                records or a probability sum. Defaults to 1.0.
+            state: An optional argument to pass state between calls.
+                The oracle may use this state and return an updated version.
+
+        Returns:
+            A tuple containing:
+                - CliqueVector: The computed marginals.
+                - Any: The updated state.
+        """
+        ...
 
 
 def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
