@@ -1,6 +1,6 @@
 import attr
 import jax
-from .marginal_oracles import LinearMeasurement # Assuming LinearMeasurement is in marginal_oracles.py
+from .marginal_loss import LinearMeasurement
 from .dataset import Dataset
 from .clique_vector import CliqueVector
 from . import marginal_loss

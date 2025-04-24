@@ -15,7 +15,7 @@ import numpy as np
 from .domain import Domain
 from .clique_vector import CliqueVector
 from .factor import Factor
-from .marginal_loss import LinearMeasurement # Corrected import source
+from .marginal_loss import LinearMeasurement
 from . import marginal_oracles, marginal_loss, synthetic_data
 from .marginal_oracles import MarginalOracle
 from .approximate_oracles import StatefulMarginalOracle
