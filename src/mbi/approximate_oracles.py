@@ -16,7 +16,9 @@ import jax
 import networkx as nx
 import itertools
 from scipy.cluster.hierarchy import DisjointSet
-from mbi import Domain, CliqueVector, Factor
+from .domain import Domain
+from .clique_vector import CliqueVector
+from .factor import Factor
 from typing import TypeAlias, Protocol, Any
 import functools
 

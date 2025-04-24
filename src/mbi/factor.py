@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import attr
 import functools
-from mbi import Domain
+from .domain import Domain
 import numpy as np
 
 jax.config.update("jax_enable_x64", True)

@@ -1,5 +1,8 @@
 import unittest
-from mbi import Domain, Factor, CliqueVector, LinearMeasurement
+from mbi.domain import Domain
+from mbi.factor import Factor
+from mbi.clique_vector import CliqueVector
+from mbi.marginal_loss import LinearMeasurement
 from mbi import approximate_oracles, estimation
 import numpy as np
 from parameterized import parameterized

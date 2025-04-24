@@ -9,9 +9,6 @@ from scipy.sparse.linalg import lsmr
 import pandas as pd
 import jax.numpy as jnp
 import optax
-import numpy as np
-
-""" This file is experimental.
 
 It is a close approximation to the method described in RAP (https://arxiv.org/abs/2103.06641)
 and an even closer approximation to RAP^{softmax} (https://arxiv.org/abs/2106.07153). This 

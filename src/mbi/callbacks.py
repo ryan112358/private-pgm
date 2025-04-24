@@ -1,7 +1,9 @@
 import attr
 import jax
-from mbi import LinearMeasurement, Dataset, CliqueVector
-from mbi import marginal_loss
+from .marginal_loss import LinearMeasurement
+from .dataset import Dataset
+from .clique_vector import CliqueVector
+from . import marginal_loss
 import pandas as pd
 
 

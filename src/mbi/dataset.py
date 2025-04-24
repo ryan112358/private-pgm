@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import json
-from mbi import Domain
+from .domain import Domain
 
 
 class Dataset:

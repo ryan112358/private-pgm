@@ -12,10 +12,13 @@ intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
 import numpy as np
-from mbi import Domain, CliqueVector, Factor, LinearMeasurement
-from mbi import marginal_oracles, marginal_loss, synthetic_data
-from mbi.marginal_oracles import MarginalOracle
-from mbi.approximate_oracles import StatefulMarginalOracle
+from .domain import Domain
+from .clique_vector import CliqueVector
+from .factor import Factor
+from .marginal_loss import LinearMeasurement
+from . import marginal_oracles, marginal_loss, synthetic_data
+from .marginal_oracles import MarginalOracle
+from .approximate_oracles import StatefulMarginalOracle
 from typing import Any, Callable, NamedTuple, Protocol
 import jax
 import jax.numpy as jnp
@@ -88,7 +91,7 @@ class GraphicalModel:
     def project(self, attrs: tuple[str, ...]) -> Factor:
         try:
             return self.marginals.project(attrs)
-        except:
+        except Exception: # Added Exception type for clarity
             return marginal_oracles.variable_elimination(
                 self.potentials, attrs, self.total
             )
