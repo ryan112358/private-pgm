@@ -11,18 +11,71 @@ Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
-
 import numpy as np
 from mbi import Domain, CliqueVector, Factor, LinearMeasurement
 from mbi import marginal_oracles, marginal_loss, synthetic_data
-from typing import Any, Callable, NamedTuple
+from mbi.marginal_oracles import MarginalOracle
+from mbi.approximate_oracles import StatefulMarginalOracle
+from typing import Any, Callable, NamedTuple, Protocol
 import jax
 import jax.numpy as jnp
 import chex
 import attr
 import optax
 
-_DEFAULT_CALLBACK = lambda t, loss: print(loss) if t % 50 == 0 else None
+
+class Estimator(Protocol):
+    """
+    Defines the callable signature for graphical model estimator functions.
+
+    An estimator learns the parameters (potentials) of a graphical model,
+    typically by optimizing a marginal-based loss function.
+
+    Examples of conforming functions from `mbi.estimation`:
+    - `mirror_descent`
+    - `lbfgs`
+    - `dual_averaging`
+    - `interior_gradient`
+    - `universal_accelerated_method`
+    """
+    def __call__(
+        self,
+        domain: Domain,
+        loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+        *,
+        known_total: float | None = None,
+        potentials: CliqueVector | None = None,
+        marginal_oracle: MarginalOracle,
+        iters: int = 1000,
+        callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+        **kwargs: Any
+    ) -> 'GraphicalModel':
+        """
+        Estimates the parameters of a graphical model.
+
+        Args:
+            domain: The Domain object specifying the attributes and their
+                cardinalities over which the model is defined.
+            loss_fn: Either a MarginalLossFn object or a list of
+                LinearMeasurement objects. This defines the objective function
+                to be minimized.
+            known_total: An optional float for the known or estimated total
+                number of records.
+            potentials: An optional CliqueVector for the initial guess of
+                model potentials.
+            marginal_oracle: A callable (stateless or stateful) that computes
+                marginal distributions from potentials.
+            iters: Maximum number of optimization iterations. Defaults to 1000.
+            callback_fn: Optional function called periodically during estimation.
+                Defaults to a no-op lambda.
+            **kwargs: Additional keyword arguments specific to the estimation
+                algorithm (e.g., stepsize, lipschitz, stateful flag).
+
+        Returns:
+            A GraphicalModel object with the learned potentials,
+            resulting marginals, and the model domain.
+        """
+        ...
 
 
 # API may change, we'll see

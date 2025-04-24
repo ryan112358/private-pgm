@@ -4,27 +4,68 @@ The functions in this library should all produce numerically identical
 outputs on well-behaved inputs, but may have different stability characteristics
 on poorly-behaved inputs, and different rutnime/memory performance characteristics.
 
-The currently supported marginal_oracles in this libarary are:
-    * brute_force_marginals
-    * einsum_marginals
-    * message_passing_stable
-    * message_passing_fast
-
 We recommend using message_passing_stable with accelerated estimation algorithms like
-Interior Gradient, but using message_passing_fast with mirror descent.  A marginal oracle
-is a function that consumes a vector of log-space potentials over an arbitrary set of cliques
-and returns a vector of marginals defined over those same set of cliques.
+Interior Gradient, but using message_passing_fast with mirror descent.
 """
 
 import string
 import jax
 import jax.numpy as jnp
-from mbi import CliqueVector, Domain, Factor, junction_tree
-from mbi.marginal_loss import clique_mapping
+from .clique_vector import CliqueVector
+from .domain import Domain
+from .factor import Factor
+from . import junction_tree
+from .marginal_loss import clique_mapping
+#from mbi import CliqueVector, Domain, Factor, junction_tree
+#from mbi.marginal_loss import clique_mapping
 import functools
 import collections
+from typing import Protocol
 
 _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
+
+
+class MarginalOracle(Protocol):
+    """
+    Defines the callable signature for stateless marginal oracle functions.
+
+    A marginal oracle consumes log-space potentials (CliqueVector) of
+    a graphical model and returns its marginals (CliqueVector).  The
+    returned marginals will be defined over the same domain and set of cliques
+    as the potentials.
+
+    Different marginal oracles should usually produce identical results,
+    but they may have different time/space complexities and numerical
+    stabilities. Examples of conforming functions from `mbi.marginal_oracles`:
+
+    - `message_passing_stable`: Computes marginals using message passing,
+      operating in log-space for numerical stability.
+    - `message_passing_fast`: A faster and more memory efficient message
+    	passing algorithm that uses einsum, but it is not as stable as message_passing_stable.
+    - `brute_force_marginals`: Computes marginals by materializing the full
+      joint distribution.
+    - `einsum_marginals`: Computes marginals using einsum, generally not
+      recommended for large models.
+    """
+    def __call__(
+        self,
+        potentials: CliqueVector,
+        total: float = 1.0,
+    ) -> CliqueVector:
+        """
+        Computes marginals from log-space potentials.
+
+        Args:
+            potentials: A CliqueVector representing the log-space potentials
+                of a graphical model.
+            total: The normalization factor, typically the total number of
+                records or a probability sum. Defaults to 1.0.
+
+        Returns:
+            A CliqueVector of the computed marginals.
+        """
+        ...
+
 
 
 def sum_product(factors: list[Factor], dom: Domain) -> Factor:
@@ -273,3 +314,4 @@ def variable_elimination(
         .exp()
         .project(clique)
     )
+
