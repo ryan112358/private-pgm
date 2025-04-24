@@ -1,4 +1,10 @@
-from mbi import Dataset, Factor, CliqueVector, estimation, Domain, marginal_loss, LinearMeasurement
+from ..dataset import Dataset
+from ..factor import Factor
+from ..clique_vector import CliqueVector
+from .. import estimation
+from ..domain import Domain
+from .. import marginal_loss
+from ..marginal_loss import LinearMeasurement
 from scipy.optimize import minimize
 from collections import defaultdict
 import numpy as np

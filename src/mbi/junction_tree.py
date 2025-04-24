@@ -5,7 +5,7 @@ from typing import TypeAlias, Collection
 import networkx as nx
 import numpy as np
 
-from mbi import Domain
+from .domain import Domain
 
 
 Clique: TypeAlias = tuple[str, ...]

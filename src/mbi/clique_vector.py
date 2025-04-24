@@ -1,5 +1,6 @@
 import numpy as np
-from mbi import Domain, Factor
+from .domain import Domain
+from .factor import Factor
 import jax
 import jax.numpy as jnp
 import functools

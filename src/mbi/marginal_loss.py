@@ -1,6 +1,7 @@
 import attr
 from typing import Any, Callable, TypeAlias, Protocol, Mapping
-from mbi import Factor, CliqueVector
+from .factor import Factor
+from .clique_vector import CliqueVector
 
 import jax
 import jax.numpy as jnp

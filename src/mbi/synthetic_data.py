@@ -1,5 +1,6 @@
-from mbi import CliqueVector, Dataset
-from mbi import junction_tree
+from .clique_vector import CliqueVector
+from .dataset import Dataset
+from . import junction_tree
 import pandas as pd
 import numpy as np
 
