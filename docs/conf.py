@@ -1,3 +1,6 @@
+# sphinx-apidoc -o . ../src/mbi
+# sphinx-build -b html . _build/html
+
 import sys
 import os
 

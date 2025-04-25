@@ -6,10 +6,6 @@
 Private-PGM
 ####################################################################
 
-**private-pgm** is a Python library providing code for Differentially Private Probabilistic Graphical Models and Synthetic Data Generation.
-
-This documentation will guide you through the installation, usage, and API of the library, enabling you to generate privacy-preserving synthetic datasets.
-
 .. note::
    This project is under active development. Feedback and contributions are welcome!
 
@@ -17,13 +13,12 @@ This documentation will guide you through the installation, usage, and API of th
    :maxdepth: 2
    :caption: Getting Started
 
-   introduction
+   introduction.md
    installation
-   user_guide
 
 .. toctree::
    :maxdepth: 2
-   :caption: Examples & Tutorials
+   :caption: Examples
 
    examples
 
@@ -31,15 +26,8 @@ This documentation will guide you through the installation, usage, and API of th
    :maxdepth: 2
    :caption: API Documentation
 
-.. automodule:: mbi
-   :members:
+   mbi
 
-.. autosummary::
-   :toctree: _autosummary_output
-   :recursive:
-
-   mbi.dataset
-   mbi.domain
 
 .. toctree::
    :maxdepth: 2
@@ -47,27 +35,3 @@ This documentation will guide you through the installation, usage, and API of th
 
    contributing
    changelog
-   license
-
-Quick Links
-===========
-
-* **GitHub Repository:** `https://github.com/ryan112358/private-pgm <https://github.com/ryan112358/private-pgm>`_
-* **Issue Tracker:** `https://github.com/ryan112358/private-pgm/issues <https://github.com/ryan112358/private-pgm/issues>`_ 
-
-
-Why private-pgm?
-================
-
-* **Privacy-Preserving:** Implements differential privacy techniques to protect sensitive information.
-* **Probabilistic Graphical Models:** Leverages PGMs for accurate data representation.
-* **Synthetic Data:** Generates high-utility synthetic datasets for analysis and sharing.
-* **Modular Design:** Built with flexibility to experiment with different components.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
