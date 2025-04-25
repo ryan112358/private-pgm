@@ -1,0 +1,510 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Private-PGM &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Introduction" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples &amp; Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary_output/mbi.dataset.html">mbi.dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary_output/mbi.domain.html">mbi.domain</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Private-PGM</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="private-pgm">
+<h1>Private-PGM<a class="headerlink" href="#private-pgm" title="Link to this heading"></a></h1>
+<p><strong>private-pgm</strong> is a Python library providing code for Differentially Private Probabilistic Graphical Models and Synthetic Data Generation.</p>
+<p>This documentation will guide you through the installation, usage, and API of the library, enabling you to generate privacy-preserving synthetic datasets.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This project is under active development. Feedback and contributions are welcome!</p>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#what-can-you-do-with-private-pgm">What can you do with <cite>private-pgm</cite>?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#getting-around">Getting Around</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#setting-up-a-virtual-environment-recommended">Setting up a Virtual Environment (Recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-from-source">Installation from Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#verify-installation">Verify Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#core-workflow">Core Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-1-loading-and-preparing-data">Step 1: Loading and Preparing Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-2-selecting-and-configuring-a-mechanism">Step 2: Selecting and Configuring a Mechanism</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-3-running-the-mechanism">Step 3: Running the Mechanism</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-4-generating-synthetic-data">Step 4: Generating Synthetic Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-5-evaluating-utility-optional">Step 5: Evaluating Utility (Optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#further-topics">Further Topics</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Examples &amp; Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="py class" id="module-mbi">
+<dt class="sig sig-object py" id="mbi.CliqueVector">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.</span></span><span class="sig-name descname"><span class="pre">CliqueVector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cliques</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#mbi.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/clique_vector.html#CliqueVector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.CliqueVector" title="Link to this definition"></a></dt>
+<dd><p>This is a convenience class for simplifying arithmetic over the
+concatenated vector of marginals and potentials.</p>
+<p>These vectors are represented as a dictionary mapping cliques (subsets of attributes)
+to marginals/potentials (Factor objects)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.CliqueVector.contract">
+<span class="sig-name descname"><span class="pre">contract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cliques</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.CliqueVector" title="mbi.clique_vector.CliqueVector"><span class="pre">CliqueVector</span></a></span></span><a class="reference internal" href="_modules/mbi/clique_vector.html#CliqueVector.contract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.CliqueVector.contract" title="Link to this definition"></a></dt>
+<dd><p>Compute a supported CliqueVector from this.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.CliqueVector.expand">
+<span class="sig-name descname"><span class="pre">expand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cliques</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.CliqueVector" title="mbi.clique_vector.CliqueVector"><span class="pre">CliqueVector</span></a></span></span><a class="reference internal" href="_modules/mbi/clique_vector.html#CliqueVector.expand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.CliqueVector.expand" title="Link to this definition"></a></dt>
+<dd><p>Re-expresses this CliqueVector over an expanded set of cliques.</p>
+<p>If the original CliqueVector represents the potentials of a Graphical Model,
+the given cliques support the cliques in the original CliqueVector, then
+the distribution represented by the new CliqueVector will be identical.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cliques</strong> – The new cliques the clique vector will be defined over.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An expanded CliqueVector defined over the given set of cliques.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.Domain">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.</span></span><span class="sig-name descname"><span class="pre">Domain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attributes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/domain.html#Domain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain" title="Link to this definition"></a></dt>
+<dd><p>Represents a discrete domain defined by attributes and their sizes.</p>
+<p>This class encapsulates a set of named attributes and their corresponding
+discrete sizes (shapes). It provides methods for common domain operations.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.Domain.attributes">
+<span class="sig-name descname"><span class="pre">attributes</span></span><a class="headerlink" href="#mbi.Domain.attributes" title="Link to this definition"></a></dt>
+<dd><p>A tuple containing the names of the
+attributes in the domain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[str, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.Domain.shape">
+<span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#mbi.Domain.shape" title="Link to this definition"></a></dt>
+<dd><p>A tuple containing the integer sizes
+(number of discrete values) for each corresponding attribute in
+the <cite>attributes</cite> tuple.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[int, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="simple">
+<dt>Supported Operations:</dt><dd><ul class="simple">
+<li><p>Projection (<cite>project</cite>): Creates a new domain with a subset of attributes.</p></li>
+<li><p>Marginalization (<cite>marginalize</cite>): Creates a new domain excluding specified attributes.</p></li>
+<li><p>Intersection (<cite>intersect</cite>): Creates a new domain containing only common attributes.</p></li>
+<li><p>Merging (<cite>merge</cite>): Combines two domains into a larger one.</p></li>
+<li><p>Size Calculation (<cite>size</cite>): Computes the total number of configurations in the domain or a subset.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Example Usage (using fromdict):
+&gt;&gt;&gt; domain = Domain.fromdict({‘a’: 2, ‘b’: 3})
+&gt;&gt;&gt; print(domain)
+Domain(a: 2, b: 3)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.axes">
+<span class="sig-name descname"><span class="pre">axes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.axes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.axes" title="Link to this definition"></a></dt>
+<dd><p>Return the axes tuple for the given attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>attrs</strong> – the attributes</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a tuple with the corresponding axes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.canonical">
+<span class="sig-name descname"><span class="pre">canonical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attrs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/domain.html#Domain.canonical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.canonical" title="Link to this definition"></a></dt>
+<dd><p>Return the canonical ordering of the attributes.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mbi.Domain.config">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mbi.Domain.config" title="Link to this definition"></a></dt>
+<dd><p>size } values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns a dictionary of { attr</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.contains">
+<span class="sig-name descname"><span class="pre">contains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.contains"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.contains" title="Link to this definition"></a></dt>
+<dd><p>Determine if this domain contains another.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.fromdict">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromdict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.fromdict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.fromdict" title="Link to this definition"></a></dt>
+<dd><p>Construct a Domain object from a dictionary of { attr : size } values.</p>
+<p>Example Usage:
+&gt;&gt;&gt; print(Domain.fromdict({‘a’: 10, ‘b’: 20}))
+Domain(a: 10, b: 20)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> – a dictionary of { attr : size } values</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the Domain object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.intersect">
+<span class="sig-name descname"><span class="pre">intersect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.intersect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.intersect" title="Link to this definition"></a></dt>
+<dd><p>Intersect this Domain object with another.</p>
+<p>Example Usage:
+&gt;&gt;&gt; D1 = Domain([‘a’,’b’], [10,20])
+&gt;&gt;&gt; D2 = Domain([‘b’,’c’], [20,30])
+&gt;&gt;&gt; print(D1.intersect(D2))
+Domain(b: 20)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – another Domain object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the intersection of the two domains</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.invert">
+<span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attrs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/domain.html#Domain.invert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.invert" title="Link to this definition"></a></dt>
+<dd><p>returns the attributes in the domain not in the list</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.marginalize">
+<span class="sig-name descname"><span class="pre">marginalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.marginalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.marginalize" title="Link to this definition"></a></dt>
+<dd><p>Marginalize out some attributes from the domain (opposite of project).</p>
+<p>Example Usage:
+&gt;&gt;&gt; D1 = Domain([‘a’,’b’], [10,20])
+&gt;&gt;&gt; print(D1.marginalize([‘a’]))
+Domain(b: 20)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>attrs</strong> – the attributes to marginalize out.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the marginalized Domain object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.merge">
+<span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.merge" title="Link to this definition"></a></dt>
+<dd><p>Merge this Domain object with another.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – another Domain object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a new domain object covering the full domain</p>
+</dd>
+</dl>
+<p>Example:
+&gt;&gt;&gt; D1 = Domain([‘a’,’b’], [10,20])
+&gt;&gt;&gt; D2 = Domain([‘b’,’c’], [20,30])
+&gt;&gt;&gt; print(D1.merge(D2))
+Domain(a: 10, b: 20, c: 30)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – another Domain object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a new domain object covering the combined domain.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.project">
+<span class="sig-name descname"><span class="pre">project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.project" title="Link to this definition"></a></dt>
+<dd><p>Project the domain onto a subset of attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>attributes</strong> – the attributes to project onto</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the projected Domain object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.Domain.size">
+<span class="sig-name descname"><span class="pre">size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/mbi/domain.html#Domain.size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Domain.size" title="Link to this definition"></a></dt>
+<dd><p>Return the total size of the domain.</p>
+<p>Example:
+&gt;&gt;&gt; D1 = Domain([‘a’,’b’], [10,20])
+&gt;&gt;&gt; D1.size()
+200
+&gt;&gt;&gt; D1.size([‘a’])
+10</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>attributes</strong> – A subset of attributes whose total size should be returned.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the total size of the domain</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.Factor">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.</span></span><span class="sig-name descname"><span class="pre">Factor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mbi.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/factor.html#Factor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.Factor" title="Link to this definition"></a></dt>
+<dd><p>Represents a factor defined over a discrete domain.</p>
+<p>A factor can be thought of as a potential function or an unnormalized
+probability distribution over a set of discrete variables defined by a
+<cite>Domain</cite> object. It maps each configuration of the domain to a value.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.Factor.domain">
+<span class="sig-name descname"><span class="pre">domain</span></span><a class="headerlink" href="#mbi.Factor.domain" title="Link to this definition"></a></dt>
+<dd><p>The discrete domain over which the factor is defined.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mbi.Domain" title="mbi.Domain">Domain</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.Factor.values">
+<span class="sig-name descname"><span class="pre">values</span></span><a class="headerlink" href="#mbi.Factor.values" title="Link to this definition"></a></dt>
+<dd><p>A JAX array containing the factor’s values. The shape
+of this array matches the shape specified by the <cite>domain</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="simple">
+<dt>Supported Operations:</dt><dd><ul class="simple">
+<li><p>Creation: <cite>zeros</cite>, <cite>ones</cite>, <cite>random</cite> for creating factors.</p></li>
+<li><p>Reshaping: <cite>transpose</cite>, <cite>expand</cite> for modifying the domain/shape.</p></li>
+<li><p>Aggregation: <cite>sum</cite>, <cite>logsumexp</cite>, <cite>project</cite> for marginalizing attributes.</p></li>
+<li><p>Element-wise: <cite>exp</cite>, <cite>log</cite>, <cite>normalize</cite> for value transformations.</p></li>
+<li><p>Binary Ops: <cite>+</cite>, <cite>-</cite>, <cite>*</cite>, <cite>/</cite>, <cite>dot</cite> for combining factors.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Example Usage:
+&gt;&gt;&gt; from mbi import Domain  # Needed for doctest context
+&gt;&gt;&gt; domain = Domain.fromdict({‘X’: 2, ‘Y’: 3})
+&gt;&gt;&gt; factor = Factor.ones(domain)
+&gt;&gt;&gt; print(factor.domain)
+Domain(X: 2, Y: 3)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.LinearMeasurement">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.</span></span><span class="sig-name descname"><span class="pre">LinearMeasurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">noisy_measurement:</span> <span class="pre">~typing.Any,</span> <span class="pre">clique,</span> <span class="pre">stddev:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.0,</span> <span class="pre">query:</span> <span class="pre">~typing.Callable[[~jax.Array],</span> <span class="pre">~jax.Array]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">identity_fn&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mbi/marginal_loss.html#LinearMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.LinearMeasurement" title="Link to this definition"></a></dt>
+<dd><p>A class for representing a private linear measurement of a marginal.</p>
+</dd></dl>
+
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_autosummary_output/mbi.dataset.html#module-mbi.dataset" title="mbi.dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mbi.dataset</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_autosummary_output/mbi.domain.html#module-mbi.domain" title="mbi.domain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mbi.domain</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#ways-to-contribute">Ways to Contribute</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#setting-up-a-development-environment">Setting Up a Development Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#coding-style">Coding Style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#pull-request-process">Pull Request Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-of-conduct">Code of Conduct</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-x-y-z-upcoming-release">Version X.Y.Z (Upcoming Release)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-1-0-initial-release-yyyy-mm-dd">Version 0.1.0 (Initial Release) - YYYY-MM-DD</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+</div>
+<section id="quick-links">
+<h2>Quick Links<a class="headerlink" href="#quick-links" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>GitHub Repository:</strong> <a class="reference external" href="https://github.com/ryan112358/private-pgm">https://github.com/ryan112358/private-pgm</a></p></li>
+<li><p><strong>Issue Tracker:</strong> <a class="reference external" href="https://github.com/ryan112358/private-pgm/issues">https://github.com/ryan112358/private-pgm/issues</a></p></li>
+</ul>
+</section>
+<section id="why-private-pgm">
+<h2>Why private-pgm?<a class="headerlink" href="#why-private-pgm" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Privacy-Preserving:</strong> Implements differential privacy techniques to protect sensitive information.</p></li>
+<li><p><strong>Probabilistic Graphical Models:</strong> Leverages PGMs for accurate data representation.</p></li>
+<li><p><strong>Synthetic Data:</strong> Generates high-utility synthetic datasets for analysis and sharing.</p></li>
+<li><p><strong>Modular Design:</strong> Built with flexibility to experiment with different components.</p></li>
+</ul>
+</section>
+<section id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-right" title="Introduction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

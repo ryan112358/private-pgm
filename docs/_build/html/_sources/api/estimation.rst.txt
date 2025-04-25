@@ -1,0 +1,7 @@
+mbi.estimation
+===========
+
+.. automodule:: mbi.estimation
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,445 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mbi.marginal_oracles &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mbi.marginal_oracles</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mbi.marginal_oracles</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Functions for computing marginals from log-space potentials.</span>
+
+<span class="sd">The functions in this library should all produce numerically identical</span>
+<span class="sd">outputs on well-behaved inputs, but may have different stability characteristics</span>
+<span class="sd">on poorly-behaved inputs, and different rutnime/memory performance characteristics.</span>
+
+<span class="sd">We recommend using message_passing_stable with accelerated estimation algorithms like</span>
+<span class="sd">Interior Gradient, but using message_passing_fast with mirror descent.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">string</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.clique_vector</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliqueVector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.domain</span><span class="w"> </span><span class="kn">import</span> <span class="n">Domain</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.factor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Factor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">junction_tree</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.marginal_loss</span><span class="w"> </span><span class="kn">import</span> <span class="n">clique_mapping</span>
+<span class="c1">#from mbi import CliqueVector, Domain, Factor, junction_tree</span>
+<span class="c1">#from mbi.marginal_loss import clique_mapping</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">collections</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="n">_EINSUM_LETTERS</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_lowercase</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_uppercase</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MarginalOracle">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.MarginalOracle">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarginalOracle</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the callable signature for stateless marginal oracle functions.</span>
+
+<span class="sd">    A marginal oracle consumes log-space potentials (CliqueVector) of</span>
+<span class="sd">    a graphical model and returns its marginals (CliqueVector).  The</span>
+<span class="sd">    returned marginals will be defined over the same domain and set of cliques</span>
+<span class="sd">    as the potentials.</span>
+
+<span class="sd">    Different marginal oracles should usually produce identical results,</span>
+<span class="sd">    but they may have different time/space complexities and numerical</span>
+<span class="sd">    stabilities. Examples of conforming functions from `mbi.marginal_oracles`:</span>
+
+<span class="sd">    - `message_passing_stable`: Computes marginals using message passing,</span>
+<span class="sd">      operating in log-space for numerical stability.</span>
+<span class="sd">    - `message_passing_fast`: A faster and more memory efficient message</span>
+<span class="sd">    	passing algorithm that uses einsum, but it is not as stable as message_passing_stable.</span>
+<span class="sd">    - `brute_force_marginals`: Computes marginals by materializing the full</span>
+<span class="sd">      joint distribution.</span>
+<span class="sd">    - `einsum_marginals`: Computes marginals using einsum, generally not</span>
+<span class="sd">      recommended for large models.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span>
+        <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CliqueVector</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes marginals from log-space potentials.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            potentials: A CliqueVector representing the log-space potentials</span>
+<span class="sd">                of a graphical model.</span>
+<span class="sd">            total: The normalization factor, typically the total number of</span>
+<span class="sd">                records or a probability sum. Defaults to 1.0.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A CliqueVector of the computed marginals.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+
+
+<div class="viewcode-block" id="sum_product">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.sum_product">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sum_product</span><span class="p">(</span><span class="n">factors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Factor</span><span class="p">],</span> <span class="n">dom</span><span class="p">:</span> <span class="n">Domain</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Factor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the sum-of-products of a list of Factors using einsum.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        factors: A list of Factors.</span>
+<span class="sd">        dom: The target domain of the output factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        sum_{S - D} prod_i F_i,</span>
+<span class="sd">        where</span>
+<span class="sd">            * F_i = factors[i]</span>
+<span class="sd">            * D = dom</span>
+<span class="sd">            * S = union of domains of F_i</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">attrs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="nb">set</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">])</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dom</span><span class="p">)))</span>
+    <span class="n">mapping</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">attrs</span><span class="p">,</span> <span class="n">_EINSUM_LETTERS</span><span class="p">))</span>
+    <span class="n">convert</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mapping</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
+    <span class="n">formula</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">convert</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="o">+</span> <span class="n">convert</span><span class="p">(</span><span class="n">dom</span><span class="p">)</span>
+    <span class="c1">#print(jnp.einsum_path(formula, *[f.values for f in factors]))</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
+        <span class="n">formula</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">values</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">],</span>
+        <span class="n">optimize</span><span class="o">=</span><span class="s2">&quot;dp&quot;</span><span class="p">,</span>  <span class="c1"># default setting broken in some cases</span>
+        <span class="n">precision</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">Precision</span><span class="o">.</span><span class="n">HIGHEST</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Factor</span><span class="p">(</span><span class="n">dom</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="logspace_sum_product">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.logspace_sum_product">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">logspace_sum_product</span><span class="p">(</span><span class="n">log_factors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Factor</span><span class="p">],</span> <span class="n">dom</span><span class="p">:</span> <span class="n">Domain</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Factor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Numerically stable algorithm for computing sum product in log space.</span>
+
+<span class="sd">    This seems to be the most stable algorithm for doing this computation that doesn&#39;t</span>
+<span class="sd">    require materializing sum(log_factors).  Materializing sum(log_factors) will</span>
+<span class="sd">    in general give better numerical stability, but it comes at the cost of</span>
+<span class="sd">    increased memory usage.</span>
+
+<span class="sd">    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map </span>
+<span class="sd">    to compute log sum product sequentially.  This will also have the dual</span>
+<span class="sd">    benefit of using less memory than jnp.einsum in some hard cases.</span>
+
+<span class="sd">    https://github.com/jax-ml/jax/issues/24915</span>
+
+<span class="sd">    https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_factors: a list of log-space factors.</span>
+<span class="sd">        dom: The desired domain of the output factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        log sum_{S - D} prod_i exp(F_i),</span>
+<span class="sd">        where </span>
+<span class="sd">            * F_i = log_factors[i], </span>
+<span class="sd">            * D is the input domain,</span>
+<span class="sd">            * S is the union of the domains of F_i</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">maxes</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">marginalize</span><span class="p">(</span><span class="n">dom</span><span class="p">)</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">log_factors</span><span class="p">]</span>
+    <span class="n">stable_factors</span> <span class="o">=</span> <span class="p">[(</span><span class="n">f</span> <span class="o">-</span> <span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">log_factors</span><span class="p">,</span> <span class="n">maxes</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">sum_product</span><span class="p">(</span><span class="n">stable_factors</span><span class="p">,</span> <span class="n">dom</span><span class="p">)</span><span class="o">.</span><span class="n">log</span><span class="p">()</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">(</span><span class="n">maxes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="logspace_sum_product_very_stable">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.logspace_sum_product_very_stable">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">logspace_sum_product_very_stable</span><span class="p">(</span><span class="n">log_factors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Factor</span><span class="p">],</span> <span class="n">dom</span><span class="p">:</span> <span class="n">Domain</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Factor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;More stable implementation of logspace_sum_product.</span>
+<span class="sd">        </span>
+<span class="sd">    This ipmlementation may (or may not) materialize a Factor over the domain</span>
+<span class="sd">    of all elements of log_factors.  Without JIT, it will materialize this &quot;super-factor&quot;.</span>
+<span class="sd">    Under JIT, there may be some instances where the compiler can figure out</span>
+<span class="sd">    that it does not need to materialize this intermediate to compute the final output.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">summed</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">log_factors</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">summed</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">(</span><span class="n">summed</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">marginalize</span><span class="p">(</span><span class="n">dom</span><span class="p">)</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="brute_force_marginals">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.brute_force_marginals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">brute_force_marginals</span><span class="p">(</span><span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CliqueVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute marginals from (log-space) potentials by materializing the full joint distribution.&quot;&quot;&quot;</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">arrays</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+    <span class="n">marginals</span> <span class="o">=</span> <span class="p">{</span><span class="n">cl</span><span class="p">:</span> <span class="n">P</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span> <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">CliqueVector</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span><span class="p">,</span> <span class="n">marginals</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="einsum_marginals">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.einsum_marginals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">einsum_marginals</span><span class="p">(</span><span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CliqueVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute marginals from (log-space) potentials by using einsum.</span>
+
+<span class="sd">    This is a &quot;brute-force&quot; approach and is not recommended in practice.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">arrays</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">CliqueVector</span><span class="p">(</span>
+        <span class="n">potentials</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+        <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span><span class="p">,</span>
+        <span class="p">{</span>
+            <span class="n">cl</span><span class="p">:</span> <span class="n">logspace_sum_product</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">potentials</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span>
+        <span class="p">},</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="message_passing_stable">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.message_passing_stable">[docs]</a>
+<span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">message_passing_stable</span><span class="p">(</span><span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CliqueVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute marginals from (log-space) potentials using the message passing algorithm.</span>
+
+<span class="sd">    This implementation operates completely in logspace, until the last step where it</span>
+<span class="sd">    exponentiates the log-beliefs to get marginals.  It is very stable numerically,</span>
+<span class="sd">    but in general could materialize factors defined over &quot;super-cliques&quot;, which</span>
+<span class="sd">    are the nodes in the junction tree implied by the cliques in potentials.</span>
+<span class="sd">    Thus, it may require more memory than &quot;message_passing_fast&quot; below.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        potentials: The (log-space) potentials of a graphical model.</span>
+<span class="sd">        total: The normalization factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The marginals of the graphical model, defined over the same set of cliques</span>
+<span class="sd">        as the input potentials.  Each marginal is non-negative and sums to &quot;total&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span>
+
+    <span class="n">jtree</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">make_junction_tree</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">message_order</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">message_passing_order</span><span class="p">(</span><span class="n">jtree</span><span class="p">)</span>
+    <span class="n">maximal_cliques</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">maximal_cliques</span><span class="p">(</span><span class="n">jtree</span><span class="p">)</span>
+
+    <span class="n">mapping</span> <span class="o">=</span> <span class="n">clique_mapping</span><span class="p">(</span><span class="n">maximal_cliques</span><span class="p">,</span> <span class="n">cliques</span><span class="p">)</span>
+    <span class="n">beliefs</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">maximal_cliques</span><span class="p">)</span>
+
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">message_order</span><span class="p">:</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="n">beliefs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">j</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="n">beliefs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">messages</span><span class="p">[(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="n">beliefs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">messages</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tau</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
+        <span class="n">beliefs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">beliefs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">messages</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">beliefs</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span><span class="o">.</span><span class="n">contract</span><span class="p">(</span><span class="n">cliques</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="message_passing_fast">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.message_passing_fast">[docs]</a>
+<span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">message_passing_fast</span><span class="p">(</span><span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CliqueVector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute marginals from (log-space) potentials using the message passing algorithm.</span>
+
+<span class="sd">    This implementation leverages the &quot;einsum&quot; primitve to compute clique marginals</span>
+<span class="sd">    without materializing marginals over the super cliques first (nodes in the</span>
+<span class="sd">    junction tree).  It can be much faster and more memory efficient than</span>
+<span class="sd">    message_passing_stable, but there are some cases where this</span>
+<span class="sd">    implementation is not as stable.</span>
+
+<span class="sd">    See the stackoverflow thread for the key difficulty here.</span>
+<span class="sd">    https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        potentials: The (log-space) potentials of a graphical model.</span>
+<span class="sd">        total: The normalization factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The marginals of the graphical model, defined over the same set of cliques</span>
+<span class="sd">        as the input potentials.  Each marginal is non-negative and sums to &quot;total&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">active_domain</span><span class="p">,</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span>
+
+    <span class="n">jtree</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">make_junction_tree</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">message_order</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">message_passing_order</span><span class="p">(</span><span class="n">jtree</span><span class="p">)</span>
+    <span class="c1"># TODO: upstream this logic to message_passing_order function</span>
+    <span class="n">message_order</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">message_order</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">j</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">maximal_cliques</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">maximal_cliques</span><span class="p">(</span><span class="n">jtree</span><span class="p">)</span>
+
+    <span class="n">mapping</span> <span class="o">=</span> <span class="n">clique_mapping</span><span class="p">(</span><span class="n">maximal_cliques</span><span class="p">,</span> <span class="n">cliques</span><span class="p">)</span>
+    <span class="n">inverse_mapping</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">incoming_messages</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">potential_mapping</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">cliques</span><span class="p">:</span>
+        <span class="n">potential_mapping</span><span class="p">[</span><span class="n">mapping</span><span class="p">[</span><span class="n">cl</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">potentials</span><span class="p">[</span><span class="n">cl</span><span class="p">])</span>
+        <span class="n">inverse_mapping</span><span class="p">[</span><span class="n">mapping</span><span class="p">[</span><span class="n">cl</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">message_order</span><span class="p">)):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">message_order</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="n">msg2</span> <span class="o">=</span> <span class="n">message_order</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">msg2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">msg</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">msg2</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">incoming_messages</span><span class="p">[</span><span class="n">msg</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg2</span><span class="p">)</span>
+
+    <span class="n">messages</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">message_order</span><span class="p">:</span>
+        <span class="n">shared</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">j</span><span class="p">)))</span>
+        <span class="n">input_potentials</span> <span class="o">=</span> <span class="n">potential_mapping</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">input_messages</span> <span class="o">=</span> <span class="p">[</span><span class="n">messages</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">incoming_messages</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]]</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">input_potentials</span> <span class="o">+</span> <span class="n">input_messages</span>
+
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">shared</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">attr</span> <span class="ow">in</span> <span class="nb">input</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">attributes</span> <span class="k">for</span> <span class="nb">input</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">):</span>
+                <span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Factor</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">project</span><span class="p">([</span><span class="n">attr</span><span class="p">])))</span>
+
+        <span class="n">messages</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">logspace_sum_product</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">shared</span><span class="p">)</span>
+
+    <span class="n">beliefs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">maximal_cliques</span><span class="p">:</span>
+        <span class="n">input_potentials</span> <span class="o">=</span> <span class="n">potential_mapping</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span>
+        <span class="n">input_messages</span> <span class="o">=</span> <span class="p">[</span><span class="n">messages</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">cl</span><span class="p">]</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">input_potentials</span> <span class="o">+</span> <span class="n">input_messages</span>
+        <span class="k">for</span> <span class="n">cl2</span> <span class="ow">in</span> <span class="n">inverse_mapping</span><span class="p">[</span><span class="n">cl</span><span class="p">]:</span>
+            <span class="n">beliefs</span><span class="p">[</span><span class="n">cl2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">logspace_sum_product</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">cl2</span><span class="p">))</span>
+                <span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">CliqueVector</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span><span class="p">,</span> <span class="n">beliefs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="variable_elimination">
+<a class="viewcode-back" href="../../api/marginal_oracles.html#mbi.marginal_oracles.variable_elimination">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">variable_elimination</span><span class="p">(</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span> <span class="n">clique</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Factor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute an out-of-model/unsupported marginal from the potentials.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        potentials: The (log-space) potentials of a Graphical Model.</span>
+<span class="sd">        clique: The subset of attributes whose marginal you want.</span>
+<span class="sd">        total: The normalization factor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The marginal defined over the domain of the input clique, where</span>
+<span class="sd">        each entry is non-negative and sums to the input total.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">clique</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">clique</span><span class="p">)</span>
+    <span class="n">cliques</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span> <span class="o">+</span> <span class="p">[</span><span class="n">clique</span><span class="p">]</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">active_domain</span>
+    <span class="n">elim</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">clique</span><span class="p">)</span>
+    <span class="n">elim_order</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">junction_tree</span><span class="o">.</span><span class="n">greedy_order</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">cliques</span><span class="p">,</span> <span class="n">elim</span><span class="o">=</span><span class="n">elim</span><span class="p">)</span>
+
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+    <span class="n">psi</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">potentials</span><span class="o">.</span><span class="n">arrays</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">elim_order</span><span class="p">:</span>
+        <span class="n">psi2</span> <span class="o">=</span> <span class="p">[</span><span class="n">psi</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">psi</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="k">if</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">psi</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">domain</span><span class="p">]</span>
+        <span class="n">psi</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">psi2</span><span class="p">)</span><span class="o">.</span><span class="n">logsumexp</span><span class="p">([</span><span class="n">z</span><span class="p">])</span>
+        <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="c1"># this expand covers the case when clique is not in the active domain</span>
+    <span class="n">newdom</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">clique</span><span class="p">)</span>
+    <span class="n">zero</span> <span class="o">=</span> <span class="n">Factor</span><span class="p">(</span><span class="n">Domain</span><span class="p">([],</span> <span class="p">[]),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="nb">sum</span><span class="p">(</span><span class="n">psi</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">start</span><span class="o">=</span><span class="n">zero</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">newdom</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">exp</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">clique</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

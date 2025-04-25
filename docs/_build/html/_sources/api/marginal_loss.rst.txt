@@ -1,0 +1,7 @@
+mbi.marginal_loss
+===========
+
+.. automodule:: mbi.marginal_loss
+   :members:
+   :undoc-members:
+   :show-inheritance:

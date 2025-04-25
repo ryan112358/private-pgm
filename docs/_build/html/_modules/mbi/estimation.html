@@ -1,0 +1,802 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mbi.estimation &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mbi.estimation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mbi.estimation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Algorithms for estimating graphical models from marginal-based loss functions.</span>
+
+<span class="sd">This module provides a flexible set of optimization algorithms, each sharing the</span>
+<span class="sd">the same API.  The supported algorithms are:</span>
+<span class="sd">    1. Mirror Descent [our recommended algorithm]</span>
+<span class="sd">    2. L-BFGS (using back-belief propagation)</span>
+<span class="sd">    3. Regularized Dual Averaging</span>
+<span class="sd">    4. Interior Gradient</span>
+
+<span class="sd">Each algorithm can be given an initial set of potentials, or can automatically</span>
+<span class="sd">intialize the potentials to zero for you.  Any CliqueVector of potentials that</span>
+<span class="sd">support the cliques of the marginal-based loss function can be used here.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.domain</span><span class="w"> </span><span class="kn">import</span> <span class="n">Domain</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.clique_vector</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliqueVector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.factor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Factor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.marginal_loss</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearMeasurement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">marginal_oracles</span><span class="p">,</span> <span class="n">marginal_loss</span><span class="p">,</span> <span class="n">synthetic_data</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.marginal_oracles</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarginalOracle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.approximate_oracles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StatefulMarginalOracle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">chex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">attr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">optax</span>
+
+
+<div class="viewcode-block" id="Estimator">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.Estimator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Estimator</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the callable signature for graphical model estimator functions.</span>
+
+<span class="sd">    An estimator learns the parameters (potentials) of a graphical model,</span>
+<span class="sd">    typically by optimizing a marginal-based loss function.</span>
+
+<span class="sd">    Examples of conforming functions from `mbi.estimation`:</span>
+<span class="sd">    - `mirror_descent`</span>
+<span class="sd">    - `lbfgs`</span>
+<span class="sd">    - `dual_averaging`</span>
+<span class="sd">    - `interior_gradient`</span>
+<span class="sd">    - `universal_accelerated_method`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+        <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">marginal_oracle</span><span class="p">:</span> <span class="n">MarginalOracle</span><span class="p">,</span>
+        <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;GraphicalModel&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the parameters of a graphical model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            domain: The Domain object specifying the attributes and their</span>
+<span class="sd">                cardinalities over which the model is defined.</span>
+<span class="sd">            loss_fn: Either a MarginalLossFn object or a list of</span>
+<span class="sd">                LinearMeasurement objects. This defines the objective function</span>
+<span class="sd">                to be minimized.</span>
+<span class="sd">            known_total: An optional float for the known or estimated total</span>
+<span class="sd">                number of records.</span>
+<span class="sd">            potentials: An optional CliqueVector for the initial guess of</span>
+<span class="sd">                model potentials.</span>
+<span class="sd">            marginal_oracle: A callable (stateless or stateful) that computes</span>
+<span class="sd">                marginal distributions from potentials.</span>
+<span class="sd">            iters: Maximum number of optimization iterations. Defaults to 1000.</span>
+<span class="sd">            callback_fn: Optional function called periodically during estimation.</span>
+<span class="sd">                Defaults to a no-op lambda.</span>
+<span class="sd">            **kwargs: Additional keyword arguments specific to the estimation</span>
+<span class="sd">                algorithm (e.g., stepsize, lipschitz, stateful flag).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A GraphicalModel object with the learned potentials,</span>
+<span class="sd">            resulting marginals, and the model domain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+
+<span class="c1"># API may change, we&#39;ll see</span>
+<div class="viewcode-block" id="GraphicalModel">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.GraphicalModel">[docs]</a>
+<span class="nd">@attr</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GraphicalModel</span><span class="p">:</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span>
+    <span class="n">marginals</span><span class="p">:</span> <span class="n">CliqueVector</span>
+    <span class="n">total</span><span class="p">:</span> <span class="n">chex</span><span class="o">.</span><span class="n">Numeric</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="GraphicalModel.project">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.GraphicalModel.project">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Factor</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">marginals</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span> <span class="c1"># Added Exception type for clarity</span>
+            <span class="k">return</span> <span class="n">marginal_oracles</span><span class="o">.</span><span class="n">variable_elimination</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">potentials</span><span class="p">,</span> <span class="n">attrs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GraphicalModel.synthetic_data">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.GraphicalModel.synthetic_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">synthetic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">synthetic_data</span><span class="o">.</span><span class="n">from_marginals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">total</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">potentials</span><span class="o">.</span><span class="n">domain</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cliques</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">potentials</span><span class="o">.</span><span class="n">cliques</span></div>
+
+
+
+<div class="viewcode-block" id="minimum_variance_unbiased_total">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.minimum_variance_unbiased_total">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">minimum_variance_unbiased_total</span><span class="p">(</span><span class="n">measurements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="c1"># find the minimum variance estimate of the total given the measurements</span>
+    <span class="n">estimates</span><span class="p">,</span> <span class="n">variances</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">M</span> <span class="ow">in</span> <span class="n">measurements</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">noisy_measurement</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># TODO: generalize to support any linear measurement that supports total query</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">y</span><span class="p">):</span>  <span class="c1"># query = Identity</span>
+                <span class="n">estimates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+                <span class="n">variances</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">stddev</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
+    <span class="n">estimates</span><span class="p">,</span> <span class="n">variances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">estimates</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">variances</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">estimates</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">variance</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">variances</span><span class="p">)</span>
+        <span class="n">estimate</span> <span class="o">=</span> <span class="n">variance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">estimates</span> <span class="o">/</span> <span class="n">variances</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">estimate</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_initialize</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">known_total</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">known_total</span> <span class="o">=</span> <span class="n">minimum_variance_unbiased_total</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)</span>
+        <span class="n">loss_fn</span> <span class="o">=</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">from_linear_measurements</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">known_total</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Must set known_total is giving a custom MarginalLossFn&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">potentials</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">potentials</span> <span class="o">=</span> <span class="n">CliqueVector</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">potentials</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span> <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">loss_fn</span><span class="o">.</span><span class="n">cliques</span><span class="p">):</span>
+        <span class="n">potentials</span> <span class="o">=</span> <span class="n">potentials</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">loss_fn</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+
+
+<div class="viewcode-block" id="mirror_descent">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.mirror_descent">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mirror_descent</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_fast</span><span class="p">,</span>
+    <span class="n">stateful</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">stepsize</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimization using the Mirror Descent algorithm.</span>
+
+<span class="sd">    This is a first-order proximal optimization algorithm for solving</span>
+<span class="sd">    a (possibly nonsmooth) convex optimization problem over the marginal polytope.</span>
+<span class="sd">    This is an  implementation of Algorithm 1 from the paper</span>
+<span class="sd">    [&quot;Graphical-model based estimation and inference for differential privacy&quot;]</span>
+<span class="sd">    (https://arxiv.org/pdf/1901.09136).  If stepsize is not provided, this algorithm</span>
+<span class="sd">    uses a line search to automatically choose appropriate step sizes that satisfy</span>
+<span class="sd">    the Armijo condition.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain: The domain over which the model should be defined.</span>
+<span class="sd">        loss_fn: A MarginalLossFn or a list of Linear Measurements.</span>
+<span class="sd">        known_total: The known or estimated number of records in the data.</span>
+<span class="sd">        potentials: The initial potentials.  Must be defind over a set of cliques</span>
+<span class="sd">            that supports the cliques in the loss_fn.</span>
+<span class="sd">        marginal_oracle: The function to use to compute marginals from potentials.</span>
+<span class="sd">        stateful: flag specifying whether the marginal_oracle is stateful or not</span>
+<span class="sd">            (e.g., whether messages should be preserved from one call to the next).</span>
+<span class="sd">        iters: The maximum number of optimization iterations.</span>
+<span class="sd">        stepsize: The step size for the optimization.  If not provided, this algorithm</span>
+<span class="sd">            will use a line search to automatically choose appropriate step sizes.</span>
+<span class="sd">        callback_fn: A function to call at each iteration with the iteration number</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A GraphicalModel object with the estimated potentials and marginals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span> <span class="o">=</span> <span class="n">_initialize</span><span class="p">(</span>
+        <span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stateful</span><span class="p">:</span>
+        <span class="n">stateless_oracle</span> <span class="o">=</span> <span class="n">marginal_oracle</span>
+        <span class="n">marginal_oracle</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">theta</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="p">(</span><span class="n">stateless_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">total</span><span class="p">),</span> <span class="n">state</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">stepsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Stepsize should be manually tuned when using a stateful oracle.&#39;</span><span class="p">)</span>
+
+    <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">mu</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">dL</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">mu</span><span class="p">)</span>
+
+        <span class="n">theta2</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">dL</span>
+        <span class="k">if</span> <span class="n">stepsize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">theta2</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">state</span>
+
+        <span class="n">mu2</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta2</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="n">loss2</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">mu2</span><span class="p">)</span>
+
+        <span class="n">sufficient_decrease</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">-</span> <span class="n">loss2</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">dL</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mu</span> <span class="o">-</span> <span class="n">mu2</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">sufficient_decrease</span><span class="p">,</span> <span class="mf">1.01</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span><span class="n">sufficient_decrease</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">theta2</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">theta</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">sufficient_decrease</span><span class="p">,</span> <span class="n">loss2</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">theta</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">state</span>
+
+    <span class="c1"># A reasonable initial learning rate seems to be 2.0 L / known_total,</span>
+    <span class="c1"># where L is the Lipschitz constant.  Starting from a value too high</span>
+    <span class="c1"># can be fine in some cases, but lead to incorrect behavior in others.</span>
+    <span class="c1"># We don&#39;t currently take L as an argument, but for the most common case,</span>
+    <span class="c1"># where our loss function is || mu - y ||_2^2, we have L = 1.</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="n">known_total</span> <span class="k">if</span> <span class="n">stepsize</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">stepsize</span>
+    <span class="n">mu</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+        <span class="n">potentials</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">update</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="n">callback_fn</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+
+    <span class="n">marginals</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">GraphicalModel</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">marginals</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_optimize</span><span class="p">(</span><span class="n">loss_and_grad_fn</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">iters</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">callback_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="n">loss_fn</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">theta</span><span class="p">:</span> <span class="n">loss_and_grad_fn</span><span class="p">(</span><span class="n">theta</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">):</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">loss_and_grad_fn</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="n">updates</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">grad</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">grad</span><span class="p">,</span> <span class="n">value_fn</span><span class="o">=</span><span class="n">loss_fn</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">optax</span><span class="o">.</span><span class="n">apply_updates</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">updates</span><span class="p">),</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">loss</span>
+
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">lbfgs</span><span class="p">(</span>
+        <span class="n">memory_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">linesearch</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">scale_by_zoom_linesearch</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">max_learning_rate</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    <span class="n">prev_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+        <span class="n">params</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">loss</span> <span class="o">=</span> <span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="n">callback_fn</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="c1"># if loss == prev_loss: break</span>
+        <span class="n">prev_loss</span> <span class="o">=</span> <span class="n">loss</span>
+    <span class="k">return</span> <span class="n">params</span>
+
+
+<div class="viewcode-block" id="lbfgs">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.lbfgs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">lbfgs</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_stable</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gradient-based optimization on the potentials (theta) via L-BFGS.</span>
+
+<span class="sd">    This optimizer works by calculating the gradients with respect to the</span>
+<span class="sd">    potentials by back-propagting through the marginal inference oracle.</span>
+
+<span class="sd">    This is a standard approach for fitting the parameters of a graphical model</span>
+<span class="sd">    without noise (i.e., when you know the exact marginals).  In this case,</span>
+<span class="sd">    the loss function with respect to theta is convex, and therefore this approach</span>
+<span class="sd">    enjoys convergence guarantees.  With generic marginal loss functions that arise</span>
+<span class="sd">    for instance ith noisy marginals, the loss function is typically convex with</span>
+<span class="sd">    respect to mu, but not with respect to theta.  Therefore, this optimizer is not</span>
+<span class="sd">    guaranteed to converge to the global optimum in all cases.  In practice, it</span>
+<span class="sd">    tends to work well in these settings despite non-convexities.  This approach</span>
+<span class="sd">    appeared in the paper [&quot;Learning Graphical Model Parameters with Approximate</span>
+<span class="sd">    Marginal Inference&quot;](https://arxiv.org/abs/1301.3193).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      domain: The domain over which the model should be defined.</span>
+<span class="sd">      loss_fn: A MarginalLossFn or a list of Linear Measurements.</span>
+<span class="sd">      known_total: The known or estimated number of records in the data.</span>
+<span class="sd">        If loss_fn is provided as a list of LinearMeasurements, this argument</span>
+<span class="sd">        is optional.  Otherwise, it is required.</span>
+<span class="sd">      potentials: The initial potentials.  Must be defined over a set of cliques</span>
+<span class="sd">        that supports the cliques in the loss_fn.</span>
+<span class="sd">      marginal_oracle: The function to use to compute marginals from potentials.</span>
+<span class="sd">      iters: The maximum number of optimization iterations.</span>
+<span class="sd">      callback_fn</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span> <span class="o">=</span> <span class="n">_initialize</span><span class="p">(</span>
+        <span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+    <span class="p">)</span>
+
+    <span class="n">theta_loss</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">theta</span><span class="p">:</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">))</span>
+    <span class="n">theta_loss_and_grad</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">theta_loss</span><span class="p">)</span>
+    <span class="n">theta_callback_fn</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">theta</span><span class="p">:</span> <span class="n">callback_fn</span><span class="p">(</span><span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">))</span>
+    <span class="n">potentials</span> <span class="o">=</span> <span class="n">_optimize</span><span class="p">(</span>
+        <span class="n">theta_loss_and_grad</span><span class="p">,</span> <span class="n">potentials</span><span class="p">,</span> <span class="n">iters</span><span class="o">=</span><span class="n">iters</span><span class="p">,</span> <span class="n">callback_fn</span><span class="o">=</span><span class="n">theta_callback_fn</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">GraphicalModel</span><span class="p">(</span>
+        <span class="n">potentials</span><span class="p">,</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">),</span> <span class="n">known_total</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="mle_from_marginals">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.mle_from_marginals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mle_from_marginals</span><span class="p">(</span>
+    <span class="n">marginals</span><span class="p">:</span> <span class="n">CliqueVector</span><span class="p">,</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">250</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_stable</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="o">*</span><span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GraphicalModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the MLE Graphical Model from the marginals.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        marginals: The marginal probabilities.</span>
+<span class="sd">        known_total: The known or estimated number of records in the data.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A GraphicalModel object with the final potentials and marginals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">loss_and_grad_fn</span><span class="p">(</span><span class="n">theta</span><span class="p">):</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">marginals</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mu</span><span class="o">.</span><span class="n">log</span><span class="p">()),</span> <span class="n">mu</span> <span class="o">-</span> <span class="n">marginals</span>
+
+    <span class="n">potentials</span> <span class="o">=</span> <span class="n">CliqueVector</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">marginals</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">marginals</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+    <span class="n">potentials</span> <span class="o">=</span> <span class="n">_optimize</span><span class="p">(</span><span class="n">loss_and_grad_fn</span><span class="p">,</span> <span class="n">potentials</span><span class="p">,</span> <span class="n">iters</span><span class="o">=</span><span class="n">iters</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">GraphicalModel</span><span class="p">(</span>
+        <span class="n">potentials</span><span class="p">,</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">),</span> <span class="n">known_total</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="dual_averaging">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.dual_averaging">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dual_averaging</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+    <span class="n">lipschitz</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_stable</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GraphicalModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimization using the Regularized Dual Averaging (RDA) algorithm.</span>
+
+<span class="sd">    RDA is an accelerated proximal algorithm for solving a smooth convex optimization</span>
+<span class="sd">    problem over the marginal polytope.  This algorithm requires knowledge of</span>
+<span class="sd">    the Lipschitz constant of the gradient of the loss function.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain: The domain over which the model should be defined.</span>
+<span class="sd">        loss_fn: A MarginalLossFn or a list of Linear Measurements.</span>
+<span class="sd">        lipschitz: The Lipschitz constant of the gradient of the loss function.</span>
+<span class="sd">        known_total: The known or estimated number of records in the data.</span>
+<span class="sd">        potentials: The initial potentials.  Must be defind over a set of cliques</span>
+<span class="sd">            that supports the cliques in the loss_fn.</span>
+<span class="sd">        marginal_oracle: The function to use to compute marginals from potentials.</span>
+<span class="sd">        iters: The maximum number of optimization iterations.</span>
+<span class="sd">        callback_fn: A function to call with intermediate solution at each iteration.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A GraphicalModel object with the final potentials and marginals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span> <span class="o">=</span> <span class="n">_initialize</span><span class="p">(</span>
+        <span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+    <span class="p">)</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">domain</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>  <span class="c1"># upper bound on entropy</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># upper bound on variance of stochastic gradients</span>
+    <span class="n">gamma</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">/</span> <span class="n">D</span>
+
+    <span class="n">L</span> <span class="o">=</span> <span class="n">lipschitz</span> <span class="o">/</span> <span class="n">known_total</span>
+
+    <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">gbar</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">w</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">v</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">u</span><span class="p">)</span> <span class="o">/</span> <span class="n">known_total</span>
+        <span class="n">gbar</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">gbar</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">g</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="o">-</span><span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">L</span> <span class="o">+</span> <span class="n">beta</span><span class="p">)</span> <span class="o">*</span> <span class="n">gbar</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">w</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">v</span>
+        <span class="k">return</span> <span class="n">w</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">gbar</span>
+
+    <span class="n">w</span> <span class="o">=</span> <span class="n">v</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span>
+    <span class="n">gbar</span> <span class="o">=</span> <span class="n">CliqueVector</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">iters</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">t</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">gamma</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mf">1.5</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">w</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">gbar</span> <span class="o">=</span> <span class="n">update</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">gbar</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span>
+        <span class="n">callback_fn</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mle_from_marginals</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="interior_gradient">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.interior_gradient">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">interior_gradient</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+    <span class="n">lipschitz</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_stable</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">stepsize</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimization using the Interior Point Gradient Descent algorithm.</span>
+
+<span class="sd">    Interior Gradient is an accelerated proximal algorithm for solving a smooth</span>
+<span class="sd">    convex optimization problem over the marginal polytope.  This algorithm</span>
+<span class="sd">    requires knowledge of the Lipschitz constant of the gradient of the loss function.</span>
+<span class="sd">    This algorithm is based on the paper titled</span>
+<span class="sd">    [&quot;Interior Gradient and Proximal Methods for Convex and Conic Optimization&quot;](https://epubs.siam.org/doi/abs/10.1137/S1052623403427823?journalCode=sjope8).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain: The domain over which the model should be defined.</span>
+<span class="sd">        loss_fn: A MarginalLossFn or a list of Linear Measurements.</span>
+<span class="sd">        lipschitz: The Lipschitz constant of the gradient of the loss function.</span>
+<span class="sd">        known_total: The known or estimated number of records in the data.</span>
+<span class="sd">        potentials: The initial potentials.  Must be defind over a set of cliques</span>
+<span class="sd">            that supports the cliques in the loss_fn.</span>
+<span class="sd">        marginal_oracle: The function to use to compute marginals from potentials.</span>
+<span class="sd">        iters: The maximum number of optimization iterations.</span>
+<span class="sd">        callback_fn: A function to call at each iteration with the iteration number</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A GraphicalModel object with the optimized potentials and marginals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span> <span class="o">=</span> <span class="n">_initialize</span><span class="p">(</span>
+        <span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Algorithm parameters</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="n">sigma</span> <span class="o">/</span> <span class="n">lipschitz</span>
+
+    <span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">(((</span><span class="n">c</span> <span class="o">*</span> <span class="n">l</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span> <span class="o">*</span> <span class="n">l</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span> <span class="o">-</span> <span class="n">l</span> <span class="o">*</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">z</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">-</span> <span class="n">a</span> <span class="o">/</span> <span class="n">c</span> <span class="o">/</span> <span class="n">known_total</span> <span class="o">*</span> <span class="n">g</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">z</span>
+        <span class="k">return</span> <span class="n">theta</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">potentials</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span>
+    <span class="n">gbar</span> <span class="o">=</span> <span class="n">CliqueVector</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="o">.</span><span class="n">cliques</span><span class="p">)</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">potentials</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">iters</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">theta</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">update</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">callback_fn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mle_from_marginals</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AcceleratedStepSearchState">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.AcceleratedStepSearchState">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AcceleratedStepSearchState</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;State of the step search.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        x: parameters defining the optimization algorithm (see Roulet and</span>
+<span class="sd">        d&#39;Aspremont Algorithm 2).</span>
+<span class="sd">        z: same as x, see ref.</span>
+<span class="sd">        u: dual variable corresponding to z.</span>
+<span class="sd">        prev_stepsize: reciprocal of the estimate of the Lipshitz-continuity</span>
+<span class="sd">        parameter of the gradient of the objective at the previous iteration of</span>
+<span class="sd">        the algorithm.</span>
+<span class="sd">        stepsize: reciprocal of the estimate of the Lipshitz-continuity parameter</span>
+<span class="sd">        of the gradient of the objective at the current iteration of the</span>
+<span class="sd">        algorithm.</span>
+<span class="sd">        prev_theta: numerical value decreasing along iterates at the previous</span>
+<span class="sd">        iteration of the algorithm, see ref.</span>
+<span class="sd">        accept: whether the step is accepted or not.</span>
+<span class="sd">        iter_search: iteration count of the search</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        Nesterov, [Universal Gradient Methods for Convex Optimization</span>
+<span class="sd">        Problems](https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf)</span>
+
+<span class="sd">        Roulet and d&#39;Aspremont, [Sharpness, Restart and</span>
+<span class="sd">        Acceleration](https://arxiv.org/pdf/1702.03828)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span><span class="p">:</span> <span class="n">CliqueVector</span>
+    <span class="n">z</span><span class="p">:</span> <span class="n">CliqueVector</span>
+    <span class="n">u</span><span class="p">:</span> <span class="n">CliqueVector</span>
+    <span class="n">prev_stepsize</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">float</span>
+    <span class="n">stepsize</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">float</span>
+    <span class="n">prev_theta</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">float</span>
+    <span class="n">accept</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">bool</span>
+    <span class="n">iter_search</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">int</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_universal_accelerated_method_step_init</span><span class="p">(</span>
+    <span class="n">fun</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">dual_init_params</span><span class="p">,</span>
+    <span class="n">dual_proj</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">max_iter_search</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="n">target_acc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">stepsize</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">norm</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">linesearch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+    <span class="n">AcceleratedStepSearchState</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">[[</span><span class="n">AcceleratedStepSearchState</span><span class="p">],</span> <span class="nb">bool</span><span class="p">],</span>
+    <span class="n">Callable</span><span class="p">[[</span><span class="n">AcceleratedStepSearchState</span><span class="p">],</span> <span class="n">AcceleratedStepSearchState</span><span class="p">],</span>
+<span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Accelerated first order method adapted to any smoothness.</span>
+
+<span class="sd">    Minimizes fun(x) over a constraint set M.</span>
+
+<span class="sd">    The algorithm requires an oracle &quot;dual_proj(g)&quot; that computes</span>
+<span class="sd">    argmin_y &lt;g, y&gt; + h(y)</span>
+<span class="sd">    s.t. y in M</span>
+<span class="sd">    where h is a distance generating function.</span>
+
+<span class="sd">    This method is inspired from ref 1 and the algorithm is described in</span>
+<span class="sd">    essentially described in Algorithm 2 of ref 2. One difference is that we</span>
+<span class="sd">    keep track of the dual variable returned by the dual_proj to avoid mapping</span>
+<span class="sd">    back and forth between the primal and dual spaces.</span>
+
+<span class="sd">    This function provides the initial state and the continuation and body</span>
+<span class="sd">    functions for the step the method (which searches for a valid stepsize each</span>
+<span class="sd">    time).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        fun: objective to minimize.</span>
+<span class="sd">        dual_init_params: initial parameters in dual space.</span>
+<span class="sd">        dual_proj: projection onto some constraint set according to a bregman</span>
+<span class="sd">        divergence.</span>
+<span class="sd">        max_iter_search: maximal number of iterations to run the search.</span>
+<span class="sd">        target_acc: target accuracy of the method. If `fun` is non-smooth, this</span>
+<span class="sd">        needs to be set &gt; 0. Convergence beyond that target accuracy is not</span>
+<span class="sd">        guaranteed. If the function is smooth, set `target_acc=0`.</span>
+<span class="sd">        stepsize: initial estimate of the stepsize.</span>
+<span class="sd">        norm: type of norm measuring the smoothness of `fun`.</span>
+<span class="sd">        linesearch: if true, uses linesearch to determine acceptance of step,</span>
+<span class="sd">        otherwise use constant stepsize given by `stepsize`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (init_carry, cond_fun, body_fun) where</span>
+<span class="sd">        init_carry: initial state of the step search.</span>
+<span class="sd">        cond_fun: continuation criterion when searching for next step.</span>
+<span class="sd">        body_fun: step when searching step.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        1 Nesterov, [Universal Gradient Methods for Convex Optimization</span>
+<span class="sd">        Problems](https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf)</span>
+
+<span class="sd">        2 Roulet and d&#39;Aspremont, [Sharpness, Restart and</span>
+<span class="sd">        Acceleration](https://arxiv.org/pdf/1702.03828)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">cond_fun</span><span class="p">(</span><span class="n">carry</span><span class="p">:</span> <span class="n">AcceleratedStepSearchState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Continuation criterion when searching for next step.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span>
+            <span class="n">jnp</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">carry</span><span class="o">.</span><span class="n">accept</span><span class="p">,</span> <span class="n">carry</span><span class="o">.</span><span class="n">iter_search</span> <span class="o">&gt;=</span> <span class="n">max_iter_search</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">body_fun</span><span class="p">(</span>
+        <span class="n">carry</span><span class="p">:</span> <span class="n">AcceleratedStepSearchState</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcceleratedStepSearchState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Step when searching step.&quot;&quot;&quot;</span>
+        <span class="c1"># Computes new theta</span>
+        <span class="n">prev_theta</span><span class="p">,</span> <span class="n">prev_smooth_estim</span> <span class="o">=</span> <span class="n">carry</span><span class="o">.</span><span class="n">prev_theta</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">carry</span><span class="o">.</span><span class="n">prev_stepsize</span>
+        <span class="n">smooth_estim</span><span class="p">,</span> <span class="n">stepsize</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">carry</span><span class="o">.</span><span class="n">stepsize</span><span class="p">,</span> <span class="n">carry</span><span class="o">.</span><span class="n">stepsize</span>
+        <span class="n">aux</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">smooth_estim</span> <span class="o">/</span> <span class="p">(</span><span class="n">prev_theta</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">prev_smooth_estim</span><span class="p">)</span>
+        <span class="n">new_theta</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">aux</span><span class="p">))</span>
+        <span class="c1"># We hardcode the first iteration to be prev_theta=-1</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">carry</span><span class="o">.</span><span class="n">prev_theta</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">new_theta</span><span class="p">)</span>
+
+        <span class="c1"># Computes sequences of params</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">theta</span><span class="p">)</span> <span class="o">*</span> <span class="n">carry</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">theta</span> <span class="o">*</span> <span class="n">carry</span><span class="o">.</span><span class="n">z</span>
+        <span class="n">value_y</span><span class="p">,</span> <span class="n">grad_y</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">fun</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">carry</span><span class="o">.</span><span class="n">u</span> <span class="o">-</span> <span class="n">stepsize</span> <span class="o">/</span> <span class="n">theta</span> <span class="o">*</span> <span class="n">grad_y</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">dual_proj</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">theta</span><span class="p">)</span> <span class="o">*</span> <span class="n">carry</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">theta</span> <span class="o">*</span> <span class="n">z</span>
+
+        <span class="c1"># Check condition</span>
+        <span class="k">if</span> <span class="n">linesearch</span><span class="p">:</span>
+            <span class="n">new_value</span> <span class="o">=</span> <span class="n">fun</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">norm</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">sq_norm_diff</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">tree_utils</span><span class="o">.</span><span class="n">tree_l1_norm</span><span class="p">(</span>
+                    <span class="n">optax</span><span class="o">.</span><span class="n">tree_utils</span><span class="o">.</span><span class="n">tree_sub</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                <span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+            <span class="k">elif</span> <span class="n">norm</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">sq_norm_diff</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">tree_utils</span><span class="o">.</span><span class="n">tree_l2_norm</span><span class="p">(</span>
+                    <span class="n">optax</span><span class="o">.</span><span class="n">tree_utils</span><span class="o">.</span><span class="n">tree_sub</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">squared</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;norm=</span><span class="si">{</span><span class="n">norm</span><span class="si">}</span><span class="s1"> not supported&#39;</span><span class="p">)</span>
+            <span class="n">taylor_approx</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">value_y</span> <span class="o">+</span> <span class="n">grad_y</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">smooth_estim</span> <span class="o">*</span> <span class="n">sq_norm_diff</span>
+            <span class="p">)</span>
+            <span class="n">accept</span> <span class="o">=</span> <span class="n">new_value</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="n">taylor_approx</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">target_acc</span> <span class="o">*</span> <span class="n">theta</span><span class="p">)</span>
+            <span class="n">new_stepsize</span> <span class="o">=</span> <span class="mf">1.1</span><span class="o">*</span><span class="n">stepsize</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">accept</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">new_stepsize</span> <span class="o">=</span> <span class="n">stepsize</span>
+
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">AcceleratedStepSearchState</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+            <span class="n">u</span><span class="o">=</span><span class="n">u</span><span class="p">,</span>
+            <span class="n">prev_stepsize</span><span class="o">=</span><span class="n">stepsize</span><span class="p">,</span>
+            <span class="n">stepsize</span><span class="o">=</span><span class="n">new_stepsize</span><span class="p">,</span>
+            <span class="n">prev_theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span>
+            <span class="n">accept</span><span class="o">=</span><span class="n">accept</span><span class="p">,</span>
+            <span class="n">iter_search</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">carry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span>
+            <span class="n">stepsize</span><span class="o">=</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">carry</span><span class="o">.</span><span class="n">stepsize</span><span class="p">,</span> <span class="n">iter_search</span><span class="o">=</span><span class="n">carry</span><span class="o">.</span><span class="n">iter_search</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">candidate</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="n">dual_proj</span><span class="p">(</span><span class="n">dual_init_params</span><span class="p">)</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">dual_init_params</span>
+    <span class="n">init_carry</span> <span class="o">=</span> <span class="n">AcceleratedStepSearchState</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+        <span class="n">u</span><span class="o">=</span><span class="n">u</span><span class="p">,</span>
+        <span class="n">prev_stepsize</span><span class="o">=</span><span class="n">stepsize</span><span class="p">,</span>
+        <span class="n">stepsize</span><span class="o">=</span><span class="n">stepsize</span><span class="p">,</span>
+        <span class="n">prev_theta</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">accept</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="kc">False</span><span class="p">),</span>
+        <span class="n">iter_search</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">init_carry</span><span class="p">,</span> <span class="n">cond_fun</span><span class="p">,</span> <span class="n">body_fun</span>
+
+
+<div class="viewcode-block" id="universal_accelerated_method">
+<a class="viewcode-back" href="../../api/estimation.html#mbi.estimation.universal_accelerated_method">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">universal_accelerated_method</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">loss_fn</span><span class="p">:</span> <span class="n">marginal_loss</span><span class="o">.</span><span class="n">MarginalLossFn</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">LinearMeasurement</span><span class="p">],</span>
+    <span class="n">known_total</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">potentials</span><span class="p">:</span> <span class="n">CliqueVector</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">marginal_oracle</span><span class="o">=</span><span class="n">marginal_oracles</span><span class="o">.</span><span class="n">message_passing_stable</span><span class="p">,</span>
+    <span class="n">iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">callback_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">CliqueVector</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimization using the Universal Accelerated MD algorithm.&quot;&quot;&quot;</span>
+    <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span> <span class="o">=</span> <span class="n">_initialize</span><span class="p">(</span>
+        <span class="n">domain</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">known_total</span><span class="p">,</span> <span class="n">potentials</span>
+    <span class="p">)</span>
+
+    <span class="n">carry</span><span class="p">,</span> <span class="n">cond_fun</span><span class="p">,</span> <span class="n">body_fun</span> <span class="o">=</span> <span class="n">_universal_accelerated_method_step_init</span><span class="p">(</span>
+        <span class="n">fun</span><span class="o">=</span><span class="n">loss_fn</span><span class="p">,</span>
+        <span class="n">dual_init_params</span><span class="o">=</span><span class="n">potentials</span><span class="p">,</span>
+        <span class="n">dual_proj</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">marginal_oracle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">known_total</span><span class="p">),</span>
+        <span class="n">max_iter_search</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">target_acc</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">stepsize</span><span class="o">=</span><span class="mf">1.0</span><span class="o">/</span><span class="n">known_total</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">linesearch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+        <span class="c1"># jax.lax.while_loop traces the body function, so no need to jit it.</span>
+        <span class="n">carry</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">while_loop</span><span class="p">(</span><span class="n">cond_fun</span><span class="p">,</span> <span class="n">body_fun</span><span class="p">,</span> <span class="n">carry</span><span class="p">)</span>
+        <span class="n">carry</span> <span class="o">=</span> <span class="n">carry</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">accept</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">callback_fn</span><span class="p">(</span><span class="n">carry</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">sol</span> <span class="o">=</span> <span class="n">carry</span><span class="o">.</span><span class="n">x</span>
+    <span class="k">return</span> <span class="n">mle_from_marginals</span><span class="p">(</span><span class="n">sol</span><span class="p">,</span> <span class="n">known_total</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

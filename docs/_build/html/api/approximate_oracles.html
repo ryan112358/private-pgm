@@ -1,0 +1,155 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mbi.approximate_oracles &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">mbi.approximate_oracles</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/approximate_oracles.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mbi-approximate-oracles">
+<h1>mbi.approximate_oracles<a class="headerlink" href="#mbi-approximate-oracles" title="Link to this heading"></a></h1>
+<p id="module-mbi.approximate_oracles">Approximate marginal oracles with convex counting numbers.</p>
+<p>See the paper [“Relaxed Marginal Consistency for Differentially Private Query Answering”](<a class="reference external" href="https://arxiv.org/pdf/2109.06153">https://arxiv.org/pdf/2109.06153</a>) for more details.</p>
+<p>This file implements one approximate marginal inference oracle: Convex-GBP
+with fixed counting numbers of 1.0 for all regions.  We experimented with
+others, but do not officially support them in this library.  If interested,
+please see the following snapshot of this repository:</p>
+<p><a class="reference external" href="https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot">https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot</a></p>
+<p>Pull requests are welcome to add support for other approximate oracles.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.approximate_oracles.StatefulMarginalOracle">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.approximate_oracles.</span></span><span class="sig-name descname"><span class="pre">StatefulMarginalOracle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/approximate_oracles.html#StatefulMarginalOracle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.approximate_oracles.StatefulMarginalOracle" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Defines the callable signature for stateful marginal oracle functions.</p>
+<p>A stateful marginal oracle computes (approximate) marginals from
+log-space potentials while also managing an internal state, often
+for optimization in iterative algorithms (e.g., preserving messages
+in message passing).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.approximate_oracles.build_graph">
+<span class="sig-prename descclassname"><span class="pre">mbi.approximate_oracles.</span></span><span class="sig-name descname"><span class="pre">build_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="domain.html#mbi.domain.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cliques</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="p"><span class="pre">...</span></span></span></span><a class="reference internal" href="../_modules/mbi/approximate_oracles.html#build_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.approximate_oracles.build_graph" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.approximate_oracles.convex_generalized_belief_propagation">
+<span class="sig-prename descclassname"><span class="pre">mbi.approximate_oracles.</span></span><span class="sig-name descname"><span class="pre">convex_generalized_belief_propagation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CliqueVector</span></span></span><a class="reference internal" href="../_modules/mbi/approximate_oracles.html#convex_generalized_belief_propagation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.approximate_oracles.convex_generalized_belief_propagation" title="Link to this definition"></a></dt>
+<dd><p>Convex generalized belief propagation for approximmate marginal inference.</p>
+<blockquote>
+<div><p>The algorithms implements the Algorithm 2 in our paper
+[“Relaxed Marginal Consistency for Differentially Private Query Answering”](<a class="reference external" href="https://arxiv.org/pdf/2109.06153">https://arxiv.org/pdf/2109.06153</a>), which itself is based on the paper titled
+[“Tightening Fractional Covering Upper Bounds on the Partition</p>
+</div></blockquote>
+<p>Function for High-Order Region Graphs”](<a class="reference external" href="https://arxiv.org/pdf/1210.4881">https://arxiv.org/pdf/1210.4881</a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>potentials</strong> – A CliqueVector object containing the potentials of the graphical model.</p></li>
+<li><p><strong>total</strong> – The total number of records in the dataset.</p></li>
+<li><p><strong>state</strong> – The state of the message passing algorithm (i.e., the messages).  Useful when
+calling this within an iterative procedure for warm starting purposes.</p></li>
+<li><p><strong>iters</strong> – The number of iterations to run the algorithm.</p></li>
+<li><p><strong>damping</strong> – The damping factor for the messages.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A CliqueVector of pseudo-marginals for the cliques in the graphical model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

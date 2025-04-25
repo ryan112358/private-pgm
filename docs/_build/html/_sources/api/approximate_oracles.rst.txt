@@ -1,0 +1,7 @@
+mbi.approximate_oracles
+===========
+
+.. automodule:: mbi.approximate_oracles
+   :members:
+   :undoc-members:
+   :show-inheritance:

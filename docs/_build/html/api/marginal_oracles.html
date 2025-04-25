@@ -1,0 +1,310 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mbi.marginal_oracles &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="mbi.estimation" href="estimation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="dataset.html">mbi.dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="domain.html">mbi.domain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html">mbi.factor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="estimation.html">mbi.estimation</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">mbi.marginal_oracles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.MarginalOracle"><code class="docutils literal notranslate"><span class="pre">MarginalOracle</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.brute_force_marginals"><code class="docutils literal notranslate"><span class="pre">brute_force_marginals()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.einsum_marginals"><code class="docutils literal notranslate"><span class="pre">einsum_marginals()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.logspace_sum_product"><code class="docutils literal notranslate"><span class="pre">logspace_sum_product()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.logspace_sum_product_very_stable"><code class="docutils literal notranslate"><span class="pre">logspace_sum_product_very_stable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.message_passing_fast"><code class="docutils literal notranslate"><span class="pre">message_passing_fast()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.message_passing_stable"><code class="docutils literal notranslate"><span class="pre">message_passing_stable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.sum_product"><code class="docutils literal notranslate"><span class="pre">sum_product()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.marginal_oracles.variable_elimination"><code class="docutils literal notranslate"><span class="pre">variable_elimination()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">mbi.marginal_oracles</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/marginal_oracles.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mbi-marginal-oracles">
+<h1>mbi.marginal_oracles<a class="headerlink" href="#mbi-marginal-oracles" title="Link to this heading"></a></h1>
+<p id="module-mbi.marginal_oracles">Functions for computing marginals from log-space potentials.</p>
+<p>The functions in this library should all produce numerically identical
+outputs on well-behaved inputs, but may have different stability characteristics
+on poorly-behaved inputs, and different rutnime/memory performance characteristics.</p>
+<p>We recommend using message_passing_stable with accelerated estimation algorithms like
+Interior Gradient, but using message_passing_fast with mirror descent.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.MarginalOracle">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">MarginalOracle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#MarginalOracle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.MarginalOracle" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Defines the callable signature for stateless marginal oracle functions.</p>
+<p>A marginal oracle consumes log-space potentials (CliqueVector) of
+a graphical model and returns its marginals (CliqueVector).  The
+returned marginals will be defined over the same domain and set of cliques
+as the potentials.</p>
+<p>Different marginal oracles should usually produce identical results,
+but they may have different time/space complexities and numerical
+stabilities. Examples of conforming functions from <cite>mbi.marginal_oracles</cite>:</p>
+<ul class="simple">
+<li><p><cite>message_passing_stable</cite>: Computes marginals using message passing,
+operating in log-space for numerical stability.</p></li>
+<li><dl class="simple">
+<dt><cite>message_passing_fast</cite>: A faster and more memory efficient message</dt><dd><p>passing algorithm that uses einsum, but it is not as stable as message_passing_stable.</p>
+</dd>
+</dl>
+</li>
+<li><p><cite>brute_force_marginals</cite>: Computes marginals by materializing the full
+joint distribution.</p></li>
+<li><p><cite>einsum_marginals</cite>: Computes marginals using einsum, generally not
+recommended for large models.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.brute_force_marginals">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">brute_force_marginals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CliqueVector</span></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#brute_force_marginals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.brute_force_marginals" title="Link to this definition"></a></dt>
+<dd><p>Compute marginals from (log-space) potentials by materializing the full joint distribution.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.einsum_marginals">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">einsum_marginals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CliqueVector</span></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#einsum_marginals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.einsum_marginals" title="Link to this definition"></a></dt>
+<dd><p>Compute marginals from (log-space) potentials by using einsum.</p>
+<p>This is a “brute-force” approach and is not recommended in practice.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.logspace_sum_product">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">logspace_sum_product</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_factors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dom</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="domain.html#mbi.domain.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#logspace_sum_product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.logspace_sum_product" title="Link to this definition"></a></dt>
+<dd><p>Numerically stable algorithm for computing sum product in log space.</p>
+<p>This seems to be the most stable algorithm for doing this computation that doesn’t
+require materializing sum(log_factors).  Materializing sum(log_factors) will
+in general give better numerical stability, but it comes at the cost of
+increased memory usage.</p>
+<p>TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map
+to compute log sum product sequentially.  This will also have the dual
+benefit of using less memory than jnp.einsum in some hard cases.</p>
+<p><a class="reference external" href="https://github.com/jax-ml/jax/issues/24915">https://github.com/jax-ml/jax/issues/24915</a></p>
+<p><a class="reference external" href="https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy">https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_factors</strong> – a list of log-space factors.</p></li>
+<li><p><strong>dom</strong> – The desired domain of the output factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>log sum_{S - D} prod_i exp(F_i),
+where</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>F_i = log_factors[i],</p></li>
+<li><p>D is the input domain,</p></li>
+<li><p>S is the union of the domains of F_i</p></li>
+</ul>
+</div></blockquote>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.logspace_sum_product_very_stable">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">logspace_sum_product_very_stable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_factors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dom</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="domain.html#mbi.domain.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#logspace_sum_product_very_stable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.logspace_sum_product_very_stable" title="Link to this definition"></a></dt>
+<dd><p>More stable implementation of logspace_sum_product.</p>
+<p>This ipmlementation may (or may not) materialize a Factor over the domain
+of all elements of log_factors.  Without JIT, it will materialize this “super-factor”.
+Under JIT, there may be some instances where the compiler can figure out
+that it does not need to materialize this intermediate to compute the final output.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.message_passing_fast">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">message_passing_fast</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CliqueVector</span></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#message_passing_fast"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.message_passing_fast" title="Link to this definition"></a></dt>
+<dd><p>Compute marginals from (log-space) potentials using the message passing algorithm.</p>
+<p>This implementation leverages the “einsum” primitve to compute clique marginals
+without materializing marginals over the super cliques first (nodes in the
+junction tree).  It can be much faster and more memory efficient than
+message_passing_stable, but there are some cases where this
+implementation is not as stable.</p>
+<p>See the stackoverflow thread for the key difficulty here.
+<a class="reference external" href="https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy">https://stackoverflow.com/questions/23630277/numerically-stable-way-to-multiply-log-probability-matrices-in-numpy</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>potentials</strong> – The (log-space) potentials of a graphical model.</p></li>
+<li><p><strong>total</strong> – The normalization factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The marginals of the graphical model, defined over the same set of cliques
+as the input potentials.  Each marginal is non-negative and sums to “total”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.message_passing_stable">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">message_passing_stable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CliqueVector</span></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#message_passing_stable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.message_passing_stable" title="Link to this definition"></a></dt>
+<dd><p>Compute marginals from (log-space) potentials using the message passing algorithm.</p>
+<p>This implementation operates completely in logspace, until the last step where it
+exponentiates the log-beliefs to get marginals.  It is very stable numerically,
+but in general could materialize factors defined over “super-cliques”, which
+are the nodes in the junction tree implied by the cliques in potentials.
+Thus, it may require more memory than “message_passing_fast” below.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>potentials</strong> – The (log-space) potentials of a graphical model.</p></li>
+<li><p><strong>total</strong> – The normalization factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The marginals of the graphical model, defined over the same set of cliques
+as the input potentials.  Each marginal is non-negative and sums to “total”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.sum_product">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">sum_product</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dom</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="domain.html#mbi.domain.Domain" title="mbi.domain.Domain"><span class="pre">Domain</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#sum_product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.sum_product" title="Link to this definition"></a></dt>
+<dd><p>Compute the sum-of-products of a list of Factors using einsum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>factors</strong> – A list of Factors.</p></li>
+<li><p><strong>dom</strong> – The target domain of the output factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>sum_{S - D} prod_i F_i,
+where</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>F_i = factors[i]</p></li>
+<li><p>D = dom</p></li>
+<li><p>S = union of domains of F_i</p></li>
+</ul>
+</div></blockquote>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.marginal_oracles.variable_elimination">
+<span class="sig-prename descclassname"><span class="pre">mbi.marginal_oracles.</span></span><span class="sig-name descname"><span class="pre">variable_elimination</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clique</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a></span></span><a class="reference internal" href="../_modules/mbi/marginal_oracles.html#variable_elimination"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.marginal_oracles.variable_elimination" title="Link to this definition"></a></dt>
+<dd><p>Compute an out-of-model/unsupported marginal from the potentials.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>potentials</strong> – The (log-space) potentials of a Graphical Model.</p></li>
+<li><p><strong>clique</strong> – The subset of attributes whose marginal you want.</p></li>
+<li><p><strong>total</strong> – The normalization factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The marginal defined over the domain of the input clique, where
+each entry is non-negative and sums to the input total.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="estimation.html" class="btn btn-neutral float-left" title="mbi.estimation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+API Reference
+=============
+
+This section provides detailed API documentation for the ``mbi`` package.
+
+.. toctree::
+   :maxdepth: 1
+
+   dataset
+   domain
+   factor
+   graphical_model
+   estimation
+   marginal_oracles
+   marginal_loss
+   approximate_oracles

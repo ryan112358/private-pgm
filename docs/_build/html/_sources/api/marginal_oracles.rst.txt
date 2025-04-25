@@ -1,0 +1,7 @@
+mbi.marginal_oracles
+===========
+
+.. automodule:: mbi.marginal_oracles
+   :members:
+   :undoc-members:
+   :show-inheritance:

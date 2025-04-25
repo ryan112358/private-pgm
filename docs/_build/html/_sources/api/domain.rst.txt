@@ -1,0 +1,7 @@
+mbi.domain
+===========
+
+.. automodule:: mbi.domain
+   :members:
+   :undoc-members:
+   :show-inheritance:

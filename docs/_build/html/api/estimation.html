@@ -1,0 +1,556 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mbi.estimation &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="mbi.marginal_oracles" href="marginal_oracles.html" />
+    <link rel="prev" title="mbi.factor" href="factor.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="dataset.html">mbi.dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="domain.html">mbi.domain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html">mbi.factor</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">mbi.estimation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.x"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.x</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.z"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.z</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.u"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.prev_stepsize"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.prev_stepsize</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.stepsize"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.stepsize</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.prev_theta"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.prev_theta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.accept"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.accept</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.AcceleratedStepSearchState.iter_search"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.iter_search</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.accept</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.iter_search</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.prev_stepsize</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.prev_theta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.stepsize</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.x</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">AcceleratedStepSearchState.z</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.Estimator"><code class="docutils literal notranslate"><span class="pre">Estimator</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.GraphicalModel"><code class="docutils literal notranslate"><span class="pre">GraphicalModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.cliques"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.cliques</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.domain"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.domain</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.marginals"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.marginals</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.potentials"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.potentials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.project"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.project()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.synthetic_data"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.synthetic_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mbi.estimation.GraphicalModel.total"><code class="docutils literal notranslate"><span class="pre">GraphicalModel.total</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.dual_averaging"><code class="docutils literal notranslate"><span class="pre">dual_averaging()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.interior_gradient"><code class="docutils literal notranslate"><span class="pre">interior_gradient()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.lbfgs"><code class="docutils literal notranslate"><span class="pre">lbfgs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.minimum_variance_unbiased_total"><code class="docutils literal notranslate"><span class="pre">minimum_variance_unbiased_total()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.mirror_descent"><code class="docutils literal notranslate"><span class="pre">mirror_descent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.mle_from_marginals"><code class="docutils literal notranslate"><span class="pre">mle_from_marginals()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mbi.estimation.universal_accelerated_method"><code class="docutils literal notranslate"><span class="pre">universal_accelerated_method()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="marginal_oracles.html">mbi.marginal_oracles</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">mbi.estimation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/estimation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mbi-estimation">
+<h1>mbi.estimation<a class="headerlink" href="#mbi-estimation" title="Link to this heading"></a></h1>
+<p id="module-mbi.estimation">Algorithms for estimating graphical models from marginal-based loss functions.</p>
+<p>This module provides a flexible set of optimization algorithms, each sharing the
+the same API.  The supported algorithms are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Mirror Descent [our recommended algorithm]</p></li>
+<li><p>L-BFGS (using back-belief propagation)</p></li>
+<li><p>Regularized Dual Averaging</p></li>
+<li><p>Interior Gradient</p></li>
+</ol>
+</div></blockquote>
+<p>Each algorithm can be given an initial set of potentials, or can automatically
+intialize the potentials to zero for you.  Any CliqueVector of potentials that
+support the cliques of the marginal-based loss function can be used here.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">AcceleratedStepSearchState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_stepsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stepsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_theta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accept</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iter_search</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#AcceleratedStepSearchState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">NamedTuple</span></code></p>
+<p>State of the step search.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.x">
+<span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.x" title="Link to this definition"></a></dt>
+<dd><p>parameters defining the optimization algorithm (see Roulet and</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mbi.clique_vector.CliqueVector</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">d'Aspremont</span> <span class="pre">Algorithm</span> <span class="pre">2).</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.z">
+<span class="sig-name descname"><span class="pre">z</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.z" title="Link to this definition"></a></dt>
+<dd><p>same as x, see ref.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mbi.clique_vector.CliqueVector</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.u">
+<span class="sig-name descname"><span class="pre">u</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.u" title="Link to this definition"></a></dt>
+<dd><p>dual variable corresponding to z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mbi.clique_vector.CliqueVector</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.prev_stepsize">
+<span class="sig-name descname"><span class="pre">prev_stepsize</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.prev_stepsize" title="Link to this definition"></a></dt>
+<dd><p>reciprocal of the estimate of the Lipshitz-continuity</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array | float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">parameter</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">gradient</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">objective</span> <span class="pre">at</span> <span class="pre">the</span> <span class="pre">previous</span> <span class="pre">iteration</span> <span class="pre">of</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">the</span> <span class="pre">algorithm.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.stepsize">
+<span class="sig-name descname"><span class="pre">stepsize</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.stepsize" title="Link to this definition"></a></dt>
+<dd><p>reciprocal of the estimate of the Lipshitz-continuity parameter</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array | float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">of</span> <span class="pre">the</span> <span class="pre">gradient</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">objective</span> <span class="pre">at</span> <span class="pre">the</span> <span class="pre">current</span> <span class="pre">iteration</span> <span class="pre">of</span> <span class="pre">the</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">algorithm.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.prev_theta">
+<span class="sig-name descname"><span class="pre">prev_theta</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.prev_theta" title="Link to this definition"></a></dt>
+<dd><p>numerical value decreasing along iterates at the previous</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array | float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">iteration</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">algorithm,</span> <span class="pre">see</span> <span class="pre">ref.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.accept">
+<span class="sig-name descname"><span class="pre">accept</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.accept" title="Link to this definition"></a></dt>
+<dd><p>whether the step is accepted or not.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array | bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.AcceleratedStepSearchState.iter_search">
+<span class="sig-name descname"><span class="pre">iter_search</span></span><a class="headerlink" href="#mbi.estimation.AcceleratedStepSearchState.iter_search" title="Link to this definition"></a></dt>
+<dd><p>iteration count of the search</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array | int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">References</p>
+<p>Nesterov, [Universal Gradient Methods for Convex Optimization
+Problems](<a class="reference external" href="https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf">https://optimization-online.org/wp-content/uploads/2013/04/3833.pdf</a>)</p>
+<p>Roulet and d’Aspremont, [Sharpness, Restart and
+Acceleration](<a class="reference external" href="https://arxiv.org/pdf/1702.03828">https://arxiv.org/pdf/1702.03828</a>)</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">accept</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 6</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">iter_search</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 7</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">prev_stepsize</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">prev_theta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 5</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">stepsize</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">u</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CliqueVector</span></em><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">x</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CliqueVector</span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">z</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CliqueVector</span></em><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.estimation.Estimator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">Estimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#Estimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.Estimator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Defines the callable signature for graphical model estimator functions.</p>
+<p>An estimator learns the parameters (potentials) of a graphical model,
+typically by optimizing a marginal-based loss function.</p>
+<p>Examples of conforming functions from <cite>mbi.estimation</cite>:
+- <cite>mirror_descent</cite>
+- <cite>lbfgs</cite>
+- <cite>dual_averaging</cite>
+- <cite>interior_gradient</cite>
+- <cite>universal_accelerated_method</cite></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">GraphicalModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">potentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marginals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">number</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#GraphicalModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.GraphicalModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.cliques">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cliques</span></span><a class="headerlink" href="#mbi.estimation.GraphicalModel.cliques" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.domain">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">domain</span></span><a class="headerlink" href="#mbi.estimation.GraphicalModel.domain" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.marginals">
+<span class="sig-name descname"><span class="pre">marginals</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CliqueVector</span></em><a class="headerlink" href="#mbi.estimation.GraphicalModel.marginals" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.potentials">
+<span class="sig-name descname"><span class="pre">potentials</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CliqueVector</span></em><a class="headerlink" href="#mbi.estimation.GraphicalModel.potentials" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.project">
+<span class="sig-name descname"><span class="pre">project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="factor.html#mbi.factor.Factor" title="mbi.factor.Factor"><span class="pre">Factor</span></a></span></span><a class="reference internal" href="../_modules/mbi/estimation.html#GraphicalModel.project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.GraphicalModel.project" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.synthetic_data">
+<span class="sig-name descname"><span class="pre">synthetic_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#GraphicalModel.synthetic_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.GraphicalModel.synthetic_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mbi.estimation.GraphicalModel.total">
+<span class="sig-name descname"><span class="pre">total</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">number</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mbi.estimation.GraphicalModel.total" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.dual_averaging">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">dual_averaging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">domain:</span> <span class="pre">~mbi.domain.Domain,</span> <span class="pre">loss_fn:</span> <span class="pre">~mbi.marginal_loss.MarginalLossFn</span> <span class="pre">|</span> <span class="pre">list[~mbi.marginal_loss.LinearMeasurement],</span> <span class="pre">lipschitz:</span> <span class="pre">float,</span> <span class="pre">known_total:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">potentials:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_stable&gt;&gt;,</span> <span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000,</span> <span class="pre">callback_fn:</span> <span class="pre">~typing.Callable[[~mbi.clique_vector.CliqueVector],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.estimation.GraphicalModel" title="mbi.estimation.GraphicalModel"><span class="pre">GraphicalModel</span></a></span></span><a class="reference internal" href="../_modules/mbi/estimation.html#dual_averaging"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.dual_averaging" title="Link to this definition"></a></dt>
+<dd><p>Optimization using the Regularized Dual Averaging (RDA) algorithm.</p>
+<p>RDA is an accelerated proximal algorithm for solving a smooth convex optimization
+problem over the marginal polytope.  This algorithm requires knowledge of
+the Lipschitz constant of the gradient of the loss function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> – The domain over which the model should be defined.</p></li>
+<li><p><strong>loss_fn</strong> – A MarginalLossFn or a list of Linear Measurements.</p></li>
+<li><p><strong>lipschitz</strong> – The Lipschitz constant of the gradient of the loss function.</p></li>
+<li><p><strong>known_total</strong> – The known or estimated number of records in the data.</p></li>
+<li><p><strong>potentials</strong> – The initial potentials.  Must be defind over a set of cliques
+that supports the cliques in the loss_fn.</p></li>
+<li><p><strong>marginal_oracle</strong> – The function to use to compute marginals from potentials.</p></li>
+<li><p><strong>iters</strong> – The maximum number of optimization iterations.</p></li>
+<li><p><strong>callback_fn</strong> – A function to call with intermediate solution at each iteration.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A GraphicalModel object with the final potentials and marginals.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.interior_gradient">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">interior_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">domain:</span> <span class="pre">~mbi.domain.Domain,</span> <span class="pre">loss_fn:</span> <span class="pre">~mbi.marginal_loss.MarginalLossFn</span> <span class="pre">|</span> <span class="pre">list[~mbi.marginal_loss.LinearMeasurement],</span> <span class="pre">lipschitz:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">known_total:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">potentials:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_stable&gt;&gt;,</span> <span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000,</span> <span class="pre">stepsize:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">callback_fn:</span> <span class="pre">~typing.Callable[[~mbi.clique_vector.CliqueVector],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#interior_gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.interior_gradient" title="Link to this definition"></a></dt>
+<dd><p>Optimization using the Interior Point Gradient Descent algorithm.</p>
+<p>Interior Gradient is an accelerated proximal algorithm for solving a smooth
+convex optimization problem over the marginal polytope.  This algorithm
+requires knowledge of the Lipschitz constant of the gradient of the loss function.
+This algorithm is based on the paper titled
+[“Interior Gradient and Proximal Methods for Convex and Conic Optimization”](<a class="reference external" href="https://epubs.siam.org/doi/abs/10.1137/S1052623403427823?journalCode=sjope8">https://epubs.siam.org/doi/abs/10.1137/S1052623403427823?journalCode=sjope8</a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> – The domain over which the model should be defined.</p></li>
+<li><p><strong>loss_fn</strong> – A MarginalLossFn or a list of Linear Measurements.</p></li>
+<li><p><strong>lipschitz</strong> – The Lipschitz constant of the gradient of the loss function.</p></li>
+<li><p><strong>known_total</strong> – The known or estimated number of records in the data.</p></li>
+<li><p><strong>potentials</strong> – The initial potentials.  Must be defind over a set of cliques
+that supports the cliques in the loss_fn.</p></li>
+<li><p><strong>marginal_oracle</strong> – The function to use to compute marginals from potentials.</p></li>
+<li><p><strong>iters</strong> – The maximum number of optimization iterations.</p></li>
+<li><p><strong>callback_fn</strong> – A function to call at each iteration with the iteration number</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A GraphicalModel object with the optimized potentials and marginals.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.lbfgs">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">lbfgs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">domain:</span> <span class="pre">~mbi.domain.Domain,</span> <span class="pre">loss_fn:</span> <span class="pre">~mbi.marginal_loss.MarginalLossFn</span> <span class="pre">|</span> <span class="pre">list[~mbi.marginal_loss.LinearMeasurement],</span> <span class="pre">known_total:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">potentials:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_stable&gt;&gt;,</span> <span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000,</span> <span class="pre">callback_fn:</span> <span class="pre">~typing.Callable[[~mbi.clique_vector.CliqueVector],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#lbfgs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.lbfgs" title="Link to this definition"></a></dt>
+<dd><p>Gradient-based optimization on the potentials (theta) via L-BFGS.</p>
+<p>This optimizer works by calculating the gradients with respect to the
+potentials by back-propagting through the marginal inference oracle.</p>
+<p>This is a standard approach for fitting the parameters of a graphical model
+without noise (i.e., when you know the exact marginals).  In this case,
+the loss function with respect to theta is convex, and therefore this approach
+enjoys convergence guarantees.  With generic marginal loss functions that arise
+for instance ith noisy marginals, the loss function is typically convex with
+respect to mu, but not with respect to theta.  Therefore, this optimizer is not
+guaranteed to converge to the global optimum in all cases.  In practice, it
+tends to work well in these settings despite non-convexities.  This approach
+appeared in the paper [“Learning Graphical Model Parameters with Approximate
+Marginal Inference”](<a class="reference external" href="https://arxiv.org/abs/1301.3193">https://arxiv.org/abs/1301.3193</a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> – The domain over which the model should be defined.</p></li>
+<li><p><strong>loss_fn</strong> – A MarginalLossFn or a list of Linear Measurements.</p></li>
+<li><p><strong>known_total</strong> – The known or estimated number of records in the data.
+If loss_fn is provided as a list of LinearMeasurements, this argument
+is optional.  Otherwise, it is required.</p></li>
+<li><p><strong>potentials</strong> – The initial potentials.  Must be defined over a set of cliques
+that supports the cliques in the loss_fn.</p></li>
+<li><p><strong>marginal_oracle</strong> – The function to use to compute marginals from potentials.</p></li>
+<li><p><strong>iters</strong> – The maximum number of optimization iterations.</p></li>
+<li><p><strong>callback_fn</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.minimum_variance_unbiased_total">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">minimum_variance_unbiased_total</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="marginal_loss.html#mbi.marginal_loss.LinearMeasurement" title="mbi.marginal_loss.LinearMeasurement"><span class="pre">LinearMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="../_modules/mbi/estimation.html#minimum_variance_unbiased_total"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.minimum_variance_unbiased_total" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.mirror_descent">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">mirror_descent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">domain:</span> <span class="pre">~mbi.domain.Domain,</span> <span class="pre">loss_fn:</span> <span class="pre">~mbi.marginal_loss.MarginalLossFn</span> <span class="pre">|</span> <span class="pre">list[~mbi.marginal_loss.LinearMeasurement],</span> <span class="pre">*,</span> <span class="pre">known_total:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">potentials:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_fast&gt;&gt;,</span> <span class="pre">stateful:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000,</span> <span class="pre">stepsize:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">callback_fn:</span> <span class="pre">~typing.Callable[[~mbi.clique_vector.CliqueVector],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#mirror_descent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.mirror_descent" title="Link to this definition"></a></dt>
+<dd><p>Optimization using the Mirror Descent algorithm.</p>
+<p>This is a first-order proximal optimization algorithm for solving
+a (possibly nonsmooth) convex optimization problem over the marginal polytope.
+This is an  implementation of Algorithm 1 from the paper
+[“Graphical-model based estimation and inference for differential privacy”]
+(<a class="reference external" href="https://arxiv.org/pdf/1901.09136">https://arxiv.org/pdf/1901.09136</a>).  If stepsize is not provided, this algorithm
+uses a line search to automatically choose appropriate step sizes that satisfy
+the Armijo condition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> – The domain over which the model should be defined.</p></li>
+<li><p><strong>loss_fn</strong> – A MarginalLossFn or a list of Linear Measurements.</p></li>
+<li><p><strong>known_total</strong> – The known or estimated number of records in the data.</p></li>
+<li><p><strong>potentials</strong> – The initial potentials.  Must be defind over a set of cliques
+that supports the cliques in the loss_fn.</p></li>
+<li><p><strong>marginal_oracle</strong> – The function to use to compute marginals from potentials.</p></li>
+<li><p><strong>stateful</strong> – flag specifying whether the marginal_oracle is stateful or not
+(e.g., whether messages should be preserved from one call to the next).</p></li>
+<li><p><strong>iters</strong> – The maximum number of optimization iterations.</p></li>
+<li><p><strong>stepsize</strong> – The step size for the optimization.  If not provided, this algorithm
+will use a line search to automatically choose appropriate step sizes.</p></li>
+<li><p><strong>callback_fn</strong> – A function to call at each iteration with the iteration number</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A GraphicalModel object with the estimated potentials and marginals.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.mle_from_marginals">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">mle_from_marginals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">marginals:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">known_total:</span> <span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">250</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_stable&gt;&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback_fn=&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mbi.estimation.GraphicalModel" title="mbi.estimation.GraphicalModel"><span class="pre">GraphicalModel</span></a></span></span><a class="reference internal" href="../_modules/mbi/estimation.html#mle_from_marginals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.mle_from_marginals" title="Link to this definition"></a></dt>
+<dd><p>Compute the MLE Graphical Model from the marginals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>marginals</strong> – The marginal probabilities.</p></li>
+<li><p><strong>known_total</strong> – The known or estimated number of records in the data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A GraphicalModel object with the final potentials and marginals.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mbi.estimation.universal_accelerated_method">
+<span class="sig-prename descclassname"><span class="pre">mbi.estimation.</span></span><span class="sig-name descname"><span class="pre">universal_accelerated_method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">domain:</span> <span class="pre">~mbi.domain.Domain,</span> <span class="pre">loss_fn:</span> <span class="pre">~mbi.marginal_loss.MarginalLossFn</span> <span class="pre">|</span> <span class="pre">list[~mbi.marginal_loss.LinearMeasurement],</span> <span class="pre">known_total:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">potentials:</span> <span class="pre">~mbi.clique_vector.CliqueVector</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">marginal_oracle=&lt;PjitFunction</span> <span class="pre">of</span> <span class="pre">&lt;function</span> <span class="pre">message_passing_stable&gt;&gt;,</span> <span class="pre">iters:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000,</span> <span class="pre">callback_fn:</span> <span class="pre">~typing.Callable[[~mbi.clique_vector.CliqueVector],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">&lt;lambda&gt;&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mbi/estimation.html#universal_accelerated_method"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mbi.estimation.universal_accelerated_method" title="Link to this definition"></a></dt>
+<dd><p>Optimization using the Universal Accelerated MD algorithm.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="factor.html" class="btn btn-neutral float-left" title="mbi.factor" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="marginal_oracles.html" class="btn btn-neutral float-right" title="mbi.marginal_oracles" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

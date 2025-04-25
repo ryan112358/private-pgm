@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Guide &mdash; private-pgm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            private-pgm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-workflow">Core Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-1-loading-and-preparing-data">Step 1: Loading and Preparing Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#loading-data">Loading Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-the-domain">Defining the Domain</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#step-2-selecting-and-configuring-a-mechanism">Step 2: Selecting and Configuring a Mechanism</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-3-running-the-mechanism">Step 3: Running the Mechanism</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-4-generating-synthetic-data">Step 4: Generating Synthetic Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-5-evaluating-utility-optional">Step 5: Evaluating Utility (Optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#further-topics">Further Topics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples &amp; Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary_output/mbi.dataset.html">mbi.dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary_output/mbi.domain.html">mbi.domain</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">private-pgm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">User Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/user_guide.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
+<p>This guide provides a comprehensive overview of how to use the <cite>private-pgm</cite> library to generate differentially private synthetic data.</p>
+<section id="core-workflow">
+<h2>Core Workflow<a class="headerlink" href="#core-workflow" title="Link to this heading"></a></h2>
+<p>The typical workflow for using <cite>private-pgm</cite> involves the following steps:</p>
+<ol class="arabic simple">
+<li><p><strong>Load and Prepare Data:</strong> Load your dataset and define its domain (variable types, ranges, etc.).</p></li>
+<li><p><strong>Select and Configure a Mechanism:</strong> Choose a differentially private mechanism appropriate for your data and privacy requirements.</p></li>
+<li><p><strong>Run the Mechanism:</strong> Execute the chosen mechanism to learn a privacy-preserving model from your data.</p></li>
+<li><p><strong>Generate Synthetic Data:</strong> Use the learned model to synthesize new data points.</p></li>
+<li><p><strong>Evaluate Utility (Optional):</strong> Assess the quality and utility of the generated synthetic data.</p></li>
+</ol>
+</section>
+<section id="step-1-loading-and-preparing-data">
+<h2>Step 1: Loading and Preparing Data<a class="headerlink" href="#step-1-loading-and-preparing-data" title="Link to this heading"></a></h2>
+<p>The first step is to load your data into a suitable format and define its domain.</p>
+<section id="loading-data">
+<h3>Loading Data<a class="headerlink" href="#loading-data" title="Link to this heading"></a></h3>
+<p>You’ll typically start with a CSV file or a Pandas DataFrame. The <cite>mbi.Dataset</cite> class can be used to represent your data.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mbi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Example: Loading the adult dataset</span>
+<span class="n">data_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;../data/adult.csv&#39;</span><span class="p">)</span> <span class="c1"># Adjust path as needed</span>
+<span class="c1"># Define domain information (attributes and their possible values/ranges)</span>
+<span class="c1"># This might be loaded from a JSON file or defined in code</span>
+<span class="c1"># e.g., domain_info_path = &#39;../data/adult-domain.json&#39;</span>
+
+<span class="c1"># Assuming you have a way to create a Domain object</span>
+<span class="c1"># from mbi import Domain</span>
+<span class="c1"># domain = Domain.load(domain_info_path) # Hypothetical load method</span>
+<span class="c1"># dataset = Dataset(df=data_df, domain=domain)</span>
+
+<span class="c1"># For now, let&#39;s assume a simpler instantiation if your Dataset class handles it:</span>
+<span class="c1"># dataset = Dataset.load(data_path=&#39;../data/adult.csv&#39;, domain_path=&#39;../data/adult-domain.json&#39;)</span>
+</pre></div>
+</div>
+<p>Refer to <code class="xref py py-class docutils literal notranslate"><span class="pre">mbi.Dataset</span></code> and <a class="reference internal" href="index.html#mbi.Domain" title="mbi.Domain"><code class="xref py py-class docutils literal notranslate"><span class="pre">mbi.Domain</span></code></a> in the <span class="xref std std-doc">API documentation</span> for details.</p>
+</section>
+<section id="defining-the-domain">
+<h3>Defining the Domain<a class="headerlink" href="#defining-the-domain" title="Link to this heading"></a></h3>
+<p>The domain specifies the attributes in your dataset, their types (e.g., categorical, numerical), and their possible values or ranges. This is crucial for many DP algorithms. The <cite>mbi.Domain</cite> class is used for this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mbi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Domain</span>
+
+<span class="c1"># Example: Defining a domain programmatically</span>
+<span class="c1"># attributes = {</span>
+<span class="c1">#     &#39;age&#39;: {&#39;type&#39;: &#39;numerical&#39;, &#39;min&#39;: 17, &#39;max&#39;: 90},</span>
+<span class="c1">#     &#39;workclass&#39;: {&#39;type&#39;: &#39;categorical&#39;, &#39;values&#39;: [&#39;Private&#39;, &#39;Self-emp-not-inc&#39;, ...]},</span>
+<span class="c1">#     # ... other attributes</span>
+<span class="c1"># }</span>
+<span class="c1"># domain = Domain(attributes)</span>
+
+<span class="c1"># Or loading from a file (e.g., JSON)</span>
+<span class="c1"># domain = Domain.from_json(&#39;../data/adult-domain.json&#39;)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="step-2-selecting-and-configuring-a-mechanism">
+<h2>Step 2: Selecting and Configuring a Mechanism<a class="headerlink" href="#step-2-selecting-and-configuring-a-mechanism" title="Link to this heading"></a></h2>
+<p><cite>private-pgm</cite> implements various differentially private mechanisms for learning graphical models and generating synthetic data. These can be found in the <code class="docutils literal notranslate"><span class="pre">mechanisms</span></code> directory of the repository and often involve specific modules within <code class="docutils literal notranslate"><span class="pre">mbi</span></code>.</p>
+<p>Some potential mechanisms you might work with (based on your repository structure):</p>
+<ul class="simple">
+<li><p><strong>MST (Maximum Spanning Tree):</strong> Implemented in <cite>mechanisms/mst.py</cite>. Often used for selecting a set of low-order marginals.</p></li>
+<li><p><strong>AIM (Adaptive Iterative Mechanism):</strong> Implemented in <cite>mechanisms/aim.py</cite>. An iterative mechanism for answering a large number of counting queries.</p></li>
+<li><p><strong>MWEM+PGM:</strong> Implemented in <cite>mechanisms/mwem+pgm.py</cite>. Combines the Multiplicative Weights Exponential Mechanism with Probabilistic Graphical Models.</p></li>
+<li><p><strong>HDMM+APPGM:</strong> Implemented in <cite>mechanisms/hdmm+appgm.py</cite>.</p></li>
+<li><p><strong>Gaussian+APPGM:</strong> Implemented in <cite>mechanisms/gaussian+appgm.py</cite>.</p></li>
+</ul>
+<p>You’ll need to instantiate the chosen mechanism and configure its parameters, such as the privacy budget (epsilon, delta).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Placeholder for using a mechanism</span>
+<span class="c1"># from mechanisms import MSTMechanism # Fictional import for illustration</span>
+<span class="c1"># from mbi import GraphicalModel</span>
+
+<span class="c1"># epsilon = 1.0</span>
+<span class="c1"># delta = 1e-9</span>
+<span class="c1"># mechanism = MSTMechanism(epsilon=epsilon, delta=delta, domain=dataset.domain)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-3-running-the-mechanism">
+<h2>Step 3: Running the Mechanism<a class="headerlink" href="#step-3-running-the-mechanism" title="Link to this heading"></a></h2>
+<p>Once the mechanism is configured, you run it on your dataset. This process typically involves privately selecting queries (e.g., marginals), measuring them with noise, and then fitting a model.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># private_model_representation = mechanism.run(dataset)</span>
+<span class="c1"># graphical_model = GraphicalModel.from_private_representation(private_model_representation, dataset.domain)</span>
+</pre></div>
+</div>
+<p>The output will be a privacy-preserving representation of the data’s structure and distributions, often encapsulated in an <cite>mbi.GraphicalModel</cite> object or similar.</p>
+</section>
+<section id="step-4-generating-synthetic-data">
+<h2>Step 4: Generating Synthetic Data<a class="headerlink" href="#step-4-generating-synthetic-data" title="Link to this heading"></a></h2>
+<p>With the learned private model, you can now generate synthetic data.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mbi</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyntheticData</span>
+
+<span class="c1"># Assuming graphical_model is the output from Step 3</span>
+<span class="c1"># num_synthetic_samples = len(dataset.df) # Generate same number of samples as original</span>
+<span class="c1"># synthetic_dataset_generator = SyntheticData(graphical_model)</span>
+<span class="c1"># synthetic_df = synthetic_dataset_generator.sample(num_synthetic_samples)</span>
+
+<span class="c1"># print(synthetic_df.head())</span>
+</pre></div>
+</div>
+</section>
+<section id="step-5-evaluating-utility-optional">
+<h2>Step 5: Evaluating Utility (Optional)<a class="headerlink" href="#step-5-evaluating-utility-optional" title="Link to this heading"></a></h2>
+<p>It’s good practice to evaluate how well the synthetic data preserves the statistical properties of the original data. This can involve:</p>
+<ul class="simple">
+<li><p>Comparing marginal distributions.</p></li>
+<li><p>Running machine learning tasks on both original and synthetic data and comparing performance.</p></li>
+<li><p>Calculating specific utility metrics.</p></li>
+</ul>
+<p>The <cite>mbi.marginal_loss</cite> module might contain relevant functions for this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Basic utility check (conceptual)</span>
+<span class="c1"># original_marginal = dataset.project([&#39;age&#39;, &#39;workclass&#39;]).datavector()</span>
+<span class="c1"># synthetic_dataset_for_eval = Dataset(synthetic_df, dataset.domain)</span>
+<span class="c1"># synthetic_marginal = synthetic_dataset_for_eval.project([&#39;age&#39;, &#39;workclass&#39;]).datavector()</span>
+
+<span class="c1"># from mbi.marginal_loss import total_variation_distance # if it exists</span>
+<span class="c1"># tvd = total_variation_distance(original_marginal, synthetic_marginal)</span>
+<span class="c1"># print(f&quot;Total Variation Distance for (age, workclass): {tvd}&quot;)</span>
+</pre></div>
+</div>
+</section>
+<section id="further-topics">
+<h2>Further Topics<a class="headerlink" href="#further-topics" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Advanced Configuration:</strong> How to fine-tune parameters for different mechanisms.</p></li>
+<li><p><strong>Privacy Budget Management:</strong> Strategies for allocating and tracking privacy budgets across multiple operations.</p></li>
+<li><p><strong>Supported Data Types:</strong> Details on handling categorical, numerical, and other data types.</p></li>
+</ul>
+<p>Please refer to the specific example scripts in the <span class="xref std std-doc">examples/index</span> section and the detailed <span class="xref std std-doc">api/index</span> for more in-depth information on classes and functions.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ryan McKenna.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
