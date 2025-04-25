@@ -1,7 +1,0 @@
-mbi.factor
-===========
-
-.. automodule:: mbi.factor
-   :members:
-   :undoc-members:
-   :show-inheritance:
