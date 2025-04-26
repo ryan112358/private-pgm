@@ -21,6 +21,13 @@ extensions = [
     'sphinx.ext.doctest',
 ]
 
+# Add this line if it doesn't exist, or ensure it's True if it does
+autosummary_generate = True
+
+# Configure autodoc settings
+autodoc_typehints = "signature"
+autoclass_content = "both"
+
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 

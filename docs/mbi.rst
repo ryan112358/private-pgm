@@ -3,8 +3,8 @@ mbi package
 
 .. currentmodule:: mbi
 
-Classes
--------
+Top-Level Classes
+-----------------
 .. autosummary::
    :toctree: _autosummary_output
    :nosignatures:
@@ -13,15 +13,24 @@ Classes
    Factor
    CliqueVector
    Dataset
-   LinearMeasurement
+   # LinearMeasurement was present originally, let's keep it for now assuming it's a key class
+   LinearMeasurement 
 
-Modules & Functions
--------------------
+Modules
+-------
 .. autosummary::
    :toctree: _autosummary_output
    :nosignatures:
 
-   estimation
+   approximate_oracles
    callbacks
+   clique_vector
+   dataset
+   domain
+   estimation
+   # experimental # Let's hold off on adding experimental for now
+   factor
    junction_tree
+   marginal_loss
    marginal_oracles
+   synthetic_data
