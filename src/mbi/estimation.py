@@ -84,6 +84,7 @@ class Estimator(Protocol):
 # API may change, we'll see
 @attr.dataclass(frozen=True)
 class GraphicalModel:
+    """Represents a learned graphical model, storing potentials, marginals, and the total count."""
     potentials: CliqueVector
     marginals: CliqueVector
     total: chex.Numeric = 1
@@ -97,18 +98,22 @@ class GraphicalModel:
             )
 
     def synthetic_data(self, rows: int | None = None):
+        """Generates synthetic data based on the learned model's marginals."""
         return synthetic_data.from_marginals(self, rows or self.total)
 
     @property
     def domain(self):
+        """Returns the Domain object associated with this graphical model."""
         return self.potentials.domain
 
     @property
     def cliques(self):
+        """Returns the list of cliques the model's potentials are defined over."""
         return self.potentials.cliques
 
 
 def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> float:
+    """Estimates the total count from measurements with identity queries."""
     # find the minimum variance estimate of the total given the measurements
     estimates, variances = [], []
     for M in measurements:
@@ -130,6 +135,7 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
 
 
 def _initialize(domain, loss_fn, known_total, potentials):
+    """Initializes loss function, total count, and potentials for estimation algorithms."""
     if isinstance(loss_fn, list):
         if known_total is None:
             known_total = minimum_variance_unbiased_total(loss_fn)
@@ -145,6 +151,33 @@ def _initialize(domain, loss_fn, known_total, potentials):
 
     return loss_fn, known_total, potentials
 
+
+def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
+    """Runs an optimization loop using a given loss/gradient function and Optax optimizer."""
+    loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
+
+    @jax.jit
+    def update(params, opt_state):
+        loss, grad = loss_and_grad_fn(params)
+
+        updates, opt_state = optimizer.update(
+            grad, opt_state, params, value=loss, grad=grad, value_fn=loss_fn
+        )
+
+        return optax.apply_updates(params, updates), opt_state, loss
+
+    optimizer = optax.lbfgs(
+        memory_size=1,
+        linesearch=optax.scale_by_zoom_linesearch(128, max_learning_rate=1),
+    )
+    state = optimizer.init(params)
+    prev_loss = float("inf")
+    for t in range(iters):
+        params, state, loss = update(params, state)
+        callback_fn(params)
+        # if loss == prev_loss: break
+        prev_loss = loss
+    return params
 
 def mirror_descent(
     domain: Domain,
@@ -230,6 +263,7 @@ def mirror_descent(
 
 
 def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
+    """Runs an optimization loop using Optax L-BFGS."""
     loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
 
     @jax.jit

@@ -1,3 +1,10 @@
+"""Defines callback mechanisms for monitoring optimization processes.
+
+This module provides a `Callback` class that can be used to track and log
+various metrics during iterative algorithms, such as those used in estimating
+differentially private marginals. It allows for periodic logging of loss values
+and other relevant statistics.
+"""
 import attr
 import jax
 from .marginal_loss import LinearMeasurement
@@ -8,6 +15,7 @@ import pandas as pd
 
 
 def _pad(string: str, length: int):
+    """Pads a string with spaces on both sides to a target length."""
     if len(string) > length:
         return string[:length]
     left_pad = (length - len(string)) // 2
@@ -47,6 +55,7 @@ def default(
     data: Dataset | None = None,
     frequency: int = 50,
 ) -> Callback:
+    """Creates a default Callback with standard loss functions (L1/L2 Loss/Error, Primal Feas)."""
     loss_fns = {}
     # Measures distance between input marginals and noisy marginals.
     loss_fns["L2 Loss"] = marginal_loss.from_linear_measurements(
