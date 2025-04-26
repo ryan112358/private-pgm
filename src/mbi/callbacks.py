@@ -2,8 +2,7 @@
 
 This module provides a `Callback` class that can be used to track and log
 various metrics during iterative algorithms, such as those used in estimating
-differentially private marginals. It allows for periodic logging of loss values
-and other relevant statistics.
+marginals. It logs loss values and other relevant statistics.
 """
 import attr
 import jax
