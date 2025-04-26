@@ -28,7 +28,7 @@ class Domain:
     Example Usage (using fromdict):
         >>> domain = Domain.fromdict({'a': 2, 'b': 3})
         >>> print(domain)
-            Domain(a: 2, b: 3)
+        Domain(a: 2, b: 3)
     """
     attributes: tuple[str, ...] = attr.field(converter=tuple)
     shape: tuple[int, ...] = attr.field(converter=tuple)
@@ -50,7 +50,7 @@ class Domain:
 
         Example Usage:
             >>> print(Domain.fromdict({'a': 10, 'b': 20}))
-                Domain(a: 10, b: 20)
+            Domain(a: 10, b: 20)
 
         Args:
           config: a dictionary of { attr : size } values
@@ -80,7 +80,7 @@ class Domain:
         Example Usage:
             >>> D1 = Domain(['a','b'], [10,20])
             >>> print(D1.marginalize(['a']))
-                Domain(b: 20)
+            Domain(b: 20)
 
         Args:
           attrs: the attributes to marginalize out.
@@ -109,7 +109,7 @@ class Domain:
             >>> D1 = Domain(['a','b'], [10,20])
             >>> D2 = Domain(['b','c'], [20,30])
             >>> print(D1.intersect(D2))
-                Domain(b: 20)
+            Domain(b: 20)
 
         Args:
           other: another Domain object
@@ -138,7 +138,7 @@ class Domain:
             >>> D1 = Domain(['a','b'], [10,20])
             >>> D2 = Domain(['b','c'], [20,30])
             >>> print(D1.merge(D2))
-                Domain(a: 10, b: 20, c: 30)
+            Domain(a: 10, b: 20, c: 30)
 
         Args:
           other: another Domain object
@@ -154,9 +154,9 @@ class Domain:
         Example:
             >>> D1 = Domain(['a','b'], [10,20])
             >>> D1.size()
-                200
+            200
             >>> D1.size(['a'])
-                10
+            10
 
         Args:
           attributes: A subset of attributes whose total size should be returned.

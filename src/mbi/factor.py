@@ -44,7 +44,7 @@ class Factor:
         >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
         >>> factor = Factor.ones(domain)
         >>> print(factor.domain)
-            Domain(X: 2, Y: 3)
+        Domain(X: 2, Y: 3)
     """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
@@ -154,7 +154,7 @@ class Factor:
             >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
             >>> f3 = f1 * f2
             >>> print(f3.domain)
-                Domain(a: 2, b: 3, c: 4)
+            Domain(a: 2, b: 3, c: 4)
 
         Args:
           other: the other factor to multiply
