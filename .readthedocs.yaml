@@ -11,9 +11,9 @@ build:
   tools:
     python: "3.12"
 
-jobs:
-  pre_build:
-    - sphinx-apidoc -o docs/ src/mbi
+  jobs:
+    pre_build:
+      - sphinx-apidoc -o docs/ src/mbi
 
 sphinx:
    configuration: docs/conf.py
