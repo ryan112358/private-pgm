@@ -1,3 +1,11 @@
+"""Utilities for constructing and working with junction trees.
+
+This module provides functions for building junction trees from a given domain
+and set of cliques. Junction trees are fundamental structures in graphical model
+inference, enabling efficient message passing algorithms. Functions include
+finding maximal cliques, determining message passing orders, graph triangulation,
+computing greedy elimination orders, and estimating model size.
+"""
 from collections import OrderedDict
 import itertools
 from typing import TypeAlias, Collection

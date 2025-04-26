@@ -91,15 +91,15 @@ class Domain:
         return self.project(proj)
 
     def contains(self, other: "Domain") -> bool:
-        """Determine if this domain contains another."""
+        """Checks if this domain contains all attributes present in another domain."""
         return set(other.attributes) <= set(self.attributes)
 
     def canonical(self, attrs):
-        """Return the canonical ordering of the attributes."""
+        """Returns attributes common to the domain and input, maintaining the domain's order."""
         return tuple(a for a in self.attributes if a in attrs)
 
     def invert(self, attrs):
-        """returns the attributes in the domain not in the list"""
+        """Returns attributes present in the domain but not in the provided list."""
         return [a for a in self.attributes if a not in attrs]
 
     def intersect(self, other: "Domain") -> "Domain":
@@ -169,6 +169,7 @@ class Domain:
 
     @property
     def attrs(self):
+        """Alias for the `attributes` tuple."""
         return self.attributes
 
     def __contains__(self, name: str) -> bool:

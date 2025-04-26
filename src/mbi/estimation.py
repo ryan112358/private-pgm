@@ -84,6 +84,7 @@ class Estimator(Protocol):
 # API may change, we'll see
 @attr.dataclass(frozen=True)
 class GraphicalModel:
+    """Represents a learned graphical model, storing potentials, marginals, and the total count."""
     potentials: CliqueVector
     marginals: CliqueVector
     total: chex.Numeric = 1
@@ -97,18 +98,22 @@ class GraphicalModel:
             )
 
     def synthetic_data(self, rows: int | None = None):
+        """Generates synthetic data based on the learned model's marginals."""
         return synthetic_data.from_marginals(self, rows or self.total)
 
     @property
     def domain(self):
+        """Returns the Domain object associated with this graphical model."""
         return self.potentials.domain
 
     @property
     def cliques(self):
+        """Returns the list of cliques the model's potentials are defined over."""
         return self.potentials.cliques
 
 
 def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> float:
+    """Estimates the total count from measurements with identity queries."""
     # find the minimum variance estimate of the total given the measurements
     estimates, variances = [], []
     for M in measurements:
@@ -130,6 +135,7 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
 
 
 def _initialize(domain, loss_fn, known_total, potentials):
+    """Initializes loss function, total count, and potentials for estimation algorithms."""
     if isinstance(loss_fn, list):
         if known_total is None:
             known_total = minimum_variance_unbiased_total(loss_fn)
@@ -230,6 +236,7 @@ def mirror_descent(
 
 
 def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
+    """Runs an optimization loop using Optax L-BFGS."""
     loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
 
     @jax.jit
