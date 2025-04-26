@@ -10,10 +10,9 @@ Top-Level Classes
    :nosignatures:
 
    Domain
+   Dataset
    Factor
    CliqueVector
-   Dataset
-   # LinearMeasurement was present originally, let's keep it for now assuming it's a key class
    LinearMeasurement 
 
 Modules
@@ -22,15 +21,10 @@ Modules
    :toctree: _autosummary_output
    :nosignatures:
 
+   marginal_oracles
+   marginal_loss
+   estimation
    approximate_oracles
    callbacks
-   clique_vector
-   dataset
-   domain
    estimation
-   # experimental # Let's hold off on adding experimental for now
-   factor
-   junction_tree
-   marginal_loss
-   marginal_oracles
-   synthetic_data
+
