@@ -40,11 +40,11 @@ class Factor:
         - Binary Ops: `+`, `-`, `*`, `/`, `dot` for combining factors.
 
     Example Usage:
-    >>> from mbi import Domain  # Needed for doctest context
-    >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
-    >>> factor = Factor.ones(domain)
-    >>> print(factor.domain)
-    Domain(X: 2, Y: 3)
+        >>> from mbi import Domain  # Needed for doctest context
+        >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
+        >>> factor = Factor.ones(domain)
+        >>> print(factor.domain)
+        Domain(X: 2, Y: 3)
     """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
@@ -150,11 +150,11 @@ class Factor:
         """Multiply two factors together.
 
         Example Usage:
-        >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
-        >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
-        >>> f3 = f1 * f2
-        >>> print(f3.domain)
-        Domain(a: 2, b: 3, c: 4)
+            >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
+            >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
+            >>> f3 = f1 * f2
+            >>> print(f3.domain)
+            Domain(a: 2, b: 3, c: 4)
 
         Args:
           other: the other factor to multiply
