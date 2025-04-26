@@ -152,33 +152,6 @@ def _initialize(domain, loss_fn, known_total, potentials):
     return loss_fn, known_total, potentials
 
 
-def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
-    """Runs an optimization loop using a given loss/gradient function and Optax optimizer."""
-    loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
-
-    @jax.jit
-    def update(params, opt_state):
-        loss, grad = loss_and_grad_fn(params)
-
-        updates, opt_state = optimizer.update(
-            grad, opt_state, params, value=loss, grad=grad, value_fn=loss_fn
-        )
-
-        return optax.apply_updates(params, updates), opt_state, loss
-
-    optimizer = optax.lbfgs(
-        memory_size=1,
-        linesearch=optax.scale_by_zoom_linesearch(128, max_learning_rate=1),
-    )
-    state = optimizer.init(params)
-    prev_loss = float("inf")
-    for t in range(iters):
-        params, state, loss = update(params, state)
-        callback_fn(params)
-        # if loss == prev_loss: break
-        prev_loss = loss
-    return params
-
 def mirror_descent(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
