@@ -1,70 +1,27 @@
 mbi package
 ===========
 
-Submodules
-----------
+.. currentmodule:: mbi
 
-mbi.domain module
------------------
+Classes
+-------
+.. autosummary::
+   :toctree: _autosummary_output
+   :nosignatures:
 
-.. automodule:: mbi.domain
-   :members:
-   :show-inheritance:
-   :undoc-members:
+   Domain
+   Factor
+   CliqueVector
+   Dataset
+   LinearMeasurement
 
-mbi.dataset module
-------------------
+Modules & Functions
+-------------------
+.. autosummary::
+   :toctree: _autosummary_output
+   :nosignatures:
 
-.. automodule:: mbi.dataset
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mbi.factor module
------------------
-
-.. automodule:: mbi.factor
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mbi.clique\_vector module
--------------------------
-
-.. automodule:: mbi.clique_vector
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mbi.marginal\_oracles module
-----------------------------
-
-.. automodule:: mbi.marginal_oracles
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mbi.marginal\_loss module
--------------------------
-
-.. automodule:: mbi.marginal_loss
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mbi.estimation module
----------------------
-
-.. automodule:: mbi.estimation
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-
-Module contents
----------------
-
-.. automodule:: mbi
-   :members:
-   :show-inheritance:
-   :undoc-members:
+   estimation
+   callbacks
+   junction_tree
+   marginal_oracles
