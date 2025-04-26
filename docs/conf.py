@@ -18,6 +18,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx_rtd_theme',
     'myst_parser',
+    'sphinx.ext.doctest',
 ]
 
 templates_path = ['_templates']
