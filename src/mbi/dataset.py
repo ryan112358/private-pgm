@@ -6,10 +6,12 @@ structured representation of data, facilitating operations like projection onto
 subsets of attributes and conversion into a data vector format suitable for
 various statistical and machine learning tasks.
 """
+import json
+import os
+
 import numpy as np
 import pandas as pd
-import os
-import json
+
 from .domain import Domain
 
 

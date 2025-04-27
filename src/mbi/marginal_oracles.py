@@ -8,17 +8,18 @@ We recommend using message_passing_stable with accelerated estimation algorithms
 Interior Gradient, but using message_passing_fast with mirror descent.
 """
 
+import collections
 import string
+from typing import Protocol
+
 import jax
 import jax.numpy as jnp
+
+from . import junction_tree
 from .clique_vector import CliqueVector
 from .domain import Domain
 from .factor import Factor
-from . import junction_tree
 from .marginal_loss import clique_mapping
-import functools
-import collections
-from typing import Protocol
 
 _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
 

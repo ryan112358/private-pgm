@@ -6,11 +6,12 @@ marginals. It logs loss values and other relevant statistics.
 """
 import attr
 import jax
-from .marginal_loss import LinearMeasurement
-from .dataset import Dataset
-from .clique_vector import CliqueVector
-from . import marginal_loss
 import pandas as pd
+
+from . import marginal_loss
+from .clique_vector import CliqueVector
+from .dataset import Dataset
+from .marginal_loss import LinearMeasurement
 
 
 def _pad(string: str, length: int):

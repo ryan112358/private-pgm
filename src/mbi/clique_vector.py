@@ -6,16 +6,18 @@ and manipulate sets of `Factor` objects, each associated with a specific clique
 graphical models, such as projecting onto sub-cliques, expanding to larger cliques,
 and performing arithmetic operations on these collections.
 """
-import numpy as np
-from .domain import Domain
-from .factor import Factor
+import functools
+import operator
+from typing import TypeAlias
+
+import attr
+import chex
 import jax
 import jax.numpy as jnp
-import functools
-import attr
-from typing import TypeAlias
-import operator
-import chex
+import numpy as np
+
+from .domain import Domain
+from .factor import Factor
 
 Clique: TypeAlias = tuple[str, ...]
 

@@ -1,5 +1,5 @@
-from collections.abc import Sequence, Iterator
 import functools
+from collections.abc import Iterator, Sequence
 
 import attr
 

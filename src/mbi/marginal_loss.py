@@ -8,15 +8,16 @@ measurements and the `MarginalLossFn` class to define loss functions over
 or noisy data. Utilities for clique manipulation and feasibility checks are also
 included.
 """
-import attr
-from typing import Any, Callable, TypeAlias, Protocol, Mapping
-from .factor import Factor
-from .clique_vector import CliqueVector
+import functools
+from typing import Any, Callable, Mapping, Protocol, TypeAlias
 
+import attr
+import chex
 import jax
 import jax.numpy as jnp
-import functools
-import chex
+
+from .clique_vector import CliqueVector
+from .factor import Factor
 
 Clique: TypeAlias = tuple[str, ...]
 

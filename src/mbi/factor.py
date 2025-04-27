@@ -1,12 +1,13 @@
-from typing import TypeAlias, Sequence, Callable
+import functools
+from typing import Callable, Sequence, TypeAlias
 
+import attr
 import chex
 import jax
 import jax.numpy as jnp
-import attr
-import functools
-from .domain import Domain
 import numpy as np
+
+from .domain import Domain
 
 jax.config.update("jax_enable_x64", True)
 

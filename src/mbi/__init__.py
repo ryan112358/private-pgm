@@ -5,17 +5,15 @@ making them available for direct import. It simplifies access to functionalities
 like data representation (Domain, Dataset), factor manipulation (Factor),
 and various estimation and oracle modules.
 """
-from .domain import Domain
-from .dataset import Dataset
-from .factor import Factor
+from . import callbacks, estimation, junction_tree, marginal_oracles
 from .clique_vector import CliqueVector
+from .dataset import Dataset
+from .domain import Domain
+from .estimation import Estimator
+from .factor import Factor
 from .marginal_loss import LinearMeasurement, MarginalLossFn
 from .marginal_oracles import MarginalOracle
-from .estimation import Estimator
-from . import estimation
-from . import callbacks
-from . import junction_tree
-from . import marginal_oracles
+from .markov_random_field import MarkovRandomField
 
 __all__ = [
     'Domain',
@@ -24,6 +22,7 @@ __all__ = [
     'CliqueVector',
     'LinearMeasurement',
     'MarginalLossFn',
+    'MarkovRandomField',
     'MarginalOracle',
     'Estimator',
     'estimation',

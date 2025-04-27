@@ -6,15 +6,14 @@ inference, enabling efficient message passing algorithms. Functions include
 finding maximal cliques, determining message passing orders, graph triangulation,
 computing greedy elimination orders, and estimating model size.
 """
-from collections import OrderedDict
 import itertools
-from typing import TypeAlias, Collection
+from collections import OrderedDict
+from typing import Collection, TypeAlias
 
 import networkx as nx
 import numpy as np
 
 from .domain import Domain
-
 
 Clique: TypeAlias = tuple[str, ...]
 

@@ -12,15 +12,17 @@ https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot
 Pull requests are welcome to add support for other approximate oracles.
 """
 
+import functools
+import itertools
+from typing import Any, Protocol, TypeAlias
+
 import jax
 import networkx as nx
-import itertools
 from scipy.cluster.hierarchy import DisjointSet
-from .domain import Domain
+
 from .clique_vector import CliqueVector
+from .domain import Domain
 from .factor import Factor
-from typing import TypeAlias, Protocol, Any
-import functools
 
 Clique: TypeAlias = tuple[str, ...]
 
@@ -126,14 +128,16 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
 
     return regions, cliques, messages, message_order, parents, children
 
+_State = dict[tuple[Clique, Clique], Factor]
+
 @functools.partial(jax.jit, static_argnames=['iters'])
 def convex_generalized_belief_propagation(
     potentials: CliqueVector,
     total: float = 1,
-    state: dict[tuple[Clique, Clique], Factor] | None = None,
+    state: _State | None = None,
     iters: int = 1,
     damping: float = 0.5,
-) -> CliqueVector:
+) -> tuple[CliqueVector, _State]:
     """Convex generalized belief propagation for approximmate marginal inference.
 
         The algorithms implements the Algorithm 2 in our paper
