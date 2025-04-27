@@ -2,10 +2,10 @@
 
 This module provides a flexible set of optimization algorithms, each sharing the
 the same API.  The supported algorithms are:
-    1. Mirror Descent [our recommended algorithm]
-    2. L-BFGS (using back-belief propagation)
-    3. Regularized Dual Averaging
-    4. Interior Gradient
+1. Mirror Descent [our recommended algorithm]
+2. L-BFGS (using back-belief propagation)
+3. Regularized Dual Averaging
+4. Interior Gradient
 
 Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that

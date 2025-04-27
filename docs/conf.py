@@ -1,4 +1,3 @@
-# sphinx-apidoc -o . ../src/mbi
 # sphinx-build -b html . _build/html
 
 import sys
@@ -32,4 +31,4 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+

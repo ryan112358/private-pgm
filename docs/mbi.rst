@@ -26,5 +26,4 @@ Modules
    estimation
    approximate_oracles
    callbacks
-   estimation
 
