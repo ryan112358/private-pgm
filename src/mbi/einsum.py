@@ -104,3 +104,4 @@ def scan_einsum(
     return jax.lax.scan(
         lambda carry, i: (carry + small_einsum(i), ()), init, loop
     )[0]
+    
