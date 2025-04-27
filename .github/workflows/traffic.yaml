@@ -1,33 +1,19 @@
-name: Repository Traffic
-
-on: # every 3 months, or manually
-  schedule:
-    - cron: '30 03 01 Jan,Apr,Jul,Oct *'
+name: Metrics
+on:
+  # Schedule daily updates
+  schedule: [{cron: "0 0 * * *"}]
+  # (optional) Run workflow manually
   workflow_dispatch:
-
+  # (optional) Run workflow when pushing on master/main
+  push: {branches: ["master", "main"]}
 jobs:
-  update_traffic_svg:
+  github-metrics:
     runs-on: ubuntu-latest
+    environment: 
+      name: production
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Generate traffic SVG
-        uses: lowlighter/metrics@latest
+      - uses: lowlighter/metrics@latest
         with:
-          filename: traffic.svg
           token: ${{ secrets.METRICS_TOKEN }}
-          plugin_traffic: yes
-
-      - name: Commit traffic SVG
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add traffic.svg
-          # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "No changes to traffic.svg"
-          else
-            git commit -m "Update repository traffic SVG"
-            git push
-          fi
