@@ -7,4 +7,4 @@
 [![Downloads](https://pepy.tech/badge/private-pgm)](https://pepy.tech/project/private-pgm)
 [![Documentation Status](https://app.readthedocs.org/projects/private-pgm/badge/?version=latest)](https://private-pgm.readthedocs.io/en/latest/)
 
-<img src="https://github.com/ryan112358/ryan112358/blob/main/metrics.private-pgm.svg" alg="drawing" width=500/>
+![Metrics for ryan112358/private-pgm repository](https://raw.githubusercontent.com/ryan112358/ryan112358/main/metrics.private-pgm.svg)
