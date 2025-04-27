@@ -1,4 +1,10 @@
-from mbi import Dataset, Factor, CliqueVector, estimation, Domain, marginal_loss, LinearMeasurement
+from ..dataset import Dataset
+from ..factor import Factor
+from ..clique_vector import CliqueVector
+from .. import estimation
+from ..domain import Domain
+from .. import marginal_loss
+from ..marginal_loss import LinearMeasurement
 from scipy.optimize import minimize
 from collections import defaultdict
 import numpy as np
@@ -6,19 +12,26 @@ from scipy.sparse.linalg import lsmr
 from scipy.special import logsumexp
 import jax
 
-""" This file is experimental.  
-It is an attempt to re-implement and generalize the technique used in PMW^{Pub}.
-https://arxiv.org/pdf/2102.08598.pdf. This implementation is not optimized
-at all after the refactoring in 2024. Pull requestes are welcome on this file. 
+"""Experimental implementation of data synthesis using public data support.
 
-Notable differences:
-- Shares the same interface as other estimators in this repo.
-- Supports unbounded differential privacy, with automatic estimate of total
-- Supports arbitrary measurements over the data marginals, or more generally any MarginalLossFn.
+This module provides an experimental function, `public_support`, which aims to
+re-implement and generalize the technique presented in PMW^{Pub}
+(https://arxiv.org/pdf/2102.08598.pdf). The core idea is to re-weight a public
+dataset to match private marginal measurements, effectively generating synthetic
+data that respects privacy constraints while leveraging public information.
+
+Notable aspects and differences include:
+- Adherence to the common interface for estimators within this repository.
+- Support for unbounded differential privacy, including automatic total estimation.
+- Flexibility to handle arbitrary measurements via `MarginalLossFn`.
+
+Note: This implementation is experimental and not heavily optimized following
+refactoring. Contributions for improvement are welcome.
 """
 
 
 def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
+    """Performs optimization using entropic mirror descent to find optimal weights."""
     logP = np.log(x0 + np.nextafter(0, 1)) + np.log(total) - np.log(x0.sum())
     P = np.exp(logP)
     P = x0 * total / x0.sum()
@@ -48,6 +61,7 @@ def entropic_mirror_descent(loss_and_grad, x0, total, iters=250):
     return np.exp(logP)
 
 def _to_clique_vector(data, cliques):
+    """Converts a Dataset object into a CliqueVector representation of its marginals."""
     arrays = {}
     for cl in cliques:
         dom = data.domain.project(cl)
@@ -70,6 +84,7 @@ def public_support(
     cliques = loss_fn.cliques
 
     def loss_and_grad(weights):
+        """Calculates the loss and gradient with respect to the public data weights."""
         est = Dataset(public_data.df, public_data.domain, weights)
         mu = _to_clique_vector(est, cliques)
         loss, dL = loss_and_grad_mu(mu)

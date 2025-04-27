@@ -12,18 +12,57 @@ https://github.com/ryan112358/private-pgm/tree/approx-experiments-snapshot
 Pull requests are welcome to add support for other approximate oracles.
 """
 
+import functools
+import itertools
+from typing import Any, Protocol, TypeAlias
+
 import jax
 import networkx as nx
-import itertools
 from scipy.cluster.hierarchy import DisjointSet
-from mbi import Domain, CliqueVector, Factor
-from typing import TypeAlias
-import functools
+
+from .clique_vector import CliqueVector
+from .domain import Domain
+from .factor import Factor
 
 Clique: TypeAlias = tuple[str, ...]
 
 
+class StatefulMarginalOracle(Protocol):
+    """
+    Defines the callable signature for stateful marginal oracle functions.
+
+    A stateful marginal oracle computes (approximate) marginals from
+    log-space potentials while also managing an internal state, often
+    for optimization in iterative algorithms (e.g., preserving messages
+    in message passing).
+    """
+    def __call__(
+        self,
+        potentials: CliqueVector,
+        total: float = 1.0,
+        state: Any = None,
+    ) -> tuple[CliqueVector, Any]:
+        """
+        Computes marginals from log-space potentials and manages state.
+
+        Args:
+            potentials: A CliqueVector representing the log-space potentials
+                of a graphical model.
+            total: The normalization factor, typically the total number of
+                records or a probability sum. Defaults to 1.0.
+            state: An optional argument to pass state between calls.
+                The oracle may use this state and return an updated version.
+
+        Returns:
+            A tuple containing:
+                - CliqueVector: The computed marginals.
+                - Any: The updated state.
+        """
+        ...
+
+
 def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
+    """Builds the region graph for convex generalized belief propagation."""
     # Hard-code minimal=True, convex=True
     # Counting numbers = 1 for all regions
     # Alg 11.3 of Koller & Friedman
@@ -89,14 +128,16 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
 
     return regions, cliques, messages, message_order, parents, children
 
+_State = dict[tuple[Clique, Clique], Factor]
+
 @functools.partial(jax.jit, static_argnames=['iters'])
 def convex_generalized_belief_propagation(
     potentials: CliqueVector,
     total: float = 1,
-    state: dict[tuple[Clique, Clique], Factor] | None = None,
+    state: _State | None = None,
     iters: int = 1,
     damping: float = 0.5,
-) -> CliqueVector:
+) -> tuple[CliqueVector, _State]:
     """Convex generalized belief propagation for approximmate marginal inference.
 
         The algorithms implements the Algorithm 2 in our paper

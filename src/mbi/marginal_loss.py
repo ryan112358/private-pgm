@@ -1,15 +1,30 @@
-import attr
-from typing import Any, Callable, Protocol, Mapping
-from mbi import Factor, CliqueVector
-from mbi.clique_utils import Clique, maximal_subset, clique_mapping
+"""Defines loss functions based on linear measurements of marginals.
 
+This module provides structures and functions for defining and calculating loss
+based on potentially noisy linear measurements of marginal distributions. Key
+components include the `LinearMeasurement` class to represent individual
+measurements and the `MarginalLossFn` class to define loss functions over
+`CliqueVector` objects, enabling the evaluation of model fit against observed
+or noisy data. Utilities for clique manipulation and feasibility checks are also
+included.
+"""
+import functools
+from typing import Any, Callable, Mapping, Protocol, TypeAlias
+
+import attr
+import chex
 import jax
 import jax.numpy as jnp
-import functools
-import chex
+
+from .clique_utils import Clique
+from .clique_utils import clique_mapping
+from .clique_utils import maximal_subset
+from .clique_vector import CliqueVector
+from .factor import Factor
 
 
 def identity_fn(x: jax.Array) -> jax.Array:
+    """Simple identity function: returns the input `x` unchanged."""
     return x
 
 @functools.partial(
@@ -78,6 +93,7 @@ def from_linear_measurements(
 
 
 def primal_feasibility(mu: CliqueVector) -> chex.Numeric:
+    """Calculates the average L1 distance between overlapping marginals in `mu` (consistency)."""
     ans = 0
     count = 0
     for r in mu.cliques:

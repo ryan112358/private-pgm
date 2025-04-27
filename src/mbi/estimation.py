@@ -2,57 +2,86 @@
 
 This module provides a flexible set of optimization algorithms, each sharing the
 the same API.  The supported algorithms are:
-    1. Mirror Descent [our recommended algorithm]
-    2. L-BFGS (using back-belief propagation)
-    3. Regularized Dual Averaging
-    4. Interior Gradient
+1. Mirror Descent [our recommended algorithm]
+2. L-BFGS (using back-belief propagation)
+3. Regularized Dual Averaging
+4. Interior Gradient
 
 Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
+from typing import Any, Callable, NamedTuple, Protocol
 
-import numpy as np
-from mbi import Domain, CliqueVector, Factor, LinearMeasurement
-from mbi import marginal_oracles, marginal_loss, synthetic_data
-from typing import Any, Callable, NamedTuple
 import jax
 import jax.numpy as jnp
-import chex
-import attr
+import numpy as np
 import optax
 
-_DEFAULT_CALLBACK = lambda t, loss: print(loss) if t % 50 == 0 else None
+from . import marginal_loss, marginal_oracles
+from .approximate_oracles import StatefulMarginalOracle
+from .clique_vector import CliqueVector
+from .domain import Domain
+from .marginal_loss import LinearMeasurement
+from .markov_random_field import MarkovRandomField
 
 
-# API may change, we'll see
-@attr.dataclass(frozen=True)
-class GraphicalModel:
-    potentials: CliqueVector
-    marginals: CliqueVector
-    total: chex.Numeric = 1
+class Estimator(Protocol):
+    """
+    Defines the callable signature for graphical model estimator functions.
 
-    def project(self, attrs: tuple[str, ...]) -> Factor:
-        try:
-            return self.marginals.project(attrs)
-        except:
-            return marginal_oracles.variable_elimination(
-                self.potentials, attrs, self.total
-            )
+    An estimator learns the parameters (potentials) of a graphical model,
+    typically by optimizing a marginal-based loss function.
 
-    def synthetic_data(self, rows: int | None = None):
-        return synthetic_data.from_marginals(self, rows or self.total)
+    Examples of conforming functions from `mbi.estimation`:
+    - `mirror_descent`
+    - `lbfgs`
+    - `dual_averaging`
+    - `interior_gradient`
+    - `universal_accelerated_method`
+    """
+    def __call__(
+        self,
+        domain: Domain,
+        loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+        *,
+        known_total: float | None = None,
+        potentials: CliqueVector | None = None,
+        marginal_oracle: marginal_oracles.MarginalOracle,
+        iters: int = 1000,
+        callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+        **kwargs: Any
+    ) -> MarkovRandomField:
+        """
+        Estimates the parameters of a graphical model.
 
-    @property
-    def domain(self):
-        return self.potentials.domain
+        Args:
+            domain: The Domain object specifying the attributes and their
+                cardinalities over which the model is defined.
+            loss_fn: Either a MarginalLossFn object or a list of
+                LinearMeasurement objects. This defines the objective function
+                to be minimized.
+            known_total: An optional float for the known or estimated total
+                number of records.
+            potentials: An optional CliqueVector for the initial guess of
+                model potentials.
+            marginal_oracle: A callable (stateless or stateful) that computes
+                marginal distributions from potentials.
+            iters: Maximum number of optimization iterations. Defaults to 1000.
+            callback_fn: Optional function called periodically during estimation.
+                Defaults to a no-op lambda.
+            **kwargs: Additional keyword arguments specific to the estimation
+                algorithm (e.g., stepsize, lipschitz, stateful flag).
 
-    @property
-    def cliques(self):
-        return self.potentials.cliques
+        Returns:
+            A MarkovRandomField object with the learned potentials,
+            resulting marginals, and the model domain.
+        """
+        ...
 
 
 def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> float:
+    """Estimates the total count from measurements with identity queries."""
     # find the minimum variance estimate of the total given the measurements
     estimates, variances = [], []
     for M in measurements:
@@ -74,6 +103,7 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
 
 
 def _initialize(domain, loss_fn, known_total, potentials):
+    """Initializes loss function, total records, and potentials for estimation algorithms."""
     if isinstance(loss_fn, list):
         if known_total is None:
             known_total = minimum_variance_unbiased_total(loss_fn)
@@ -90,15 +120,24 @@ def _initialize(domain, loss_fn, known_total, potentials):
     return loss_fn, known_total, potentials
 
 
+def _get_stateful_oracle(
+    marginal_oracle: marginal_oracles.MarginalOracle | StatefulMarginalOracle,
+    stateful: bool
+) -> StatefulMarginalOracle:
+    if stateful:
+        return marginal_oracle
+    return lambda theta, total, state: (marginal_oracle(theta, total), state)
+
+
 def mirror_descent(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_fast,
-    stateful: bool = False,
+    marginal_oracle: marginal_oracles.MarginalOracle | StatefulMarginalOracle = marginal_oracles.message_passing_fast,
     iters: int = 1000,
+    stateful: bool = False,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):
@@ -119,25 +158,22 @@ def mirror_descent(
         potentials: The initial potentials.  Must be defind over a set of cliques
             that supports the cliques in the loss_fn.
         marginal_oracle: The function to use to compute marginals from potentials.
-        stateful: flag specifying whether the marginal_oracle is stateful or not
-            (e.g., whether messages should be preserved from one call to the next).
         iters: The maximum number of optimization iterations.
         stepsize: The step size for the optimization.  If not provided, this algorithm
             will use a line search to automatically choose appropriate step sizes.
         callback_fn: A function to call at each iteration with the iteration number
 
     Returns:
-        A GraphicalModel object with the estimated potentials and marginals.
+        A MarkovRandomField object with the estimated potentials and marginals.
     """
+    if stepsize is None and stateful:
+        raise ValueError('Stepsize should be manually tuned when using a stateful oracle.')
+
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
-
-    if not stateful:
-        stateless_oracle = marginal_oracle
-        marginal_oracle = lambda theta, total, state: (stateless_oracle(theta, total), state)
-    elif stepsize is None:
-        raise ValueError('Stepsize should be manually tuned when using a stateful oracle.')
+    
+    marginal_oracle = _get_stateful_oracle(marginal_oracle, stateful)
 
     @jax.jit
     def update(theta, alpha, state = None):
@@ -170,10 +206,11 @@ def mirror_descent(
         callback_fn(mu)
 
     marginals, _ = marginal_oracle(potentials, known_total, state)
-    return GraphicalModel(potentials, marginals, known_total)
+    return MarkovRandomField(potentials, marginals, known_total)
 
 
 def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
+    """Runs an optimization loop using Optax L-BFGS."""
     loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
 
     @jax.jit
@@ -205,7 +242,7 @@ def lbfgs(
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):
@@ -247,7 +284,7 @@ def lbfgs(
     potentials = _optimize(
         theta_loss_and_grad, potentials, iters=iters, callback_fn=theta_callback_fn
     )
-    return GraphicalModel(
+    return MarkovRandomField(
         potentials, marginal_oracle(potentials, known_total), known_total
     )
 
@@ -256,9 +293,9 @@ def mle_from_marginals(
     marginals: CliqueVector,
     known_total: float,
     iters: int = 250,
-    marginal_oracle=marginal_oracles.message_passing_stable,
+    marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     callback_fn=lambda *_: None,
-) -> GraphicalModel:
+) -> MarkovRandomField:
     """Compute the MLE Graphical Model from the marginals.
 
     Args:
@@ -266,7 +303,7 @@ def mle_from_marginals(
         known_total: The known or estimated number of records in the data.
 
     Returns:
-        A GraphicalModel object with the final potentials and marginals.
+        A MarkovRandomField object with the final potentials and marginals.
     """
 
     def loss_and_grad_fn(theta):
@@ -275,7 +312,7 @@ def mle_from_marginals(
 
     potentials = CliqueVector.zeros(marginals.domain, marginals.cliques)
     potentials = _optimize(loss_and_grad_fn, potentials, iters=iters)
-    return GraphicalModel(
+    return MarkovRandomField(
         potentials, marginal_oracle(potentials, known_total), known_total
     )
 
@@ -286,10 +323,10 @@ def dual_averaging(
     lipschitz: float,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-) -> GraphicalModel:
+) -> MarkovRandomField:
     """Optimization using the Regularized Dual Averaging (RDA) algorithm.
 
     RDA is an accelerated proximal algorithm for solving a smooth convex optimization
@@ -308,7 +345,7 @@ def dual_averaging(
         callback_fn: A function to call with intermediate solution at each iteration.
 
     Returns:
-        A GraphicalModel object with the final potentials and marginals.
+        A MarkovRandomField object with the final potentials and marginals.
     """
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
@@ -346,7 +383,7 @@ def interior_gradient(
     lipschitz: float | None = None,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
@@ -371,7 +408,7 @@ def interior_gradient(
         callback_fn: A function to call at each iteration with the iteration number
 
     Returns:
-        A GraphicalModel object with the optimized potentials and marginals.
+        A MarkovRandomField object with the optimized potentials and marginals.
     """
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
@@ -402,7 +439,7 @@ def interior_gradient(
 
     return mle_from_marginals(x, known_total)
 
-class AcceleratedStepSearchState(NamedTuple):
+class _AcceleratedStepSearchState(NamedTuple):
     """State of the step search.
 
     Attributes:
@@ -449,9 +486,9 @@ def _universal_accelerated_method_step_init(
     norm: int = 2,
     linesearch=True,
 ) -> tuple[
-    AcceleratedStepSearchState,
-    Callable[[AcceleratedStepSearchState], bool],
-    Callable[[AcceleratedStepSearchState], AcceleratedStepSearchState],
+    _AcceleratedStepSearchState,
+    Callable[[_AcceleratedStepSearchState], bool],
+    Callable[[_AcceleratedStepSearchState], _AcceleratedStepSearchState],
 ]:
     """Accelerated first order method adapted to any smoothness.
 
@@ -499,15 +536,15 @@ def _universal_accelerated_method_step_init(
         Acceleration](https://arxiv.org/pdf/1702.03828)
     """
 
-    def cond_fun(carry: AcceleratedStepSearchState) -> bool | jnp.ndarray:
+    def cond_fun(carry: _AcceleratedStepSearchState) -> bool | jnp.ndarray:
         """Continuation criterion when searching for next step."""
         return jnp.logical_not(
             jnp.logical_or(carry.accept, carry.iter_search >= max_iter_search),
         )
 
     def body_fun(
-        carry: AcceleratedStepSearchState,
-    ) -> AcceleratedStepSearchState:
+        carry: _AcceleratedStepSearchState,
+    ) -> _AcceleratedStepSearchState:
         """Step when searching step."""
         # Computes new theta
         prev_theta, prev_smooth_estim = carry.prev_theta, 1/carry.prev_stepsize
@@ -546,7 +583,7 @@ def _universal_accelerated_method_step_init(
             accept = True
             new_stepsize = stepsize
 
-        candidate = AcceleratedStepSearchState(
+        candidate = _AcceleratedStepSearchState(
             x=x,
             z=z,
             u=u,
@@ -563,7 +600,7 @@ def _universal_accelerated_method_step_init(
 
     x = z = dual_proj(dual_init_params)
     u = dual_init_params
-    init_carry = AcceleratedStepSearchState(
+    init_carry = _AcceleratedStepSearchState(
         x=x,
         z=z,
         u=u,
@@ -581,7 +618,7 @@ def universal_accelerated_method(
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle=marginal_oracles.message_passing_stable,
+    marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
 ):

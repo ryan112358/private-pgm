@@ -1,16 +1,18 @@
-from typing import TypeAlias, Sequence, Callable
+import functools
+from typing import Callable, Sequence, TypeAlias
 
+import attr
 import chex
 import jax
 import jax.numpy as jnp
-import attr
-import functools
-from mbi import Domain
 import numpy as np
+
+from .domain import Domain
 
 jax.config.update("jax_enable_x64", True)
 
 def _try_convert(values):
+    """Attempts to convert input to a JAX array, returning original if it fails."""
     try:
         return jnp.array(values)
     except:
@@ -40,11 +42,11 @@ class Factor:
         - Binary Ops: `+`, `-`, `*`, `/`, `dot` for combining factors.
 
     Example Usage:
-    >>> from mbi import Domain  # Needed for doctest context
-    >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
-    >>> factor = Factor.ones(domain)
-    >>> print(factor.domain)
-    Domain(X: 2, Y: 3)
+        >>> from mbi import Domain  # Needed for doctest context
+        >>> domain = Domain.fromdict({'X': 2, 'Y': 3})
+        >>> factor = Factor.ones(domain)
+        >>> print(factor.domain)
+        Domain(X: 2, Y: 3)
     """
     domain: Domain
     values: jax.Array = attr.field(converter=_try_convert)
@@ -56,18 +58,22 @@ class Factor:
     # Constructors
     @classmethod
     def zeros(cls, domain: Domain) -> "Factor":
+        """Creates a Factor object with all values initialized to zero."""
         return cls(domain, jnp.zeros(domain.shape))
 
     @classmethod
     def ones(cls, domain: Domain) -> "Factor":
+        """Creates a Factor object with all values initialized to one."""
         return cls(domain, jnp.ones(domain.shape))
 
     @classmethod
     def random(cls, domain: Domain) -> "Factor":
+        """Creates a Factor object with random values (uniform 0-1)."""
         return cls(domain, np.random.rand(*domain.shape))
 
     # Reshaping operations
     def transpose(self, attrs: Sequence[str]) -> "Factor":
+        """Rearranges the factor's axes according to the new attribute order."""
         if set(attrs) != set(self.domain.attrs):
             raise ValueError("attrs must be same as domain attributes")
         newdom = self.domain.project(attrs)
@@ -76,6 +82,7 @@ class Factor:
         return Factor(newdom, values)
 
     def expand(self, domain):
+        """Expands the factor's domain to include new attributes."""
         if not domain.contains(self.domain):
             raise ValueError("Expanded domain must contain domain.")
         dims = len(domain) - len(self.domain)
@@ -89,6 +96,7 @@ class Factor:
     def _aggregate(
         self, fn: Callable, attrs: Sequence[str] | None = None
     ) -> "Factor":
+        """Helper for aggregating values along specified attribute axes."""
         attrs = self.domain.attrs if attrs is None else attrs
         axes = self.domain.axes(attrs)
         values = fn(self.values, axis=axes)
@@ -96,15 +104,19 @@ class Factor:
         return Factor(newdom, values)
 
     def max(self, attrs: Sequence[str] | None = None) -> "Factor":
+        """Computes the maximum value along specified attribute axes."""
         return self._aggregate(jnp.max, attrs)
 
     def sum(self, attrs: Sequence[str] | None = None) -> "Factor":
+        """Computes the sum along specified attribute axes."""
         return self._aggregate(jnp.sum, attrs)
 
     def logsumexp(self, attrs: Sequence[str] | None = None) -> "Factor":
+        """Computes the log-sum-exp along specified attribute axes."""
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
     def project(self, attrs: str | tuple[str, ...], log: bool = False) -> "Factor":
+        """Computes the marginal distribution by summing/logsumexp'ing out other attributes."""
         if isinstance(attrs, str):
             attrs = (attrs,)
         marginalized = self.domain.marginalize(attrs).attrs
@@ -113,17 +125,21 @@ class Factor:
 
     # Functions that operate element-wise
     def exp(self, out=None) -> "Factor":
+        """Applies element-wise exponentiation (jnp.exp) to the factor's values."""
         return Factor(self.domain, jnp.exp(self.values))
 
     def log(self, out=None) -> "Factor":
+        """Applies element-wise logarithm (jnp.log) to the factor's values."""
         return Factor(self.domain, jnp.log(self.values))
 
     def normalize(self, total: float = 1.0, log: bool = False) -> "Factor":
+        """Normalizes the factor so its values sum to `total` (or log-normalize)."""
         if log:
             return self + jnp.log(total) - self.logsumexp()
         return self * total / self.sum()
 
     def copy(self) -> "Factor":
+        """Returns a copy of the factor (potentially shallow due to JAX)."""
         return self
 
     def __float__(self):
@@ -133,6 +149,7 @@ class Factor:
 
     # Binary operations between two factors
     def _binaryop(self, fn: Callable, other: "Factor" | chex.Numeric) -> "Factor":
+        """Helper for applying binary operations between this factor and another factor or scalar."""
         if isinstance(other, chex.Numeric) and jnp.ndim(other) == 0:
             other = Factor(Domain([], []), other)
         newdom = self.domain.merge(other.domain)
@@ -150,11 +167,11 @@ class Factor:
         """Multiply two factors together.
 
         Example Usage:
-        >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
-        >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
-        >>> f3 = f1 * f2
-        >>> print(f3.domain)
-        Domain(a: 2, b: 3, c: 4)
+            >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
+            >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
+            >>> f3 = f1 * f2
+            >>> print(f3.domain)
+            Domain(a: 2, b: 3, c: 4)
 
         Args:
           other: the other factor to multiply
@@ -182,4 +199,5 @@ class Factor:
         return jnp.sum(self.values * other.values)
 
     def datavector(self, flatten: bool = True) -> jax.Array:
+        """Returns the factor's values as a flattened vector or original array."""
         return self.values.flatten() if flatten else self.values

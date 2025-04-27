@@ -9,24 +9,27 @@ from scipy.sparse.linalg import lsmr
 import pandas as pd
 import jax.numpy as jnp
 import optax
-import numpy as np
 
-""" This file is experimental.
+"""Implements an experimental Mixture of Products model for synthetic data generation.
 
-It is a close approximation to the method described in RAP (https://arxiv.org/abs/2103.06641)
-and an even closer approximation to RAP^{softmax} (https://arxiv.org/abs/2106.07153). This 
-implementation is not very optimized.  If you would like to improve it, pull requests 
-are welcome.
+This module provides an implementation of the Mixture of Products model, which
+approximates methods like RAP (https://arxiv.org/abs/2103.06641) and
+RAP^{softmax} (https://arxiv.org/abs/2106.07153). It aims to generate synthetic
+data by learning a mixture of simpler product distributions that match given
+marginal constraints.
 
-Notable differences:
-- Code now shares the same interface as Private-PGM (see FactoredInference)
-- Named model "MixtureOfProducts", as that is one interpretation for the relaxed tabular format
-(at least when softmax is used).
-- Added support for unbounded-DP, with automatic estimate of total.
+Notable differences from some related works include:
+- Adherence to the common interface used by other methods like Private-PGM.
+- Use of the name "MixtureOfProducts" reflecting the model structure.
+- Support for unbounded differential privacy with automatic total estimation.
+
+Note: This implementation is experimental and may not be fully optimized.
+Contributions are welcome.
 """
 
 
 def adam(loss_and_grad, x0, iters=250):
+    """Implements the Adam optimization algorithm (based on Kingma & Ba, 2014)."""
     # TODO: Rewrite using optax
     a = 1.0
     b1, b2 = 0.9, 0.999
@@ -44,9 +47,8 @@ def adam(loss_and_grad, x0, iters=250):
         vhat = v / (1 - b2 ** t)
         x = x - a * mhat / (jnp.sqrt(vhat) + eps)
     return x
-
-
 def synthetic_col(counts, total):
+    """Generates a synthetic column by rounding fractional counts based on total."""
     counts *= total / counts.sum()
     frac, integ = np.modf(counts)
     integ = integ.astype(int)
@@ -57,21 +59,27 @@ def synthetic_col(counts, total):
     vals = np.repeat(np.arange(counts.size), integ)
     np.random.shuffle(vals)
     return vals
-
-
 class MixtureOfProducts:
+    """Represents a probability distribution as a mixture of product distributions.
+
+    Stores the component product distributions (probabilities for each attribute
+    within each component) and the overall total count/mass.
+    """
     def __init__(self, products, domain, total):
+        """Initializes the MixtureOfProducts object with components, domain, and total."""
         self.products = products
         self.domain = domain
         self.total = total
         self.num_components = next(iter(products.values())).shape[0]
 
     def project(self, cols):
+        """Projects the mixture model onto a subset of specified columns."""
         products = {col: self.products[col] for col in cols}
         domain = self.domain.project(cols)
         return MixtureOfProducts(products, domain, self.total)
 
     def datavector(self, flatten=True):
+        """Computes the data vector (histogram) representation of the mixture distribution."""
         d = len(self.domain)
         letters = "bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"[:d]
         formula = ",".join(["a%s" % l for l in letters]) + "->" + "".join(letters)
@@ -80,6 +88,7 @@ class MixtureOfProducts:
         return ans.flatten() if flatten else ans
 
     def synthetic_data(self, rows=None):
+        """Generates synthetic tabular data samples from the mixture model."""
         total = rows or int(self.total)
         subtotal = total // self.num_components + 1
 
@@ -117,6 +126,7 @@ def mixture_of_products(
     letters = "bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
     def get_products(params):
+        """Converts raw parameters into per-attribute product distribution components via softmax."""
         products = {}
         idx = 0
         for col in domain:
@@ -126,6 +136,7 @@ def mixture_of_products(
         return products
 
     def marginals_from_params(params):
+        """Computes the marginals (as a CliqueVector) implied by the mixture parameters."""
         products = get_products(params)
         arrays = {}
         for cl in cliques:
@@ -137,6 +148,7 @@ def mixture_of_products(
         return CliqueVector(domain, cliques, arrays)
 
     def params_loss(params: jax.Array) -> float:
+        """Calculates the loss based on the marginals derived from current parameters."""
         mu = marginals_from_params(params)
         return loss_fn(mu)
 

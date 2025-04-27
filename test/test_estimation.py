@@ -1,5 +1,7 @@
 import unittest
-from mbi import Domain, Factor, CliqueVector
+from mbi.domain import Domain
+from mbi.factor import Factor
+from mbi.clique_vector import CliqueVector
 from mbi import marginal_loss, estimation
 import numpy as np
 from parameterized import parameterized
