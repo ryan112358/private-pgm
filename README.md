@@ -6,3 +6,5 @@
 [![Continuous integration](https://github.com/ryan112358/private-pgm/actions/workflows/main.yml/badge.svg)](https://github.com/ryan112358/private-pgm/actions/workflows/main.yml)
 [![Downloads](https://pepy.tech/badge/private-pgm)](https://pepy.tech/project/private-pgm)
 [![Documentation Status](https://app.readthedocs.org/projects/private-pgm/badge/?version=latest)](https://private-pgm.readthedocs.io/en/latest/)
+
+<img src="https://github.com/ryan112358/ryan112358/blob/main/metrics.private-pgm.svg" alg="drawing" width=500/>
