@@ -2,7 +2,7 @@ name: Repository Traffic
 
 on: # every 3 months, or manually
   schedule:
-    - cron: '30 03 01 Jan,Apr,Jul,Oct'
+    - cron: '30 03 01 Jan,Apr,Jul,Oct *'
   workflow_dispatch:
 
 jobs:
