@@ -9,7 +9,9 @@ from .domain import Domain
 from .dataset import Dataset
 from .factor import Factor
 from .clique_vector import CliqueVector
-from .marginal_loss import LinearMeasurement
+from .marginal_loss import LinearMeasurement, MarginalLossFn
+from .marginal_oracles import MarginalOracle
+from .estimation import Estimator
 from . import estimation
 from . import callbacks
 from . import junction_tree
@@ -21,6 +23,9 @@ __all__ = [
     'Factor',
     'CliqueVector',
     'LinearMeasurement',
+    'MarginalLossFn',
+    'MarginalOracle',
+    'Estimator',
     'estimation',
     'callbacks',
     'junction_tree',

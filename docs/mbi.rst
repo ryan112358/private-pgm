@@ -13,7 +13,11 @@ Top-Level Classes
    Dataset
    Factor
    CliqueVector
-   LinearMeasurement 
+   MarginalLossFn
+   LinearMeasurement
+   MarginalOracle
+   Estimator
+   
 
 Modules
 -------

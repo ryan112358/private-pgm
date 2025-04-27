@@ -16,8 +16,6 @@ from .domain import Domain
 from .factor import Factor
 from . import junction_tree
 from .marginal_loss import clique_mapping
-#from mbi import CliqueVector, Domain, Factor, junction_tree
-#from mbi.marginal_loss import clique_mapping
 import functools
 import collections
 from typing import Protocol
@@ -40,8 +38,8 @@ class MarginalOracle(Protocol):
 
     - `message_passing_stable`: Computes marginals using message passing,
       operating in log-space for numerical stability.
-    - `message_passing_fast`: A faster and more memory efficient message
-    	passing algorithm that uses einsum, but it is not as stable as message_passing_stable.
+    - `message_passing_fast`: A faster and more memory efficient message passing
+      algorithm that uses einsum, but it is not as stable as message_passing_stable.
     - `brute_force_marginals`: Computes marginals by materializing the full
       joint distribution.
     - `einsum_marginals`: Computes marginals using einsum, generally not
