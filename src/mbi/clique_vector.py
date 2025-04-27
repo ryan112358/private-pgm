@@ -15,9 +15,7 @@ import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-from .clique_utils import Clique
-from .clique_utils import reverse_clique_mapping
+from .clique_utils import Clique, reverse_clique_mapping
 from .domain import Domain
 from .factor import Factor
 

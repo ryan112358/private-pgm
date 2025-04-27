@@ -15,9 +15,7 @@ import attr
 import chex
 import jax
 import jax.numpy as jnp
-
-from .clique_utils import Clique
-from .clique_utils import clique_mapping
+from .clique_utils import Clique, clique_mapping
 from .clique_utils import maximal_subset
 from .clique_vector import CliqueVector
 from .factor import Factor
