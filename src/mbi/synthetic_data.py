@@ -1,3 +1,11 @@
+"""Generates synthetic tabular data from marginal distributions.
+
+This module provides the `from_marginals` function, which takes a `CliqueVector`
+representing marginal distributions and generates a synthetic `Dataset` that
+approximates the underlying joint distribution. It uses techniques based on
+junction trees and variable elimination orders to sample or round data points,
+ensuring consistency with the provided marginals.
+"""
 from .clique_vector import CliqueVector
 from .dataset import Dataset
 from . import junction_tree
@@ -19,6 +27,7 @@ def from_marginals(
     jtree, elimination_order = junction_tree.make_junction_tree(domain, cliques)
 
     def synthetic_col(counts, total):
+        """Generates a synthetic column by sampling or rounding based on counts and total."""
         if method == "sample":
             probas = counts / counts.sum()
             return np.random.choice(counts.size, total, True, probas)

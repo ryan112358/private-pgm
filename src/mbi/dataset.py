@@ -1,3 +1,11 @@
+"""Provides the Dataset class for representing and manipulating tabular data.
+
+This module defines the `Dataset` class, which serves as a wrapper around a
+Pandas DataFrame, associating it with a `Domain` object. It allows for
+structured representation of data, facilitating operations like projection onto
+subsets of attributes and conversion into a data vector format suitable for
+various statistical and machine learning tasks.
+"""
 import numpy as np
 import pandas as pd
 import os
@@ -54,11 +62,13 @@ class Dataset:
         return Dataset(data, domain, self.weights)
 
     def drop(self, cols):
+        """Returns a new Dataset with the specified columns removed."""
         proj = [c for c in self.domain if c not in cols]
         return self.project(proj)
 
     @property
     def records(self):
+        """Returns the number of records (rows) in the dataset."""
         return self.df.shape[0]
 
     def datavector(self, flatten=True):
