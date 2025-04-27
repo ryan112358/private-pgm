@@ -13,11 +13,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate traffic SVG
-        uses: lowlighter/repo-traffic-action@v1
+        uses: lowlighter/metrics@latest
         with:
           filename: traffic.svg
-          # Optional: Specify branches if needed, defaults to all branches
-          # branches: main, develop
+          token: ${{ secrets.METRICS_TOKEN }}
+          base: repositories
+          plugin_traffic: yes
 
       - name: Commit traffic SVG
         run: |
