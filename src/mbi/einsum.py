@@ -77,11 +77,14 @@ def scan_einsum(
   if not sequential:
     return jnp.einsum(formula, *arrays)
 
+  ax = sequential[0]
+  if ax not in formula:
+      raise ValueError(f"Sequential axis '{ax}' not found.")
+
   input_axes, output_axes = formula.split('->')
   input_axes = input_axes.split(',')
   shapes = _infer_shapes(input_axes, arrays)
 
-  ax = sequential[0]
   ax_dims = [_axis_name_to_dim(names, ax) for names in input_axes]
 
   # We compute smaller einsums sequentially by looping over the ax dimension.
