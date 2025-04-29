@@ -9,16 +9,15 @@ or noisy data. Utilities for clique manipulation and feasibility checks are also
 included.
 """
 import functools
-from typing import Any, Callable, Mapping, Protocol, TypeAlias
+from typing import Callable
 
 import attr
 import chex
 import jax
 import jax.numpy as jnp
-from .clique_utils import Clique, clique_mapping
+from .clique_utils import Clique
 from .clique_utils import maximal_subset
 from .clique_vector import CliqueVector
-from .factor import Factor
 
 
 def identity_fn(x: jax.Array) -> jax.Array:
@@ -40,6 +39,9 @@ class LinearMeasurement:
     query: Callable[[jax.Array], jax.Array] = identity_fn
 
 
+# this class might need to be refactored so that loss_fn consumes measurements
+# that way measurements can be included as an input to the jitted.
+# Or it can be a pytree where the measurements are one node in the PyTree.
 @attr.dataclass(frozen=True)
 class MarginalLossFn:
     """A Loss function over the concatenated vector of marginals."""

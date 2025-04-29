@@ -7,3 +7,7 @@
 [![Documentation Status](https://app.readthedocs.org/projects/private-pgm/badge/?version=latest)](https://private-pgm.readthedocs.io/en/latest/)
 
 ![Metrics for ryan112358/private-pgm repository](https://raw.githubusercontent.com/ryan112358/ryan112358/main/metrics.private-pgm.svg)
+
+
+Documentation has been moved to
+[https://private-pgm.readthedocs.io/en/latest/](https://private-pgm.readthedocs.io/en/latest/)!

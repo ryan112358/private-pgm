@@ -6,6 +6,7 @@ the same API.  The supported algorithms are:
 2. L-BFGS (using back-belief propagation)
 3. Regularized Dual Averaging
 4. Interior Gradient
+5. Universal accelerated mirror descent
 
 Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that
@@ -13,6 +14,7 @@ support the cliques of the marginal-based loss function can be used here.
 """
 from typing import Any, Callable, NamedTuple, Protocol
 
+import functools
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -50,6 +52,7 @@ class Estimator(Protocol):
         marginal_oracle: marginal_oracles.MarginalOracle,
         iters: int = 1000,
         callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+        mesh: jax.sharding.Mesh | None = None,
         **kwargs: Any
     ) -> MarkovRandomField:
         """
@@ -70,6 +73,8 @@ class Estimator(Protocol):
             iters: Maximum number of optimization iterations. Defaults to 1000.
             callback_fn: Optional function called periodically during estimation.
                 Defaults to a no-op lambda.
+            mesh: Determines how the marginal oracle and loss calculation
+                will be sharded across devices.
             **kwargs: Additional keyword arguments specific to the estimation
                 algorithm (e.g., stepsize, lipschitz, stateful flag).
 
@@ -140,6 +145,7 @@ def mirror_descent(
     stateful: bool = False,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+    mesh: jax.sharding.Mesh | None = None,
 ):
     """Optimization using the Mirror Descent algorithm.
 
@@ -161,7 +167,9 @@ def mirror_descent(
         iters: The maximum number of optimization iterations.
         stepsize: The step size for the optimization.  If not provided, this algorithm
             will use a line search to automatically choose appropriate step sizes.
-        callback_fn: A function to call at each iteration with the iteration number
+        callback_fn: A function to call at each iteration with the iteration number.
+        mesh: Determines how the marginal oracle and loss calculation
+                will be sharded across devices.
 
     Returns:
         A MarkovRandomField object with the estimated potentials and marginals.
@@ -172,7 +180,7 @@ def mirror_descent(
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
-    
+    marginal_oracle = functools.partial(marginal_oracle, mesh=mesh)
     marginal_oracle = _get_stateful_oracle(marginal_oracle, stateful)
 
     @jax.jit
@@ -245,6 +253,7 @@ def lbfgs(
     marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+    mesh: jax.sharding.Mesh | None = None,
 ):
     """Gradient-based optimization on the potentials (theta) via L-BFGS.
 
@@ -272,11 +281,14 @@ def lbfgs(
         that supports the cliques in the loss_fn.
       marginal_oracle: The function to use to compute marginals from potentials.
       iters: The maximum number of optimization iterations.
-      callback_fn
+      callback_fn: ...
+      mesh: Determines how the marginal oracle and loss calculation
+                will be sharded across devices.
     """
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
+    marginal_oracle = functools.partial(marginal_oracle, mesh=mesh)
 
     theta_loss = lambda theta: loss_fn(marginal_oracle(theta, known_total))
     theta_loss_and_grad = jax.value_and_grad(theta_loss)
@@ -295,6 +307,7 @@ def mle_from_marginals(
     iters: int = 250,
     marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     callback_fn=lambda *_: None,
+    mesh: jax.sharding.Mesh | None = None
 ) -> MarkovRandomField:
     """Compute the MLE Graphical Model from the marginals.
 
@@ -307,7 +320,7 @@ def mle_from_marginals(
     """
 
     def loss_and_grad_fn(theta):
-        mu = marginal_oracle(theta, known_total)
+        mu = marginal_oracle(theta, known_total, mesh)
         return -marginals.dot(mu.log()), mu - marginals
 
     potentials = CliqueVector.zeros(marginals.domain, marginals.cliques)
@@ -326,6 +339,7 @@ def dual_averaging(
     marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+    mesh: jax.sharding.Mesh | None = None
 ) -> MarkovRandomField:
     """Optimization using the Regularized Dual Averaging (RDA) algorithm.
 
@@ -343,6 +357,8 @@ def dual_averaging(
         marginal_oracle: The function to use to compute marginals from potentials.
         iters: The maximum number of optimization iterations.
         callback_fn: A function to call with intermediate solution at each iteration.
+        mesh: Determines how the marginal oracle and loss calculation
+                will be sharded across devices.
 
     Returns:
         A MarkovRandomField object with the final potentials and marginals.
@@ -387,6 +403,7 @@ def interior_gradient(
     iters: int = 1000,
     stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+    mesh: jax.sharding.Mesh | None = None
 ):
     """Optimization using the Interior Point Gradient Descent algorithm.
 
@@ -405,7 +422,9 @@ def interior_gradient(
             that supports the cliques in the loss_fn.
         marginal_oracle: The function to use to compute marginals from potentials.
         iters: The maximum number of optimization iterations.
-        callback_fn: A function to call at each iteration with the iteration number
+        callback_fn: A function to call at each iteration with the iteration number.
+        mesh: Determines how the marginal oracle and loss calculation
+                will be sharded across devices.
 
     Returns:
         A MarkovRandomField object with the optimized potentials and marginals.
@@ -426,11 +445,13 @@ def interior_gradient(
         c = c * (1 - a)
         g = jax.grad(loss_fn)(y)
         theta = theta - a / c / known_total * g
-        z = marginal_oracle(theta, known_total)
+        z = marginal_oracle(theta, known_total, mesh)
         x = (1 - a) * x + a * z
         return theta, c, x, y, z
 
-    x = y = z = marginal_oracle(potentials, known_total)
+    # If we remove jit from marginal oracle, then we'll need to wrap this in
+    # a jitted "init" function.
+    x = y = z = marginal_oracle(potentials, known_total, mesh)
     gbar = CliqueVector.zeros(domain, loss_fn.cliques)
     theta = potentials
     for t in range(1, iters + 1):
@@ -456,7 +477,7 @@ class _AcceleratedStepSearchState(NamedTuple):
         prev_theta: numerical value decreasing along iterates at the previous
         iteration of the algorithm, see ref.
         accept: whether the step is accepted or not.
-        iter_search: iteration count of the search
+        iter_search: iteration count of the search.
 
     References:
         Nesterov, [Universal Gradient Methods for Convex Optimization
@@ -621,11 +642,13 @@ def universal_accelerated_method(
     marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
+    mesh: jax.sharding.Mesh | None = None
 ):
     """Optimization using the Universal Accelerated MD algorithm."""
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
+    marginal_oracle = functools.partial(marginal_oracle, mesh=mesh)
 
     carry, cond_fun, body_fun = _universal_accelerated_method_step_init(
         fun=loss_fn,

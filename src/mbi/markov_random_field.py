@@ -7,6 +7,7 @@ from . import junction_tree, marginal_oracles
 from .clique_vector import CliqueVector
 from .dataset import Dataset
 from .factor import Factor
+from typing import Sequence
 
 
 @attr.dataclass(frozen=True)
@@ -22,6 +23,9 @@ class MarkovRandomField:
         return marginal_oracles.variable_elimination(
             self.potentials, attrs, self.total
         )
+    
+    def supports(self, attrs: str | Sequence[str]) -> bool:
+        return self.marginals.domain.supports(attrs)
 
     def synthetic_data(self, rows: int | None = None, method: str = "round"):
         """Generates synthetic data based on the learned model's marginals."""

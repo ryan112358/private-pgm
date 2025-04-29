@@ -41,6 +41,7 @@ class StatefulMarginalOracle(Protocol):
         potentials: CliqueVector,
         total: float = 1.0,
         state: Any = None,
+        mesh: jax.sharding.Mesh | None = None
     ) -> tuple[CliqueVector, Any]:
         """
         Computes marginals from log-space potentials and manages state.
@@ -52,6 +53,7 @@ class StatefulMarginalOracle(Protocol):
                 records or a probability sum. Defaults to 1.0.
             state: An optional argument to pass state between calls.
                 The oracle may use this state and return an updated version.
+            mesh: Specifies how the computation will be sharded across devices.
 
         Returns:
             A tuple containing:
@@ -130,11 +132,12 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
 
 _State = dict[tuple[Clique, Clique], Factor]
 
-@functools.partial(jax.jit, static_argnames=['iters'])
+@functools.partial(jax.jit, static_argnames=['mesh', 'iters'])
 def convex_generalized_belief_propagation(
     potentials: CliqueVector,
     total: float = 1,
     state: _State | None = None,
+    mesh: jax.sharding.Mesh | None = None,
     iters: int = 1,
     damping: float = 0.5,
 ) -> tuple[CliqueVector, _State]:
@@ -150,13 +153,16 @@ def convex_generalized_belief_propagation(
         total: The total number of records in the dataset.
         state: The state of the message passing algorithm (i.e., the messages).  Useful when
             calling this within an iterative procedure for warm starting purposes.
+        mesh: Specifies how the computation will be sharded across machines.
         iters: The number of iterations to run the algorithm.
         damping: The damping factor for the messages.
 
     Returns:
         A CliqueVector of pseudo-marginals for the cliques in the graphical model.
     """
+    potentials = potentials.apply_sharding(mesh)
     domain, cliques = potentials.domain, potentials.cliques
+    # We might need or want a sharding constraint on messages here
     regions, cliques, messages, message_order, parents, children = build_graph(
         domain, cliques
     )
@@ -183,6 +189,7 @@ def convex_generalized_belief_propagation(
                     )
                     .project(r, log=True)
                     .normalize(log=True)
+                    .apply_sharding(mesh)
                 )
 
         for r in regions:
@@ -195,7 +202,7 @@ def convex_generalized_belief_propagation(
                         + sum(messages[p1, r] for p1 in parents[r])
                     )
                     - messages[p, r]
-                ).normalize(log=True)
+                ).normalize(log=True).apply_sharding(mesh)
 
         # Damping is not described in paper, but is needed to get convergence for dense graphs
         rho = damping
@@ -213,6 +220,7 @@ def convex_generalized_belief_propagation(
                 )
                 .normalize(total, log=True)
                 .exp()
+                .apply_sharding(mesh)
             )
 
     return CliqueVector(domain, cliques, mu), messages

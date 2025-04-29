@@ -6,15 +6,15 @@ and manipulate sets of `Factor` objects, each associated with a specific clique
 graphical models, such as projecting onto sub-cliques, expanding to larger cliques,
 and performing arithmetic operations on these collections.
 """
+from __future__ import annotations
+
 import functools
 import operator
-from typing import TypeAlias
 
 import attr
 import chex
 import jax
 import jax.numpy as jnp
-import numpy as np
 from .clique_utils import Clique, reverse_clique_mapping
 from .domain import Domain
 from .factor import Factor
@@ -45,21 +45,21 @@ class CliqueVector:
             raise ValueError("Cliques must be unique.")
 
     @classmethod
-    def zeros(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+    def zeros(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
         """Creates a CliqueVector initialized with zero factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.zeros(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def ones(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+    def ones(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
         """Creates a CliqueVector initialized with one factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.ones(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def uniform(cls, domain: Domain, cliques: list[Clique]) -> "CliqueVector":
+    def uniform(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
         """Creates a CliqueVector initialized with uniform factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.uniform(domain.project(cl)) for cl in cliques}
@@ -101,7 +101,7 @@ class CliqueVector:
             return self[self.parent(clique)].project(clique, log=log)
         raise ValueError(f"Cannot project onto unsupported clique {clique}.")
 
-    def expand(self, cliques: list[Clique]) -> "CliqueVector":
+    def expand(self, cliques: list[Clique]) -> CliqueVector:
         """Re-expresses this CliqueVector over an expanded set of cliques.
 
         If the original CliqueVector represents the potentials of a Graphical Model,
@@ -124,7 +124,7 @@ class CliqueVector:
                 arrays[cl] = sum(self[cl2] for cl2 in mapping[cl]).expand(dom)
         return CliqueVector(self.domain, cliques, arrays)
 
-    def contract(self, cliques: list[Clique], log: bool = False) -> "CliqueVector":
+    def contract(self, cliques: list[Clique], log: bool = False) -> CliqueVector:
         """Computes a new CliqueVector by projecting this one onto a smaller set of cliques."""
         arrays = {cl: self.project(cl, log=log) for cl in cliques}
         return CliqueVector(self.domain, cliques, arrays)
@@ -134,37 +134,37 @@ class CliqueVector:
         is_leaf = lambda node: isinstance(node, Factor)
         return jax.tree.map(lambda f: f.normalize(total, log), self, is_leaf=is_leaf)
 
-    def __mul__(self, const: chex.Numeric) -> "CliqueVector":
+    def __mul__(self, const: chex.Numeric) -> CliqueVector:
         """Multiplies each factor in the vector by a constant."""
         return jax.tree.map(lambda f: f * const, self)
 
-    def __rmul__(self, const: chex.Numeric) -> "CliqueVector":
+    def __rmul__(self, const: chex.Numeric) -> CliqueVector:
         """Right-multiplies each factor in the vector by a constant."""
         return self.__mul__(const)
 
-    def __truediv__(self, const: chex.Numeric) -> "CliqueVector":
+    def __truediv__(self, const: chex.Numeric) -> CliqueVector:
         """Divides each factor in the vector by a constant."""
         return self.__mul__(1 / const)
 
-    def __add__(self, other: chex.Numeric | "CliqueVector") -> "CliqueVector":
+    def __add__(self, other: chex.Numeric | CliqueVector) -> CliqueVector:
         """Adds another CliqueVector or a constant to this vector elementwise."""
         if isinstance(other, CliqueVector):
             return jax.tree.map(jnp.add, self, other)
         return jax.tree.map(lambda f: f + other, self)
 
-    def __sub__(self, other: chex.Numeric | "CliqueVector") -> "CliqueVector":
+    def __sub__(self, other: chex.Numeric | CliqueVector) -> CliqueVector:
         """Subtracts another CliqueVector or a constant from this vector elementwise."""
         return self + -1 * other
 
-    def exp(self) -> "CliqueVector":
+    def exp(self) -> CliqueVector:
         """Applies elementwise exponentiation (jnp.exp) to each factor."""
         return jax.tree.map(jnp.exp, self)
 
-    def log(self) -> "CliqueVector":
+    def log(self) -> CliqueVector:
         """Applies elementwise logarithm (jnp.log) to each factor."""
         return jax.tree.map(jnp.log, self)
 
-    def dot(self, other: "CliqueVector") -> chex.Numeric:
+    def dot(self, other: CliqueVector) -> chex.Numeric:
         """Computes the dot product between this CliqueVector and another."""
         is_leaf = lambda node: isinstance(node, Factor)
         dots = jax.tree.map(Factor.dot, self, other, is_leaf=is_leaf)
@@ -184,3 +184,19 @@ class CliqueVector:
             self.arrays[clique] = value
         else:
             raise ValueError(f"Clique {clique} not in CliqueVector.")
+        
+    def apply_sharding(self, mesh: jax.sharding.Mesh | None) -> CliqueVector:
+        """Apply sharding constraint to each factor in the CliqueVector.
+
+        The sharding strategy is automatically determined based on the provided
+        mesh and the factor domains.
+
+        Args:
+            mesh: The mesh over which the factors should be sharded.
+
+        Returns:
+            A new CliqueVector identical to self with sharding constraints applied to
+            the underlying factors.
+        """
+        arrays = { cl: self.arrays[cl].apply_sharding(mesh) for cl in self.cliques }
+        return CliqueVector(self.domain, self.cliques, arrays)

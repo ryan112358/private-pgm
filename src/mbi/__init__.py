@@ -10,7 +10,7 @@ from .clique_vector import CliqueVector
 from .dataset import Dataset
 from .domain import Domain
 from .estimation import Estimator
-from .factor import Factor
+from .factor import Factor, Projectable
 from .marginal_loss import LinearMeasurement, MarginalLossFn
 from .marginal_oracles import MarginalOracle
 from .markov_random_field import MarkovRandomField
@@ -23,6 +23,7 @@ __all__ = [
     'LinearMeasurement',
     'MarginalLossFn',
     'MarkovRandomField',
+    'Projectable',
     'MarginalOracle',
     'Estimator',
     'estimation',

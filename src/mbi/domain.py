@@ -171,6 +171,11 @@ class Domain:
     def attrs(self):
         """Alias for the `attributes` tuple."""
         return self.attributes
+    
+    def supports(self, attrs: str | Sequence[str]) -> bool:
+        if isinstance(attrs, str):
+            attrs = [attrs]
+        return set(attrs) <= set(self.attributes)
 
     def __contains__(self, name: str) -> bool:
         """Check if the given attribute is in the domain."""

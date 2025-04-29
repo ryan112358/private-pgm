@@ -18,6 +18,11 @@ def _variable_elimination_oracle(
     }
     return CliqueVector(domain, cliques, mu)
 
+def _calculate_many_oracle(potentials: CliqueVector, total: float = 1):
+    return marginal_oracles.calculate_many_marginals(
+        potentials, potentials.cliques, total
+    )
+
 
 _ORACLES = [
     marginal_oracles.brute_force_marginals,
@@ -25,6 +30,7 @@ _ORACLES = [
     marginal_oracles.message_passing_stable,
     marginal_oracles.message_passing_fast,
     _variable_elimination_oracle,
+    _calculate_many_oracle
 ]
 
 _DOMAIN = Domain(["a", "b", "c", "d"], [2, 3, 4, 5])

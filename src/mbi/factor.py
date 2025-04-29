@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import functools
-from typing import Callable, Sequence, TypeAlias
+from typing import Callable, Sequence, Literal, Protocol
 
 import attr
 import chex
@@ -57,22 +59,22 @@ class Factor:
 
     # Constructors
     @classmethod
-    def zeros(cls, domain: Domain) -> "Factor":
+    def zeros(cls, domain: Domain) -> Factor:
         """Creates a Factor object with all values initialized to zero."""
         return cls(domain, jnp.zeros(domain.shape))
 
     @classmethod
-    def ones(cls, domain: Domain) -> "Factor":
+    def ones(cls, domain: Domain) -> Factor:
         """Creates a Factor object with all values initialized to one."""
         return cls(domain, jnp.ones(domain.shape))
 
     @classmethod
-    def random(cls, domain: Domain) -> "Factor":
+    def random(cls, domain: Domain) -> Factor:
         """Creates a Factor object with random values (uniform 0-1)."""
         return cls(domain, np.random.rand(*domain.shape))
 
     # Reshaping operations
-    def transpose(self, attrs: Sequence[str]) -> "Factor":
+    def transpose(self, attrs: Sequence[str]) -> Factor:
         """Rearranges the factor's axes according to the new attribute order."""
         if set(attrs) != set(self.domain.attrs):
             raise ValueError("attrs must be same as domain attributes")
@@ -95,7 +97,7 @@ class Factor:
     # Functions that aggregate along some subset of axes
     def _aggregate(
         self, fn: Callable, attrs: Sequence[str] | None = None
-    ) -> "Factor":
+    ) -> Factor:
         """Helper for aggregating values along specified attribute axes."""
         attrs = self.domain.attrs if attrs is None else attrs
         axes = self.domain.axes(attrs)
@@ -103,42 +105,45 @@ class Factor:
         newdom = self.domain.marginalize(attrs)
         return Factor(newdom, values)
 
-    def max(self, attrs: Sequence[str] | None = None) -> "Factor":
+    def max(self, attrs: Sequence[str] | None = None) -> Factor:
         """Computes the maximum value along specified attribute axes."""
         return self._aggregate(jnp.max, attrs)
 
-    def sum(self, attrs: Sequence[str] | None = None) -> "Factor":
+    def sum(self, attrs: Sequence[str] | None = None) -> Factor:
         """Computes the sum along specified attribute axes."""
         return self._aggregate(jnp.sum, attrs)
 
-    def logsumexp(self, attrs: Sequence[str] | None = None) -> "Factor":
+    def logsumexp(self, attrs: Sequence[str] | None = None) -> Factor:
         """Computes the log-sum-exp along specified attribute axes."""
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
-    def project(self, attrs: str | tuple[str, ...], log: bool = False) -> "Factor":
+    def project(self, attrs: str | tuple[str, ...], log: bool = False) -> Factor:
         """Computes the marginal distribution by summing/logsumexp'ing out other attributes."""
         if isinstance(attrs, str):
             attrs = (attrs,)
         marginalized = self.domain.marginalize(attrs).attrs
         result = self.logsumexp(marginalized) if log else self.sum(marginalized)
         return result.transpose(attrs)
+    
+    def supports(self, attrs: str | Sequence[str]) -> bool:
+        return self.domain.supports(attrs)
 
     # Functions that operate element-wise
-    def exp(self, out=None) -> "Factor":
+    def exp(self, out=None) -> Factor:
         """Applies element-wise exponentiation (jnp.exp) to the factor's values."""
         return Factor(self.domain, jnp.exp(self.values))
 
-    def log(self, out=None) -> "Factor":
+    def log(self, out=None) -> Factor:
         """Applies element-wise logarithm (jnp.log) to the factor's values."""
         return Factor(self.domain, jnp.log(self.values))
 
-    def normalize(self, total: float = 1.0, log: bool = False) -> "Factor":
+    def normalize(self, total: float = 1.0, log: bool = False) -> Factor:
         """Normalizes the factor so its values sum to `total` (or log-normalize)."""
         if log:
             return self + jnp.log(total) - self.logsumexp()
         return self * total / self.sum()
 
-    def copy(self) -> "Factor":
+    def copy(self) -> Factor:
         """Returns a copy of the factor (potentially shallow due to JAX)."""
         return self
 
@@ -148,7 +153,7 @@ class Factor:
         return float(self.values)
 
     # Binary operations between two factors
-    def _binaryop(self, fn: Callable, other: "Factor" | chex.Numeric) -> "Factor":
+    def _binaryop(self, fn: Callable, other: Factor | chex.Numeric) -> Factor:
         """Helper for applying binary operations between this factor and another factor or scalar."""
         if isinstance(other, chex.Numeric) and jnp.ndim(other) == 0:
             other = Factor(Domain([], []), other)
@@ -157,13 +162,13 @@ class Factor:
         factor2 = other.expand(newdom)
         return Factor(newdom, fn(factor1.values, factor2.values))
 
-    def __sub__(self, other: "Factor" | chex.Numeric) -> "Factor":
+    def __sub__(self, other: Factor | chex.Numeric) -> Factor:
         return self._binaryop(jnp.subtract, other)
 
-    def __truediv__(self, other: "Factor" | chex.Numeric) -> "Factor":
+    def __truediv__(self, other: Factor | chex.Numeric) -> Factor:
         return self._binaryop(jnp.divide, other)
 
-    def __mul__(self, other: "Factor" | chex.Numeric) -> "Factor":
+    def __mul__(self, other: Factor | chex.Numeric) -> Factor:
         """Multiply two factors together.
 
         Example Usage:
@@ -181,19 +186,19 @@ class Factor:
         """
         return self._binaryop(jnp.multiply, other)
 
-    def __add__(self, other: "Factor" | chex.Numeric) -> "Factor":
+    def __add__(self, other: Factor | chex.Numeric) -> Factor:
         return self._binaryop(jnp.add, other)
 
-    def __radd__(self, other: chex.Numeric) -> "Factor":
+    def __radd__(self, other: chex.Numeric) -> Factor:
         return self + other
 
-    def __rsub__(self, other: chex.Numeric) -> "Factor":
+    def __rsub__(self, other: chex.Numeric) -> Factor:
         return self + (-1 * other)
 
-    def __rmul__(self, other: chex.Numeric) -> "Factor":
+    def __rmul__(self, other: chex.Numeric) -> Factor:
         return self * other
 
-    def dot(self, other: "Factor") -> "Factor":
+    def dot(self, other: Factor) -> Factor:
         if self.domain != other.domain:
             raise ValueError(f"Domains do not match {self.domain} != {other.domain}")
         return jnp.sum(self.values * other.values)
@@ -201,3 +206,69 @@ class Factor:
     def datavector(self, flatten: bool = True) -> jax.Array:
         """Returns the factor's values as a flattened vector or original array."""
         return self.values.flatten() if flatten else self.values
+    
+    def pad(self, mesh: jax.sharding.Mesh | None, pad_value: Literal[0, '-inf']) -> Factor:
+        if mesh is None:
+            return self
+        pad_amounts = [0]*len(self.domain)
+        for i, ax in enumerate(self.domain):
+            if ax in mesh.axis_names:
+                size = self.domain[ax]
+                num_shards = mesh.axis_sizes[mesh.axis_names.index(ax)]
+                pad_amounts[i] = -size % num_shards
+        
+        values = jnp.pad(
+            self.values,
+            pad_width=tuple((0, w) for w in pad_amounts),
+            constant_values=0.0 if pad_value==0 else -jnp.inf
+        )
+        # We keep the domain as-is here, even though values is now larger.
+        # We have a couple of options
+        #   1. Explicitly unpad when we are done.
+        #   2. Never unpad, just expand the domain, and make sure new elements are impossible.
+        #   3. Allow values to be an array where each dim is >= the domain implies, and truncate
+        #       when necessary.
+        return Factor(self.domain, values)
+
+
+
+
+    def apply_sharding(self, mesh: jax.sharding.Mesh | None) -> Factor:
+        """Apply sharding constraint to the factor values.
+        
+        The sharding strategy is automatically determined based on the provided
+        mesh, and the factor domain.
+
+        Args:
+            mesh: The mesh over which the factor should be sharded.
+
+        Returns:
+            A new factor identical to self with sharding constraints applied to the values.
+        """
+        if mesh is None:
+            return self
+        pspec = [None]*len(self.domain)
+        for i, ax in enumerate(self.domain):
+            if ax in mesh.axis_names:
+                pspec[i] = ax
+        sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(*pspec))
+
+        return Factor(
+            domain=self.domain,
+            values=jax.lax.with_sharding_constraint(self.values, sharding)
+        )
+    
+class Projectable(Protocol):
+    """A projectable is an object that can be projected onto a subset of attributes to compute a marginal.
+    
+    Example projectables:
+        * Dataset
+        * Factor
+        * CliqueVector
+        * MarkovRandomField
+    """
+    def project(self, attrs: str | Sequence[str]) -> Factor:
+        """Projection onto a subset of attributes."""
+
+    def supports(self, attrs: str | Sequence[str]) -> bool:
+        """Returns true if the given attributes can be projected onto."""
