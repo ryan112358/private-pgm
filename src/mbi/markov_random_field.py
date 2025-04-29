@@ -29,7 +29,7 @@ class MarkovRandomField:
 
     def synthetic_data(self, rows: int | None = None, method: str = "round"):
         """Generates synthetic data based on the learned model's marginals."""
-        total = max(1, int(rows)) if rows is not None else self.total
+        total = max(1, int(rows or self.total))
         domain = self.domain
         cols = domain.attrs
         data = np.zeros((total, len(cols)), dtype=int)
