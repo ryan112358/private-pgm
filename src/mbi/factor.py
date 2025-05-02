@@ -267,6 +267,10 @@ class Projectable(Protocol):
         * CliqueVector
         * MarkovRandomField
     """
+    @property
+    def domain(self) -> Domain:
+        """Returns the domain over which this projectable is defined."""
+
     def project(self, attrs: str | Sequence[str]) -> Factor:
         """Projection onto a subset of attributes."""
 
