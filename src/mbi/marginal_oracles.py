@@ -9,20 +9,20 @@ Interior Gradient, but using message_passing_fast with mirror descent.
 """
 
 import collections
+import functools
 import itertools
-import networkx as nx
 import string
 from typing import Protocol
 
 import jax
 import jax.numpy as jnp
+import networkx as nx
 
 from . import junction_tree
+from .clique_utils import clique_mapping
 from .clique_vector import CliqueVector
 from .domain import Domain
 from .factor import Factor
-from .clique_utils import clique_mapping
-import functools
 
 _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
 

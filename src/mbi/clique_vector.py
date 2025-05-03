@@ -15,6 +15,7 @@ import attr
 import chex
 import jax
 import jax.numpy as jnp
+
 from .clique_utils import Clique, reverse_clique_mapping
 from .domain import Domain
 from .factor import Factor, Projectable

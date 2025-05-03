@@ -1,14 +1,10 @@
-from mbi import Dataset, Factor, CliqueVector, marginal_loss, estimation, Domain, LinearMeasurement
-from scipy.optimize import minimize
-from collections import defaultdict
-from jax import vjp
+
 import jax.nn
-from scipy.special import softmax
-from functools import reduce
-from scipy.sparse.linalg import lsmr
-import pandas as pd
 import jax.numpy as jnp
-import optax
+import pandas as pd
+
+from mbi import (CliqueVector, Dataset, Domain, Factor, LinearMeasurement,
+                 estimation, marginal_loss)
 
 """Implements an experimental Mixture of Products model for synthetic data generation.
 
