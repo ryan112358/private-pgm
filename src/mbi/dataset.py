@@ -69,7 +69,11 @@ class Dataset:
             cols = [cols]
         data = self.df.loc[:, cols]
         domain = self.domain.project(cols)
-        return Dataset(data, domain, self.weights)
+        data = Dataset(data, domain, self.weights)
+        return Factor(data.domain, data.datavector(flatten=False))
+    
+    def supports(self, cols: str | Sequence[str]) -> bool:
+        return self.domain.supports(cols)
 
     def drop(self, cols):
         """Returns a new Dataset with the specified columns removed."""
@@ -107,10 +111,10 @@ class JaxDataset:
         if self.data.shape[1] != len(self.domain):
             raise ValueError('Number of columns of data must equal the number of attributes in the domain.')
         # This will not work in a jitted context, but not sure if this will be called from one normally.
-        for i, attr in enumerate(self.domain):
+        for i, ax in enumerate(self.domain):
             if self.data[:, i].min() < 0:
                 raise ValueError('Data must be non-negative.')
-            if self.data[:, i].max() >= self.domain[attr]:
+            if self.data[:, i].max() >= self.domain[ax]:
                 raise ValueError('Data must be within the bounds of the domain.')
             
     @staticmethod

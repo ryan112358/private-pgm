@@ -10,7 +10,7 @@ import pandas as pd
 
 from . import marginal_loss
 from .clique_vector import CliqueVector
-from .dataset import Dataset
+from .factor import Projectable
 from .marginal_loss import LinearMeasurement
 
 
@@ -52,7 +52,7 @@ class Callback:
 
 def default(
     measurements: list[LinearMeasurement],
-    data: Dataset | None = None,
+    data: Projectable | None = None,
     frequency: int = 50,
 ) -> Callback:
     """Creates a default Callback with standard loss functions (L1/L2 Loss/Error, Primal Feas)."""

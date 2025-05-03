@@ -104,11 +104,9 @@ class TestEstimation(unittest.TestCase):
     @parameterized.expand(itertools.product(_CLIQUE_SETS))
     def test_dual_averaging(self, cliques):
         measurements = fake_measurements(cliques)
-        loss_fn = marginal_loss.from_linear_measurements(measurements)
 
-        L = 0.001  # Currently treating Lipschitz constant as a hyperparameter
         model = estimation.dual_averaging(
-            _DOMAIN, loss_fn, lipschitz=L, known_total=1.0, iters=250
+            _DOMAIN, measurements, known_total=1.0, iters=250
         )
         for M in measurements:
             expected = M.noisy_measurement
@@ -118,11 +116,9 @@ class TestEstimation(unittest.TestCase):
     @parameterized.expand(itertools.product(_CLIQUE_SETS))
     def test_interior_gradient(self, cliques):
         measurements = fake_measurements(cliques)
-        loss_fn = marginal_loss.from_linear_measurements(measurements)
 
-        L = 0.01  # Currently treating Lipschitz constant as a hyperparameter
         model = estimation.interior_gradient(
-            _DOMAIN, loss_fn, lipschitz=L, known_total=1.0, iters=250
+            _DOMAIN, measurements, known_total=1.0, iters=250
         )
         for M in measurements:
             expected = M.noisy_measurement

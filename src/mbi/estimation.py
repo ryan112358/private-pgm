@@ -12,6 +12,7 @@ Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
+from __future__ import annotations
 from typing import Any, Callable, NamedTuple, Protocol
 
 import functools
@@ -19,6 +20,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import dataclasses
 
 from . import marginal_loss, marginal_oracles
 from .approximate_oracles import StatefulMarginalOracle
@@ -76,7 +78,7 @@ class Estimator(Protocol):
             mesh: Determines how the marginal oracle and loss calculation
                 will be sharded across devices.
             **kwargs: Additional keyword arguments specific to the estimation
-                algorithm (e.g., stepsize, lipschitz, stateful flag).
+                algorithm (e.g., stepsize, stateful flag).
 
         Returns:
             A MarkovRandomField object with the learned potentials,
@@ -96,7 +98,7 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
             if np.allclose(M.query(y), y):  # query = Identity
                 estimates.append(y.sum())
                 variances.append(M.stddev**2 * y.size)
-        except:
+        except Exception:
             continue
     estimates, variances = np.array(estimates), np.array(variances)
     if len(estimates) == 0:
@@ -112,9 +114,9 @@ def _initialize(domain, loss_fn, known_total, potentials):
     if isinstance(loss_fn, list):
         if known_total is None:
             known_total = minimum_variance_unbiased_total(loss_fn)
-        loss_fn = marginal_loss.from_linear_measurements(loss_fn)
+        loss_fn = marginal_loss.from_linear_measurements(loss_fn, domain=domain)
     elif known_total is None:
-        raise ValueError("Must set known_total is giving a custom MarginalLossFn")
+        raise ValueError("Must set known_total if giving a custom MarginalLossFn")
 
     if potentials is None:
         potentials = CliqueVector.zeros(domain, loss_fn.cliques)
@@ -248,6 +250,7 @@ def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
 def lbfgs(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+    *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
     marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
@@ -333,7 +336,7 @@ def mle_from_marginals(
 def dual_averaging(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
-    lipschitz: float,
+    *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
     marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
@@ -366,28 +369,31 @@ def dual_averaging(
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
+    if loss_fn.lipschitz is None:
+        raise ValueError('Dual Averaging requires a loss function with Lipschitz gradients.')
+
     D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy
     Q = 0  # upper bound on variance of stochastic gradients
     gamma = Q / D
 
-    L = lipschitz / known_total
+    L = loss_fn.lipschitz / known_total
 
     @jax.jit
-    def update(w, v, gbar, c, beta):
+    def update(w, v, gbar, c, beta, t):
         u = (1 - c) * w + c * v
         g = jax.grad(loss_fn)(u) / known_total
         gbar = (1 - c) * gbar + c * g
         theta = -t * (t + 1) / (4 * L + beta) * gbar
-        v = marginal_oracle(theta, known_total)
+        v = marginal_oracle(theta, known_total, mesh)
         w = (1 - c) * w + c * v
         return w, v, gbar
 
-    w = v = marginal_oracle(potentials, known_total)
+    w = v = marginal_oracle(potentials, known_total, mesh)
     gbar = CliqueVector.zeros(domain, loss_fn.cliques)
     for t in range(1, iters + 1):
         c = 2.0 / (t + 1)
         beta = gamma * (t + 1) ** 1.5 / 2
-        w, v, gbar = update(w, v, gbar, c, beta)
+        w, v, gbar = update(w, v, gbar, c, beta, t)
         callback_fn(w)
 
     return mle_from_marginals(w, known_total)
@@ -396,12 +402,11 @@ def dual_averaging(
 def interior_gradient(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
-    lipschitz: float | None = None,
+    *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
     marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
     iters: int = 1000,
-    stepsize: float | None = None,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
     mesh: jax.sharding.Mesh | None = None
 ):
@@ -432,11 +437,13 @@ def interior_gradient(
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
     )
+    if loss_fn.lipschitz is None:
+        raise ValueError('Interior Gradient requires a loss function with Lipschitz gradients.')
 
     # Algorithm parameters
     c = 1
     sigma = 1
-    l = sigma / lipschitz
+    l = sigma / loss_fn.lipschitz
 
     @jax.jit
     def update(theta, c, x, y, z):
@@ -452,7 +459,6 @@ def interior_gradient(
     # If we remove jit from marginal oracle, then we'll need to wrap this in
     # a jitted "init" function.
     x = y = z = marginal_oracle(potentials, known_total, mesh)
-    gbar = CliqueVector.zeros(domain, loss_fn.cliques)
     theta = potentials
     for t in range(1, iters + 1):
         theta, c, x, y, z = update(theta, c, x, y, z)
@@ -637,6 +643,7 @@ def _universal_accelerated_method_step_init(
 def universal_accelerated_method(
     domain: Domain,
     loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
+    *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
     marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
@@ -667,3 +674,9 @@ def universal_accelerated_method(
         callback_fn(carry.x)
     sol = carry.x
     return mle_from_marginals(sol, known_total)
+
+class Estimators(Protocol):
+    MIRROR_DESCENT = mirror_descent
+
+    def __call__(self):
+        """Stuff"""

@@ -73,7 +73,7 @@ class MarginalOracle(Protocol):
 
 
 
-def sum_product(factors: list[Factor], dom: Domain) -> Factor:
+def sum_product(factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
     """Compute the sum-of-products of a list of Factors using einsum.
 
     Args:
@@ -92,8 +92,7 @@ def sum_product(factors: list[Factor], dom: Domain) -> Factor:
     mapping = dict(zip(attrs, _EINSUM_LETTERS))
     convert = lambda d: "".join(mapping[a] for a in d.attributes)
     formula = ",".join(convert(f.domain) for f in factors) + "->" + convert(dom)
-    #print(jnp.einsum_path(formula, *[f.values for f in factors]))
-    values = jnp.einsum(
+    values = einsum_fn(
         formula,
         *[f.values for f in factors],
         optimize="dp",  # default setting broken in some cases
@@ -102,7 +101,7 @@ def sum_product(factors: list[Factor], dom: Domain) -> Factor:
     return Factor(dom, values)
 
 
-def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
+def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
     """Numerically stable algorithm for computing sum product in log space.
 
     This seems to be the most stable algorithm for doing this computation that doesn't
@@ -131,7 +130,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain) -> Factor:
     """
     maxes = [f.max(f.domain.marginalize(dom).attributes) for f in log_factors]
     stable_factors = [(f - m).exp() for f, m in zip(log_factors, maxes)]
-    return sum_product(stable_factors, dom).log() + sum(maxes)
+    return sum_product(stable_factors, dom, einsum_fn).log() + sum(maxes)
 
 
 def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
@@ -156,7 +155,7 @@ def brute_force_marginals(
 
 
 def einsum_marginals(
-    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None
+    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None, einsum_fn=jnp.einsum
 ) -> CliqueVector:
     """Compute marginals from (log-space) potentials by using einsum.
 
@@ -167,7 +166,7 @@ def einsum_marginals(
         potentials.domain,
         potentials.cliques,
         {
-            cl: logspace_sum_product(inputs, potentials[cl].domain)
+            cl: logspace_sum_product(inputs, potentials[cl].domain, einsum_fn)
             .normalize(total, log=True)
             .exp()
             .apply_sharding(mesh)
@@ -221,7 +220,7 @@ def message_passing_stable(
 
 @functools.partial(jax.jit, static_argnums=[2])
 def message_passing_fast(
-    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None
+    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None, einsum_fn=jnp.einsum
 ) -> CliqueVector:
     """Compute marginals from (log-space) potentials using the message passing algorithm.
 
@@ -279,7 +278,7 @@ def message_passing_fast(
             if not any(attr in input.domain.attributes for input in inputs):
                 inputs.append(Factor.zeros(domain.project([attr])))
 
-        messages[(i, j)] = logspace_sum_product(inputs, shared).apply_sharding(mesh)
+        messages[(i, j)] = logspace_sum_product(inputs, shared, einsum_fn=einsum_fn).apply_sharding(mesh)
 
     beliefs = {}
     for cl in maximal_cliques:
@@ -288,7 +287,7 @@ def message_passing_fast(
         inputs = input_potentials + input_messages
         for cl2 in inverse_mapping[cl]:
             beliefs[cl2] = (
-                logspace_sum_product(inputs, domain.project(cl2))
+                logspace_sum_product(inputs, domain.project(cl2), einsum_fn=einsum_fn)
                 .normalize(total, log=True)
                 .exp()
                 .apply_sharding(mesh)

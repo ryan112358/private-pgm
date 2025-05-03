@@ -15,14 +15,13 @@ import attr
 import chex
 import jax
 import jax.numpy as jnp
+import optax
+from .domain import Domain
+from .factor import Factor
 from .clique_utils import Clique
 from .clique_utils import maximal_subset
 from .clique_vector import CliqueVector
 
-
-def identity_fn(x: jax.Array) -> jax.Array:
-    """Simple identity function: returns the input `x` unchanged."""
-    return x
 
 @functools.partial(
     jax.tree_util.register_dataclass,
@@ -36,7 +35,7 @@ class LinearMeasurement:
     noisy_measurement: jax.Array = attr.field(converter=jnp.array)
     clique: Clique = attr.field(converter=tuple)
     stddev: float = 1.0
-    query: Callable[[jax.Array], jax.Array] = identity_fn
+    query: Callable[[Factor], jax.Array] = Factor.datavector
 
 
 # this class might need to be refactored so that loss_fn consumes measurements
@@ -48,13 +47,41 @@ class MarginalLossFn:
 
     cliques: list[Clique]
     loss_fn: Callable[[CliqueVector], chex.Numeric]
+    lipschitz: float | None = None
 
     def __call__(self, marginals: CliqueVector) -> chex.Numeric:
         return self.loss_fn(marginals)
+    
+
+def calculate_l2_lipschitz(domain: Domain, cliques: list[Clique], loss_fn: Callable[[CliqueVector], chex.Numeric]) -> float:
+    """Estimate the Lipschitz constant of L(x) = || f(x) - y ||_2^2 where f is a linear function.
+    
+    The Lipschitz constant can usually be obtained via the largest eigenvalue of the Hessian, which
+    for linear functions represented in matrix form is A^T A.  This function computes the same
+    value without materializing this n x n matrix by using power iteration and leveraging jax.jvp.
+
+    Args:
+        domain: The domain over which the loss_fn is defined.
+        loss_fn: The loss function, assumed to be of the form || f(x) - y ||_2^2 where f is linear.
+
+    Returns:
+        An estimate of the Lipschitz constant of the grad(L).
+    """
+    x0 = CliqueVector.zeros(domain, cliques)
+    @jax.jit
+    def compute_Hv(v: CliqueVector) -> CliqueVector:
+        return jax.jvp(jax.grad(loss_fn), (x0,), (v,))[1]
+    v = CliqueVector.ones(domain, cliques)
+    v = v / optax.global_norm(v)
+    for _ in range(50):
+        Hv = compute_Hv(v)
+        estimate = optax.global_norm(Hv)
+        v = Hv / (estimate + 1e-12)
+    return estimate
 
 
 def from_linear_measurements(
-    measurements: list[LinearMeasurement], norm: str = "l2", normalize: bool = False
+    measurements: list[LinearMeasurement], norm: str = "l2", normalize: bool = False, domain: Domain | None = None,
 ) -> MarginalLossFn:
     """Construct a MarginalLossFn from a list of LinearMeasurements.
 
@@ -63,6 +90,7 @@ def from_linear_measurements(
         norm: Either "l1" or "l2".
         normalize: Flag determining if the loss function should be normalized
             by the length of linear measurements and estimated total.
+        domain: The domain over which the measurements were made, necessary for calcualting the Lipschitz parameter.
 
     Returns:
         The MarginalLossFn L(mu) = sum_{c} || Q_c mu_c - y_c || (possibly squared or normalized).
@@ -75,7 +103,7 @@ def from_linear_measurements(
     def loss_fn(marginals: CliqueVector) -> chex.Numeric:
         loss = 0.0
         for M in measurements:
-            mu = marginals.project(M.clique).datavector()
+            mu = marginals.project(M.clique)
             diff = M.query(mu) - M.noisy_measurement
             if norm == "l2":
                 loss += (diff @ diff) / (2 * M.stddev)
@@ -88,6 +116,10 @@ def from_linear_measurements(
             if norm == "l2":
                 loss = jnp.sqrt(loss)
         return loss
+    
+    if norm == "l2" and not normalize and domain is not None:
+        lipschitz = calculate_l2_lipschitz(domain, maximal_cliques, loss_fn)
+        return MarginalLossFn(maximal_cliques, loss_fn, lipschitz)
 
     return MarginalLossFn(maximal_cliques, loss_fn)
 

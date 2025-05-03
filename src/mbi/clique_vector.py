@@ -17,7 +17,7 @@ import jax
 import jax.numpy as jnp
 from .clique_utils import Clique, reverse_clique_mapping
 from .domain import Domain
-from .factor import Factor
+from .factor import Factor, Projectable
 
 
 @functools.partial(
@@ -59,13 +59,6 @@ class CliqueVector:
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def uniform(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
-        """Creates a CliqueVector initialized with uniform factors for each clique."""
-        cliques = [tuple(cl) for cl in cliques]
-        arrays = {cl: Factor.uniform(domain.project(cl)) for cl in cliques}
-        return cls(domain, cliques, arrays)
-
-    @classmethod
     def random(cls, domain: Domain, cliques: list[Clique]):
         """Creates a CliqueVector initialized with random factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
@@ -73,7 +66,7 @@ class CliqueVector:
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def from_projectable(cls, data, cliques: list[Clique]):
+    def from_projectable(cls, data: Projectable, cliques: list[Clique]):
         """Creates a CliqueVector by projecting a data source onto the specified cliques."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: data.project(cl) for cl in cliques}
@@ -131,8 +124,7 @@ class CliqueVector:
 
     def normalize(self, total: float = 1, log: bool = True):
         """Normalizes each factor within the CliqueVector."""
-        is_leaf = lambda node: isinstance(node, Factor)
-        return jax.tree.map(lambda f: f.normalize(total, log), self, is_leaf=is_leaf)
+        return jax.tree.map(lambda f: f.normalize(total, log), self, is_leaf=Factor.__instancecheck__)
 
     def __mul__(self, const: chex.Numeric) -> CliqueVector:
         """Multiplies each factor in the vector by a constant."""
@@ -166,8 +158,7 @@ class CliqueVector:
 
     def dot(self, other: CliqueVector) -> chex.Numeric:
         """Computes the dot product between this CliqueVector and another."""
-        is_leaf = lambda node: isinstance(node, Factor)
-        dots = jax.tree.map(Factor.dot, self, other, is_leaf=is_leaf)
+        dots = jax.tree.map(Factor.dot, self, other, is_leaf=Factor.__instancecheck__)
         return jax.tree.reduce(operator.add, dots, 0)
 
     def size(self):
