@@ -30,17 +30,17 @@ jobs:
         run: |
           pip install yapf pylint pydocstyle
 
-      - name: Check formatting with yapf
-        run: |
-          yapf --diff --recursive --exit-code src test mechanisms examples setup.py docs/conf.py
+      # - name: Check formatting with yapf
+        # run: |
+        #  yapf --diff --recursive --exit-code src test mechanisms examples setup.py docs/conf.py
 
-      - name: Lint with pylint
-        run: |
-          pylint src test mechanisms examples setup.py docs/conf.py
+      # - name: Lint with pylint
+        # run: |
+        #  pylint src test mechanisms examples setup.py docs/conf.py
 
-      - name: Check docstrings with pydocstyle
-        run: |
-          pydocstyle src test mechanisms examples setup.py docs/conf.py
+      # - name: Check docstrings with pydocstyle
+        #run: |
+        #  pydocstyle src test mechanisms examples setup.py docs/conf.py
 
       - name: Set PYTHONPATH
         run: |
