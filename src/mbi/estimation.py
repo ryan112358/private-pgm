@@ -674,9 +674,3 @@ def universal_accelerated_method(
         callback_fn(carry.x)
     sol = carry.x
     return mle_from_marginals(sol, known_total)
-
-class Estimators(Protocol):
-    MIRROR_DESCENT = mirror_descent
-
-    def __call__(self):
-        """Stuff"""
