@@ -1,16 +1,14 @@
-from ..dataset import Dataset
-from ..factor import Factor
-from ..clique_vector import CliqueVector
-from .. import estimation
-from ..domain import Domain
-from .. import marginal_loss
-from ..marginal_loss import LinearMeasurement
-from scipy.optimize import minimize
-from collections import defaultdict
-import numpy as np
-from scipy.sparse.linalg import lsmr
-from scipy.special import logsumexp
+
 import jax
+import numpy as np
+from scipy.special import logsumexp
+
+from .. import estimation, marginal_loss
+from ..clique_vector import CliqueVector
+from ..dataset import Dataset
+from ..domain import Domain
+from ..factor import Factor
+from ..marginal_loss import LinearMeasurement
 
 """Experimental implementation of data synthesis using public data support.
 

@@ -13,14 +13,14 @@ intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
 from __future__ import annotations
-from typing import Any, Callable, NamedTuple, Protocol
 
 import functools
+from typing import Any, Callable, NamedTuple, Protocol
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import dataclasses
 
 from . import marginal_loss, marginal_oracles
 from .approximate_oracles import StatefulMarginalOracle

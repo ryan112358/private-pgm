@@ -7,17 +7,16 @@ subsets of attributes and conversion into a data vector format suitable for
 various statistical and machine learning tasks.
 """
 from __future__ import annotations
-import json
-import os
 
+import functools
+import json
+from typing import Sequence
+
+import attr
+import jax
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import chex
-import jax
-import attr
-import functools
-import jax.numpy as jnp
-from typing import Sequence
 
 from .domain import Domain
 from .factor import Factor

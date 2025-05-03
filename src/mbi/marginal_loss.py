@@ -16,11 +16,11 @@ import chex
 import jax
 import jax.numpy as jnp
 import optax
+
+from .clique_utils import Clique, maximal_subset
+from .clique_vector import CliqueVector
 from .domain import Domain
 from .factor import Factor
-from .clique_utils import Clique
-from .clique_utils import maximal_subset
-from .clique_vector import CliqueVector
 
 
 @functools.partial(

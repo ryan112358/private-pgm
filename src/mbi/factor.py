@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Callable, Sequence, Literal, Protocol
+from typing import Callable, Literal, Protocol, Sequence
 
 import attr
 import chex

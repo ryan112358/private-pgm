@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import attr
 import chex
 import numpy as np
@@ -7,7 +9,6 @@ from . import junction_tree, marginal_oracles
 from .clique_vector import CliqueVector
 from .dataset import Dataset
 from .factor import Factor
-from typing import Sequence
 
 
 @attr.dataclass(frozen=True)
