@@ -60,10 +60,9 @@ class StatefulMarginalOracle(Protocol):
                 - CliqueVector: The computed marginals.
                 - Any: The updated state.
         """
-        ...
 
 
-def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
+def build_graph(domain: Domain, cliques: list[tuple[str, ...]]):
     """Builds the region graph for convex generalized belief propagation."""
     # Hard-code minimal=True, convex=True
     # Counting numbers = 1 for all regions
@@ -86,23 +85,26 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
             ):
                 G.add_edge(r1, r2)
 
-    H = G.reverse()
-    G1, H1 = nx.transitive_closure(G), nx.transitive_closure(H)
+    # H = G.reverse() # Unused
+    # G1, H1 = nx.transitive_closure(G), nx.transitive_closure(H) # Unused
 
     children = {r: list(G.neighbors(r)) for r in regions}
-    parents = {r: list(H.neighbors(r)) for r in regions}
-    descendants = {r: list(G1.neighbors(r)) for r in regions}
-    ancestors = {r: list(H1.neighbors(r)) for r in regions}
-    forebears = {r: set([r] + ancestors[r]) for r in regions}
-    downp = {r: set([r] + descendants[r]) for r in regions}
+    parents = {r: list(G.reverse().neighbors(r)) for r in regions} # Use G.reverse() directly
+    # descendants = {r: list(G1.neighbors(r)) for r in regions} # Unused
+    # ancestors = {r: list(H1.neighbors(r)) for r in regions} # Unused
+    # forebears = {r: set([r] + ancestors[r]) for r in regions} # Unused
+    # downp = {r: set([r] + descendants[r]) for r in regions} # Unused
 
     min_edges = []
+    # Need ancestors for disjoint set logic, calculate transiently
+    H_ancestors = {r: set(nx.ancestors(G, r)) for r in regions}
     for r in regions:
         ds = DisjointSet()
         for u in parents[r]:
             ds.add(u)
         for u, v in itertools.combinations(parents[r], 2):
-            uv = set(ancestors[u]) & set(ancestors[v])
+            # uv = set(ancestors[u]) & set(ancestors[v]) # Use H_ancestors
+            uv = H_ancestors[u] & H_ancestors[v]
             if len(uv) > 0:
                 ds.merge(u, v)
         canonical = set()
@@ -114,21 +116,22 @@ def build_graph(domain: Domain, cliques: list[tuple[str, ...]]) -> ...:
     G.add_nodes_from(regions)
     G.add_edges_from(min_edges)
 
-    H = G.reverse()
-    G1, H1 = nx.transitive_closure(G), nx.transitive_closure(H)
+    # H = G.reverse() # Unused
+    # G1, H1 = nx.transitive_closure(G), nx.transitive_closure(H) # Unused
 
     children = {r: list(G.neighbors(r)) for r in regions}
-    parents = {r: list(H.neighbors(r)) for r in regions}
+    parents = {r: list(G.reverse().neighbors(r)) for r in regions} # Use G.reverse() directly
 
     messages = {}
-    message_order = []
+    # message_order = [] # Unused
     for ru in sorted(regions, key=len):
         for rd in children[ru]:
-            message_order.append((ru, rd))
+            # message_order.append((ru, rd)) # Unused
             messages[ru, rd] = Factor.zeros(domain.project(rd))
             messages[rd, ru] = Factor.zeros(domain.project(rd))  # only for hazan et al
 
-    return regions, cliques, messages, message_order, parents, children
+    # Return without message_order
+    return regions, cliques, messages, parents, children
 
 _State = dict[tuple[Clique, Clique], Factor]
 
@@ -163,7 +166,8 @@ def convex_generalized_belief_propagation(
     potentials = potentials.apply_sharding(mesh)
     domain, cliques = potentials.domain, potentials.cliques
     # We might need or want a sharding constraint on messages here
-    regions, cliques, messages, message_order, parents, children = build_graph(
+    # build_graph no longer returns message_order
+    regions, cliques, messages, parents, children = build_graph(
         domain, cliques
     )
     if state is not None:

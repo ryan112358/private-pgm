@@ -129,11 +129,11 @@ class Factor:
         return self.domain.supports(attrs)
 
     # Functions that operate element-wise
-    def exp(self, out=None) -> Factor:
+    def exp(self, _out=None) -> Factor: # Renamed unused out to _out
         """Applies element-wise exponentiation (jnp.exp) to the factor's values."""
         return Factor(self.domain, jnp.exp(self.values))
 
-    def log(self, out=None) -> Factor:
+    def log(self, _out=None) -> Factor: # Renamed unused out to _out
         """Applies element-wise logarithm (jnp.log) to the factor's values."""
         return Factor(self.domain, jnp.log(self.values))
 
@@ -172,8 +172,8 @@ class Factor:
         """Multiply two factors together.
 
         Example Usage:
-            >>> f1 = Factor.ones(Domain(['a','b'], [2,3]))
-            >>> f2 = Factor.ones(Domain(['b','c'], [3,4]))
+            >>> f1 = Factor.ones(Domain(["a","b"], [2,3]))
+            >>> f2 = Factor.ones(Domain(["b","c"], [3,4]))
             >>> f3 = f1 * f2
             >>> print(f3.domain)
             Domain(a: 2, b: 3, c: 4)

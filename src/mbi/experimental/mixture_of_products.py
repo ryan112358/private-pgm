@@ -35,7 +35,8 @@ def adam(loss_and_grad, x0, iters=250):
     m = jnp.zeros_like(x)
     v = jnp.zeros_like(x)
     for t in range(1, iters + 1):
-        l, g = loss_and_grad(x)
+        # l is unused
+        _, g = loss_and_grad(x)
         # print(l)
         m = b1 * m + (1 - b1) * g
         v = b2 * v + (1 - b2) * g ** 2
@@ -107,7 +108,7 @@ def mixture_of_products(
     known_total: int | None = None,
     mixture_components: int = 100,
     iters: int = 2500,
-    alpha: float = 0.1
+    # alpha: float = 0.1 # Unused parameter
 ) -> MixtureOfProducts:
 
     loss_fn,known_total, _ = estimation._initialize(domain, loss_fn, known_total, None)

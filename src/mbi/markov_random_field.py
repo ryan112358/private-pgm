@@ -36,7 +36,8 @@ class MarkovRandomField:
         data = np.zeros((total, len(cols)), dtype=int)
         df = pd.DataFrame(data, columns=cols)
         cliques = [set(cl) for cl in self.cliques]
-        jtree, elimination_order = junction_tree.make_junction_tree(domain, cliques)
+        # jtree is unused
+        _, elimination_order = junction_tree.make_junction_tree(domain, cliques)
 
         def synthetic_col(counts, total):
             """Generates a synthetic column by sampling or rounding based on counts and total."""

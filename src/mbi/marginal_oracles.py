@@ -69,8 +69,6 @@ class MarginalOracle(Protocol):
         Returns:
             A CliqueVector of the computed marginals.
         """
-        ...
-
 
 
 def sum_product(factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
@@ -109,7 +107,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
     in general give better numerical stability, but it comes at the cost of
     increased memory usage.
 
-    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map 
+    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map
     to compute log sum product sequentially.  This will also have the dual
     benefit of using less memory than jnp.einsum in some hard cases.
 
@@ -123,8 +121,8 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
 
     Returns:
         log sum_{S - D} prod_i exp(F_i),
-        where 
-            * F_i = log_factors[i], 
+        where
+            * F_i = log_factors[i],
             * D is the input domain,
             * S is the union of the domains of F_i
     """
@@ -135,7 +133,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
 
 def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
     """More stable implementation of logspace_sum_product.
-        
+
     This ipmlementation may (or may not) materialize a Factor over the domain
     of all elements of log_factors.  Without JIT, it will materialize this "super-factor".
     Under JIT, there may be some instances where the compiler can figure out
@@ -203,7 +201,7 @@ def message_passing_stable(
     message_order = junction_tree.message_passing_order(jtree)
     maximal_cliques = junction_tree.maximal_cliques(jtree)
 
-    mapping = clique_mapping(maximal_cliques, cliques)
+    # mapping = clique_mapping(maximal_cliques, cliques) # Unused
     beliefs = potentials.expand(maximal_cliques).apply_sharding(mesh)
 
     messages = {}
@@ -245,11 +243,13 @@ def message_passing_fast(
     potentials = potentials.apply_sharding(mesh)
     domain, cliques = potentials.active_domain, potentials.cliques
 
-    jtree = junction_tree.make_junction_tree(domain, cliques)[0]
-    message_order = junction_tree.message_passing_order(jtree)
+    # jtree = junction_tree.make_junction_tree(domain, cliques)[0] # Unused
+    # Recompute jtree where needed for message_order
+    _jtree, _ = junction_tree.make_junction_tree(domain, cliques)
+    message_order = junction_tree.message_passing_order(_jtree)
     # TODO: upstream this logic to message_passing_order function
     message_order = [(i, j) for i, j in message_order if len(set(i) & set(j)) > 0]
-    maximal_cliques = junction_tree.maximal_cliques(jtree)
+    maximal_cliques = junction_tree.maximal_cliques(_jtree) # Use _jtree
 
     mapping = clique_mapping(maximal_cliques, cliques)
     inverse_mapping = collections.defaultdict(list)
@@ -298,7 +298,7 @@ def message_passing_fast(
 Clique = tuple[str, ...]
 
 def variable_elimination(
-    potentials: CliqueVector, 
+    potentials: CliqueVector,
     clique: Clique,
     total: float = 1,
     mesh: jax.sharding.Mesh | None = None,
@@ -341,17 +341,17 @@ def variable_elimination(
     )
 
 def calculate_many_marginals(
-    potentials: CliqueVector, 
-    marginal_queries: list[Clique], 
+    potentials: CliqueVector,
+    marginal_queries: list[Clique],
     total: float = 1.0,
     belief_propagation_oracle: MarginalOracle = message_passing_stable,
     mesh: jax.sharding.Mesh | None = None
 ) -> CliqueVector:
     """ Calculates marginals for all the projections in the list using
-        
+
     Implements Algorithm from section 10.3 in Koller and Friedman.
     This method may be faster than calling variable_elimination many times
-    
+
     Args:
         potentials: Potentials of a graphical model.
         marginal_queries: a list of cliques whose marginals are desired.
@@ -361,10 +361,10 @@ def calculate_many_marginals(
     """
 
     domain = potentials.domain
-    jtree = junction_tree.make_junction_tree(potentials.domain, potentials.cliques)[0]
-    max_cliques = junction_tree.maximal_cliques(jtree)
-    neighbors = { i : tuple(jtree.neighbors(i)) for i in max_cliques }
-    
+    _jtree, _ = junction_tree.make_junction_tree(potentials.domain, potentials.cliques)
+    max_cliques = junction_tree.maximal_cliques(_jtree)
+    # neighbors = { i : tuple(jtree.neighbors(i)) for i in max_cliques } # Unused
+
     # TODO: let's see if we can get rid of this similar to message_passing_fast
     potentials = potentials.expand(max_cliques)
 
@@ -374,17 +374,18 @@ def calculate_many_marginals(
     # first calculate P(Cj | Ci) for all neighbors Ci, Cj
     conditional = {}
     for Ci in max_cliques:
-        for Cj in neighbors[Ci]:
+        # Use _jtree to get neighbors
+        for Cj in _jtree.neighbors(Ci):
             Cj: tuple[str, ...]  # networkx does not seem to have the right type annotation.
             Sij = tuple(set(Cj) & set(Ci))
             Z = marginals.project(Cj)
             conditional[(Cj,Ci)] = Z / Z.project(Sij)
 
     # now iterate through pairs of cliques in order of distance
-    # not sure why this API changed and why we need to do this hack.
-    nx.set_edge_attributes(jtree, values=1.0, name='weight')  # type: ignore
-    pred, dist = nx.floyd_warshall_predecessor_and_distance(jtree) #, weight=None)
-    
+    # The set_edge_attributes call seems unnecessary as weight=None is default
+    # nx.set_edge_attributes(_jtree, values=1.0, name="weight")  # type: ignore # Unused jtree
+    pred, dist = nx.floyd_warshall_predecessor_and_distance(_jtree) #, weight=None)
+
     order_fn = lambda x: dist[x[0]][x[1]]
 
     results = {}
@@ -398,9 +399,9 @@ def calculate_many_marginals(
             X = results[(Ci, Cl)]
             S = set(Cl) - set(Ci) - set(Cj)
             results[(Ci, Cj)] = results[(Cj, Ci)] = (X*Y).sum(S)
-        
+
     results = { domain.canonical(key[0]+key[1]) : results[key] for key in results }
-    
+
     answers = { }
     for cl in marginal_queries:
         for attr in results:
@@ -414,7 +415,7 @@ def calculate_many_marginals(
     return CliqueVector(domain, marginal_queries, answers)
 
 def kron_query(
-    potentials: CliqueVector, 
+    potentials: CliqueVector,
     query_factors: dict[str, jax.Array],
     total: float = 1,
     mesh: jax.sharding.Mesh | None = None,
