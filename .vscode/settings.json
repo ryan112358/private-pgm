@@ -1,0 +1,9 @@
+{
+    "python.formatting.provider": "yapf",
+    "editor.formatOnSave": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.pydocstyleEnabled": true,
+    "python.linting.pydocstyleArgs": [
+        "--convention=google"
+    ]
+}
