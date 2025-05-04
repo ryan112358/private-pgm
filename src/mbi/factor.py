@@ -118,7 +118,7 @@ class Factor:
         """Computes the log-sum-exp along specified attribute axes."""
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
-    def project(self, attrs: str | tuple[str, ...], log: bool = False) -> Factor:
+    def project(self, attrs: str | Sequence[str], log: bool = False) -> Factor:
         """Computes the marginal distribution by summing/logsumexp'ing out other attributes."""
         if isinstance(attrs, str):
             attrs = (attrs,)

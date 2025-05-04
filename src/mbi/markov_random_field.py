@@ -17,7 +17,10 @@ class MarkovRandomField:
     marginals: CliqueVector
     total: chex.Numeric = 1
 
-    def project(self, attrs: tuple[str, ...]) -> Factor:
+    def project(self, attrs: str | Sequence[str]) -> Factor:
+        if isinstance(attrs, str):
+            attrs = (attrs,)
+        attrs = tuple(attrs)
         if self.marginals.supports(attrs):
             return self.marginals.project(attrs)
         return marginal_oracles.variable_elimination(

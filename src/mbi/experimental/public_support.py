@@ -77,9 +77,9 @@ def public_support(
 ) -> Dataset:
 
     loss_fn, known_total, _ = estimation._initialize(domain, loss_fn, known_total, None)
-    loss_and_grad_mu = jax.value_and_grad(loss_and_grad_mu)
+    loss_and_grad_mu = jax.value_and_grad(loss_fn)
 
-    cliques = loss_fn.cliques
+    cliques = loss_fn.cliques  # type: ignore
 
     def loss_and_grad(weights):
         """Calculates the loss and gradient with respect to the public data weights."""

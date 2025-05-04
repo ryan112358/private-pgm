@@ -11,7 +11,6 @@ from __future__ import annotations
 import functools
 import json
 from collections.abc import Sequence
-from typing import 
 
 import attr
 import jax
@@ -128,7 +127,7 @@ class JaxDataset:
         data = np.array(arr).T
         return JaxDataset(data, domain)
 
-    def project(self, cols: str | Sequence[str]) -> JaxDataset:
+    def project(self, cols: str | Sequence[str]) -> Factor:
         """project dataset onto a subset of columns"""
         if type(cols) in [str, int]:
             cols = [cols]
