@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import functools
 import json
-from typing import Sequence
+from collections.abc import Sequence
+from typing import 
 
 import attr
 import jax
@@ -70,7 +71,7 @@ class Dataset:
         domain = self.domain.project(cols)
         data = Dataset(data, domain, self.weights)
         return Factor(data.domain, data.datavector(flatten=False))
-    
+
     def supports(self, cols: str | Sequence[str]) -> bool:
         return self.domain.supports(cols)
 
@@ -136,7 +137,7 @@ class JaxDataset:
         domain = self.domain.project(cols)
         data = JaxDataset(data, domain, self.weights)
         return Factor(data.domain, data.datavector(flatten=False))
-    
+
     def supports(self, cols: str | Sequence[str]) -> bool:
         return self.domain.supports(cols)
 

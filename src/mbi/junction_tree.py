@@ -8,7 +8,8 @@ computing greedy elimination orders, and estimating model size.
 """
 import itertools
 from collections import OrderedDict
-from typing import Collection, TypeAlias
+from collections.abc import Collection
+from typing import TypeAlias
 
 import networkx as nx
 import numpy as np

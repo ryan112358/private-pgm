@@ -1,5 +1,4 @@
-from typing import Sequence
-
+from collections.abc import Sequence
 import attr
 import chex
 import numpy as np
@@ -24,7 +23,7 @@ class MarkovRandomField:
         return marginal_oracles.variable_elimination(
             self.potentials, attrs, self.total
         )
-    
+
     def supports(self, attrs: str | Sequence[str]) -> bool:
         return self.marginals.domain.supports(attrs)
 
