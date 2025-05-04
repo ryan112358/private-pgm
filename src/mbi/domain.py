@@ -1,3 +1,10 @@
+"""Defines the Domain class for representing attribute domains.
+
+This module provides the `Domain` class, which encapsulates a set of named
+attributes and their corresponding discrete sizes (shapes). It facilitates
+representing the structure of datasets and graphical models and supports
+various operations like projection, marginalization, and merging of domains.
+"""
 import functools
 from collections.abc import Iterator, Sequence
 

@@ -1,3 +1,10 @@
+"""Utility functions for manipulating cliques (subsets of attributes).
+
+This module provides helper functions for common operations on cliques,
+such as finding maximal subsets and creating mappings between cliques and
+their maximal counterparts. Cliques are typically represented as tuples of
+attribute names (strings).
+"""
 from typing import TypeAlias
 
 Clique: TypeAlias = tuple[str, ...]
