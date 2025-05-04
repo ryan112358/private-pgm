@@ -1,3 +1,11 @@
+"""Defines the MarkovRandomField class representing learned graphical models.
+
+This module provides the `MarkovRandomField` class, which encapsulates the
+results of learning a graphical model. It stores the learned potentials,
+the resulting marginal distributions, and the associated total count (e.g.,
+number of records). It also offers methods for querying marginals and
+generating synthetic data.
+"""
 from collections.abc import Sequence
 import attr
 import chex
