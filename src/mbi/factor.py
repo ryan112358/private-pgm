@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import functools
-from typing import Callable, Literal, Protocol, Sequence
+from collections.abc import Callable, Sequence
+from typing import Literal, Protocol
 
 import attr
 import chex
@@ -117,14 +118,14 @@ class Factor:
         """Computes the log-sum-exp along specified attribute axes."""
         return self._aggregate(jax.scipy.special.logsumexp, attrs)
 
-    def project(self, attrs: str | tuple[str, ...], log: bool = False) -> Factor:
+    def project(self, attrs: str | Sequence[str], log: bool = False) -> Factor:
         """Computes the marginal distribution by summing/logsumexp'ing out other attributes."""
         if isinstance(attrs, str):
             attrs = (attrs,)
         marginalized = self.domain.marginalize(attrs).attrs
         result = self.logsumexp(marginalized) if log else self.sum(marginalized)
         return result.transpose(attrs)
-    
+
     def supports(self, attrs: str | Sequence[str]) -> bool:
         return self.domain.supports(attrs)
 

@@ -1,5 +1,4 @@
-from typing import Sequence
-
+from collections.abc import Sequence
 import attr
 import chex
 import numpy as np
@@ -18,13 +17,16 @@ class MarkovRandomField:
     marginals: CliqueVector
     total: chex.Numeric = 1
 
-    def project(self, attrs: tuple[str, ...]) -> Factor:
+    def project(self, attrs: str | Sequence[str]) -> Factor:
+        if isinstance(attrs, str):
+            attrs = (attrs,)
+        attrs = tuple(attrs)
         if self.marginals.supports(attrs):
             return self.marginals.project(attrs)
         return marginal_oracles.variable_elimination(
             self.potentials, attrs, self.total
         )
-    
+
     def supports(self, attrs: str | Sequence[str]) -> bool:
         return self.marginals.domain.supports(attrs)
 

@@ -15,7 +15,8 @@ support the cliques of the marginal-based loss function can be used here.
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, NamedTuple, Protocol
+from collections.abc import Callable
+from typing import Any, NamedTuple, Protocol
 
 import jax
 import jax.numpy as jnp

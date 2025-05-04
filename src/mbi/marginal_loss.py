@@ -9,7 +9,7 @@ or noisy data. Utilities for clique manipulation and feasibility checks are also
 included.
 """
 import functools
-from typing import Callable
+from collections.abc import Callable
 
 import attr
 import chex
