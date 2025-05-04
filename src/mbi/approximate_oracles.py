@@ -26,6 +26,8 @@ from .factor import Factor
 
 Clique: TypeAlias = tuple[str, ...]
 
+# pylint: disable
+
 
 class StatefulMarginalOracle(Protocol):
     """
