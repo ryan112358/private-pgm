@@ -27,6 +27,7 @@ from . import marginal_loss, marginal_oracles
 from .approximate_oracles import StatefulMarginalOracle
 from .clique_vector import CliqueVector
 from .domain import Domain
+from .factor import Factor
 from .marginal_loss import LinearMeasurement
 from .markov_random_field import MarkovRandomField
 
