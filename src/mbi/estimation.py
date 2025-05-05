@@ -95,7 +95,7 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
         y = M.noisy_measurement
         try:
             # TODO: generalize to support any linear measurement that supports total query
-            if np.allclose(M.query(y), y):  # query = Identity
+            if M.query == Factor.datavector:  # query = Identity
                 estimates.append(y.sum())
                 variances.append(M.stddev**2 * y.size)
         except Exception:
