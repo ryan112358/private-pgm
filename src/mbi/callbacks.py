@@ -71,7 +71,7 @@ def default(
         # Measures distance between input marginals and true marginals.
         ground_truth = [
             LinearMeasurement(
-                M.query(data.project(M.clique).datavector()),
+                M.query(data.project(M.clique)),
                 clique=M.clique,
                 stddev=1,
                 query=M.query,
