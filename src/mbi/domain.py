@@ -38,7 +38,7 @@ class Domain:
         Domain(a: 2, b: 3)
     """
     attributes: tuple[str, ...] = attr.field(converter=tuple)
-    shape: tuple[int, ...] = attr.field(converter=tuple)
+    shape: tuple[int, ...] = attr.field(converter=lambda sh: tuple(int(n) for n in sh))
 
     def __attrs_post_init__(self):
         if len(self.attributes) != len(self.shape):
