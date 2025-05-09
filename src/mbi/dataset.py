@@ -24,11 +24,12 @@ from .factor import Factor
 
 class Dataset:
     def __init__(self, df, domain, weights=None):
-        """create a Dataset object
+        """Create a Dataset object.
 
-        :param df: a pandas dataframe
-        :param domain: a domain object
-        :param weight: weight for each row
+        Args:
+            df: A pandas dataframe.
+            domain: A domain object.
+            weights: Optional weights for each row.
         """
         assert set(domain.attrs) <= set(
             df.columns
@@ -103,19 +104,19 @@ class JaxDataset:
     weights: jax.Array | None = None
 
     def __post_init__(self):
-        if self.data.dtype != 'int':
-            raise ValueError(f'Data must be integral, got {self.data.dtype}.')
+        if self.data.dtype != "int":
+            raise ValueError(f"Data must be integral, got {self.data.dtype}.")
         if self.data.ndim != 2:
-            raise ValueError(f'Data must be 2d aray, got {self.data.shape}')
+            raise ValueError(f"Data must be 2d aray, got {self.data.shape}")
         if self.data.shape[1] != len(self.domain):
-            raise ValueError('Number of columns of data must equal the number of attributes in the domain.')
+            raise ValueError("Number of columns of data must equal the number of attributes in the domain.")
         # This will not work in a jitted context, but not sure if this will be called from one normally.
         for i, ax in enumerate(self.domain):
             if self.data[:, i].min() < 0:
-                raise ValueError('Data must be non-negative.')
+                raise ValueError("Data must be non-negative.")
             if self.data[:, i].max() >= self.domain[ax]:
-                raise ValueError('Data must be within the bounds of the domain.')
-            
+                raise ValueError("Data must be within the bounds of the domain.")
+
     @staticmethod
     def synthetic(domain: Domain, records: int) -> JaxDataset:
         """Generate synthetic data conforming to the given domain

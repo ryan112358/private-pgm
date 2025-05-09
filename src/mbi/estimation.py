@@ -57,7 +57,7 @@ class Estimator(Protocol):
         iters: int = 1000,
         callback_fn: Callable[[CliqueVector], None] = lambda _: None,
         mesh: jax.sharding.Mesh | None = None,
-        **kwargs: Any
+            **_kwargs: Any # Prefixed unused kwargs
     ) -> MarkovRandomField:
         """
         Estimates the parameters of a graphical model.
@@ -86,7 +86,6 @@ class Estimator(Protocol):
             A MarkovRandomField object with the learned potentials,
             resulting marginals, and the model domain.
         """
-        ...
 
 
 def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> float:
@@ -105,10 +104,10 @@ def minimum_variance_unbiased_total(measurements: list[LinearMeasurement]) -> fl
     estimates, variances = np.array(estimates), np.array(variances)
     if len(estimates) == 0:
         return 1
-    else:
-        variance = 1.0 / np.sum(1.0 / variances)
-        estimate = variance * np.sum(estimates / variances)
-        return max(1, estimate)
+    # else: (implicit)
+    variance = 1.0 / np.sum(1.0 / variances)
+    estimate = variance * np.sum(estimates / variances)
+    return max(1, estimate)
 
 
 def _initialize(domain, loss_fn, known_total, potentials):
@@ -135,6 +134,7 @@ def _get_stateful_oracle(
 ) -> StatefulMarginalOracle:
     if stateful:
         return marginal_oracle
+    # This lambda is fine as it's immediately returned, not assigned
     return lambda theta, total, state: (marginal_oracle(theta, total), state)
 
 
@@ -179,7 +179,7 @@ def mirror_descent(
         A MarkovRandomField object with the estimated potentials and marginals.
     """
     if stepsize is None and stateful:
-        raise ValueError('Stepsize should be manually tuned when using a stateful oracle.')
+        raise ValueError("Stepsize should be manually tuned when using a stateful oracle.")
 
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
@@ -201,6 +201,7 @@ def mirror_descent(
 
         sufficient_decrease = loss - loss2 >= 0.5 * alpha * dL.dot(mu - mu2)
         alpha = jax.lax.select(sufficient_decrease, 1.01 * alpha, 0.5 * alpha)
+        # Lambdas used directly in jax.lax.cond are acceptable
         theta = jax.lax.cond(sufficient_decrease, lambda: theta2, lambda: theta)
         loss = jax.lax.select(sufficient_decrease, loss2, loss)
 
@@ -223,14 +224,16 @@ def mirror_descent(
 
 def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
     """Runs an optimization loop using Optax L-BFGS."""
-    loss_fn = lambda theta: loss_and_grad_fn(theta)[0]
+    # Define _loss_fn_wrapper using def instead of lambda
+    def _loss_fn_wrapper(theta):
+      return loss_and_grad_fn(theta)[0]
 
     @jax.jit
     def update(params, opt_state):
         loss, grad = loss_and_grad_fn(params)
 
         updates, opt_state = optimizer.update(
-            grad, opt_state, params, value=loss, grad=grad, value_fn=loss_fn
+            grad, opt_state, params, value=loss, grad=grad, value_fn=_loss_fn_wrapper
         )
 
         return optax.apply_updates(params, updates), opt_state, loss
@@ -240,7 +243,7 @@ def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
         linesearch=optax.scale_by_zoom_linesearch(128, max_learning_rate=1),
     )
     state = optimizer.init(params)
-    prev_loss = float("inf")
+    prev_loss = float('inf')
     for t in range(iters):
         params, state, loss = update(params, state)
         callback_fn(params)
@@ -295,11 +298,18 @@ def lbfgs(
     )
     marginal_oracle = functools.partial(marginal_oracle, mesh=mesh)
 
-    theta_loss = lambda theta: loss_fn(marginal_oracle(theta, known_total))
-    theta_loss_and_grad = jax.value_and_grad(theta_loss)
-    theta_callback_fn = lambda theta: callback_fn(marginal_oracle(theta, known_total))
+    # Define _theta_loss using def instead of lambda
+    def _theta_loss(theta):
+        return loss_fn(marginal_oracle(theta, known_total))
+
+    theta_loss_and_grad = jax.value_and_grad(_theta_loss)
+
+    # Define _theta_callback_fn using def instead of lambda
+    def _theta_callback_fn(theta):
+        return callback_fn(marginal_oracle(theta, known_total))
+
     potentials = _optimize(
-        theta_loss_and_grad, potentials, iters=iters, callback_fn=theta_callback_fn
+        theta_loss_and_grad, potentials, iters=iters, callback_fn=_theta_callback_fn
     )
     return MarkovRandomField(
         potentials, marginal_oracle(potentials, known_total), known_total
@@ -329,7 +339,8 @@ def mle_from_marginals(
         return -marginals.dot(mu.log()), mu - marginals
 
     potentials = CliqueVector.zeros(marginals.domain, marginals.cliques)
-    potentials = _optimize(loss_and_grad_fn, potentials, iters=iters)
+    # Pass the original callback_fn here, _optimize handles the default case
+    potentials = _optimize(loss_and_grad_fn, potentials, iters=iters, callback_fn=callback_fn)
     return MarkovRandomField(
         potentials, marginal_oracle(potentials, known_total), known_total
     )
@@ -372,11 +383,12 @@ def dual_averaging(
         domain, loss_fn, known_total, potentials
     )
     if loss_fn.lipschitz is None:
-        raise ValueError('Dual Averaging requires a loss function with Lipschitz gradients.')
+        raise ValueError("Dual Averaging requires a loss function with Lipschitz gradients.")
 
-    D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy
-    Q = 0  # upper bound on variance of stochastic gradients
-    gamma = Q / D
+    # D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy (unused)
+    # Q = 0  # upper bound on variance of stochastic gradients (unused)
+    # gamma = Q / D # gamma is always 0 since Q=0
+    gamma = 0.0 # simplified
 
     L = loss_fn.lipschitz / known_total
 
@@ -440,12 +452,12 @@ def interior_gradient(
         domain, loss_fn, known_total, potentials
     )
     if loss_fn.lipschitz is None:
-        raise ValueError('Interior Gradient requires a loss function with Lipschitz gradients.')
+        raise ValueError("Interior Gradient requires a loss function with Lipschitz gradients.")
 
     # Algorithm parameters
     c = 1
-    sigma = 1
-    l = sigma / loss_fn.lipschitz
+    # sigma = 1 # (unused)
+    l = 1.0 / loss_fn.lipschitz # simplified
 
     @jax.jit
     def update(theta, c, x, y, z):
@@ -625,6 +637,7 @@ def _universal_accelerated_method_step_init(
         base = carry._replace(
             stepsize=0.5 * carry.stepsize, iter_search=carry.iter_search + 1
         )
+        # Lambda used directly in jax.tree.map is acceptable
         return jax.tree.map(lambda x, y: jnp.where(accept, x, y), candidate, base)
 
     x = z = dual_proj(dual_init_params)
@@ -662,6 +675,7 @@ def universal_accelerated_method(
     carry, cond_fun, body_fun = _universal_accelerated_method_step_init(
         fun=loss_fn,
         dual_init_params=potentials,
+        # Lambda used directly as argument is acceptable
         dual_proj=lambda x: marginal_oracle(x, known_total),
         max_iter_search=30,
         target_acc=0.0,
