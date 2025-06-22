@@ -138,7 +138,7 @@ def _infer_shapes(
 
 
 def scan_einsum(
-    formula: str, *arrays: jax.Array, sequential: str = ''
+    formula: str, *arrays: jax.Array, sequential: str = '', **kwargs
 ) -> jax.Array:
   """Einsum implementation that allows sequential execution across any axes.
 
@@ -154,12 +154,13 @@ def scan_einsum(
       and the results are accumulated.  When sequential is a string with
       multiple axis names, sequential einsums are executed along all axis 
       names given.
+    **kwargs: Keyword arguments to pass to jnp.einsum in the base case.
 
   Returns:
     The einsum result.
   """
   if not sequential:
-    return jnp.einsum(formula, *arrays)
+    return jnp.einsum(formula, *arrays, **kwargs)
 
   ax = sequential[0]
   if ax not in formula:

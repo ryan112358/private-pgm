@@ -12,6 +12,7 @@ Each algorithm can be given an initial set of potentials, or can automatically
 intialize the potentials to zero for you.  Any CliqueVector of potentials that
 support the cliques of the marginal-based loss function can be used here.
 """
+
 from __future__ import annotations
 
 import functools
@@ -46,6 +47,7 @@ class Estimator(Protocol):
     - `interior_gradient`
     - `universal_accelerated_method`
     """
+
     def __call__(
         self,
         domain: Domain,
@@ -57,7 +59,7 @@ class Estimator(Protocol):
         iters: int = 1000,
         callback_fn: Callable[[CliqueVector], None] = lambda _: None,
         mesh: jax.sharding.Mesh | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> MarkovRandomField:
         """
         Estimates the parameters of a graphical model.
@@ -131,7 +133,7 @@ def _initialize(domain, loss_fn, known_total, potentials):
 
 def _get_stateful_oracle(
     marginal_oracle: marginal_oracles.MarginalOracle | StatefulMarginalOracle,
-    stateful: bool
+    stateful: bool,
 ) -> StatefulMarginalOracle:
     if stateful:
         return marginal_oracle
@@ -144,7 +146,9 @@ def mirror_descent(
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle: marginal_oracles.MarginalOracle | StatefulMarginalOracle = marginal_oracles.message_passing_fast,
+    marginal_oracle: (
+        marginal_oracles.MarginalOracle | StatefulMarginalOracle
+    ) = marginal_oracles.message_passing_fast,
     iters: int = 1000,
     stateful: bool = False,
     stepsize: float | None = None,
@@ -179,7 +183,9 @@ def mirror_descent(
         A MarkovRandomField object with the estimated potentials and marginals.
     """
     if stepsize is None and stateful:
-        raise ValueError('Stepsize should be manually tuned when using a stateful oracle.')
+        raise ValueError(
+            "Stepsize should be manually tuned when using a stateful oracle."
+        )
 
     loss_fn, known_total, potentials = _initialize(
         domain, loss_fn, known_total, potentials
@@ -188,7 +194,7 @@ def mirror_descent(
     marginal_oracle = _get_stateful_oracle(marginal_oracle, stateful)
 
     @jax.jit
-    def update(theta, alpha, state = None):
+    def update(theta, alpha, state=None):
         mu, state = marginal_oracle(theta, known_total, state)
         loss, dL = jax.value_and_grad(loss_fn)(mu)
 
@@ -218,7 +224,9 @@ def mirror_descent(
         callback_fn(mu)
 
     marginals, _ = marginal_oracle(potentials, known_total, state)
-    return MarkovRandomField(potentials, marginals, known_total)
+    return MarkovRandomField(
+        potentials=potentials, marginals=marginals, total=known_total
+    )
 
 
 def _optimize(loss_and_grad_fn, params, iters=250, callback_fn=lambda _: None):
@@ -255,7 +263,7 @@ def lbfgs(
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle = marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
     mesh: jax.sharding.Mesh | None = None,
@@ -302,7 +310,9 @@ def lbfgs(
         theta_loss_and_grad, potentials, iters=iters, callback_fn=theta_callback_fn
     )
     return MarkovRandomField(
-        potentials, marginal_oracle(potentials, known_total), known_total
+        potentials=potentials,
+        marginals=marginal_oracle(potentials, known_total),
+        total=known_total,
     )
 
 
@@ -310,9 +320,9 @@ def mle_from_marginals(
     marginals: CliqueVector,
     known_total: float,
     iters: int = 250,
-    marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle = marginal_oracles.message_passing_stable,
     callback_fn=lambda *_: None,
-    mesh: jax.sharding.Mesh | None = None
+    mesh: jax.sharding.Mesh | None = None,
 ) -> MarkovRandomField:
     """Compute the MLE Graphical Model from the marginals.
 
@@ -331,7 +341,9 @@ def mle_from_marginals(
     potentials = CliqueVector.zeros(marginals.domain, marginals.cliques)
     potentials = _optimize(loss_and_grad_fn, potentials, iters=iters)
     return MarkovRandomField(
-        potentials, marginal_oracle(potentials, known_total), known_total
+        potentials=potentials,
+        marginals=marginal_oracle(potentials, known_total),
+        total=known_total,
     )
 
 
@@ -341,10 +353,10 @@ def dual_averaging(
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle = marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-    mesh: jax.sharding.Mesh | None = None
+    mesh: jax.sharding.Mesh | None = None,
 ) -> MarkovRandomField:
     """Optimization using the Regularized Dual Averaging (RDA) algorithm.
 
@@ -372,7 +384,9 @@ def dual_averaging(
         domain, loss_fn, known_total, potentials
     )
     if loss_fn.lipschitz is None:
-        raise ValueError('Dual Averaging requires a loss function with Lipschitz gradients.')
+        raise ValueError(
+            "Dual Averaging requires a loss function with Lipschitz gradients."
+        )
 
     D = np.sqrt(domain.size() * np.log(domain.size()))  # upper bound on entropy
     Q = 0  # upper bound on variance of stochastic gradients
@@ -407,10 +421,10 @@ def interior_gradient(
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle: marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle = marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-    mesh: jax.sharding.Mesh | None = None
+    mesh: jax.sharding.Mesh | None = None,
 ):
     """Optimization using the Interior Point Gradient Descent algorithm.
 
@@ -440,7 +454,9 @@ def interior_gradient(
         domain, loss_fn, known_total, potentials
     )
     if loss_fn.lipschitz is None:
-        raise ValueError('Interior Gradient requires a loss function with Lipschitz gradients.')
+        raise ValueError(
+            "Interior Gradient requires a loss function with Lipschitz gradients."
+        )
 
     # Algorithm parameters
     c = 1
@@ -467,6 +483,7 @@ def interior_gradient(
         callback_fn(x)
 
     return mle_from_marginals(x, known_total)
+
 
 class _AcceleratedStepSearchState(NamedTuple):
     """State of the step search.
@@ -576,12 +593,12 @@ def _universal_accelerated_method_step_init(
     ) -> _AcceleratedStepSearchState:
         """Step when searching step."""
         # Computes new theta
-        prev_theta, prev_smooth_estim = carry.prev_theta, 1/carry.prev_stepsize
-        smooth_estim, stepsize = 1/carry.stepsize, carry.stepsize
+        prev_theta, prev_smooth_estim = carry.prev_theta, 1 / carry.prev_stepsize
+        smooth_estim, stepsize = 1 / carry.stepsize, carry.stepsize
         aux = 1 + 4 * smooth_estim / (prev_theta**2 * prev_smooth_estim)
         new_theta = 2 / (1 + jnp.sqrt(aux))
         # We hardcode the first iteration to be prev_theta=-1
-        theta = jnp.where(carry.prev_theta < 0., 1.0, new_theta)
+        theta = jnp.where(carry.prev_theta < 0.0, 1.0, new_theta)
 
         # Computes sequences of params
         y = (1 - theta) * carry.x + theta * carry.z
@@ -594,20 +611,20 @@ def _universal_accelerated_method_step_init(
         if linesearch:
             new_value = fun(x)
             if norm == 1:
-                sq_norm_diff = optax.tree_utils.tree_l1_norm(
-                    optax.tree_utils.tree_sub(x, y)
-                )**2
+                sq_norm_diff = (
+                    optax.tree_utils.tree_l1_norm(optax.tree_utils.tree_sub(x, y)) ** 2
+                )
             elif norm == 2:
                 sq_norm_diff = optax.tree_utils.tree_l2_norm(
                     optax.tree_utils.tree_sub(x, y), squared=True
                 )
             else:
-                raise ValueError(f'norm={norm} not supported')
+                raise ValueError(f"norm={norm} not supported")
             taylor_approx = (
                 value_y + grad_y.dot(x - y) + 0.5 * smooth_estim * sq_norm_diff
             )
             accept = new_value <= (taylor_approx + 0.5 * target_acc * theta)
-            new_stepsize = 1.1*stepsize
+            new_stepsize = 1.1 * stepsize
         else:
             accept = True
             new_stepsize = stepsize
@@ -648,10 +665,10 @@ def universal_accelerated_method(
     *,
     known_total: float | None = None,
     potentials: CliqueVector | None = None,
-    marginal_oracle:marginal_oracles.MarginalOracle=marginal_oracles.message_passing_stable,
+    marginal_oracle: marginal_oracles.MarginalOracle = marginal_oracles.message_passing_stable,
     iters: int = 1000,
     callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-    mesh: jax.sharding.Mesh | None = None
+    mesh: jax.sharding.Mesh | None = None,
 ):
     """Optimization using the Universal Accelerated MD algorithm."""
     loss_fn, known_total, potentials = _initialize(
@@ -665,7 +682,7 @@ def universal_accelerated_method(
         dual_proj=lambda x: marginal_oracle(x, known_total),
         max_iter_search=30,
         target_acc=0.0,
-        stepsize=1.0/known_total,
+        stepsize=1.0 / known_total,
         norm=2,
         linesearch=True,
     )

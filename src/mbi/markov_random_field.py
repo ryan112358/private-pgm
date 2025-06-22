@@ -7,7 +7,6 @@ number of records). It also offers methods for querying marginals and
 generating synthetic data.
 """
 from collections.abc import Sequence
-import attr
 import chex
 import numpy as np
 import pandas as pd
@@ -18,7 +17,7 @@ from .dataset import Dataset
 from .factor import Factor
 
 
-@attr.dataclass(frozen=True)
+@chex.dataclass(frozen=True, kw_only=False)
 class MarkovRandomField:
     """Represents a learned graphical model, storing potentials, marginals, and the total count."""
     potentials: CliqueVector
