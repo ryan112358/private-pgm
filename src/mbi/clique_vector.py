@@ -60,11 +60,17 @@ class CliqueVector:
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def random(cls, domain: Domain, cliques: list[Clique]):
+    def random(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
         """Creates a CliqueVector initialized with random factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.random(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
+
+    @classmethod
+    def abstract(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
+      cliques = [tuple(cl) for cl in cliques]
+      arrays = { cl : Factor.abstract(domain.project(cl)) for cl in cliques }
+      return cls(domain, cliques, arrays)
 
     @classmethod
     def from_projectable(cls, data: Projectable, cliques: list[Clique]):
@@ -176,7 +182,7 @@ class CliqueVector:
             self.arrays[clique] = value
         else:
             raise ValueError(f"Clique {clique} not in CliqueVector.")
-        
+
     def apply_sharding(self, mesh: jax.sharding.Mesh | None) -> CliqueVector:
         """Apply sharding constraint to each factor in the CliqueVector.
 
