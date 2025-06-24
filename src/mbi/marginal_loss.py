@@ -30,7 +30,15 @@ from .factor import Factor
 )
 @attr.dataclass(frozen=True)
 class LinearMeasurement:
-    """A class for representing a private linear measurement of a marginal."""
+    """A class for representing a private linear measurement of a marginal.
+
+    Attributes:
+        noisy_measurement: The noisy measurement of the marginal.
+        clique: The clique (a tuple of attribute names) defining the marginal.
+        stddev: The standard deviation of the noise added to the measurement.
+        query: A function that, when applied to a Factor, extracts the relevant
+            data vector for this measurement. Defaults to `Factor.datavector`.
+    """
 
     noisy_measurement: jax.Array = attr.field(converter=jnp.array)
     clique: Clique = attr.field(converter=tuple)
@@ -43,7 +51,16 @@ class LinearMeasurement:
 # Or it can be a pytree where the measurements are one node in the PyTree.
 @attr.dataclass(frozen=True)
 class MarginalLossFn:
-    """A Loss function over the concatenated vector of marginals."""
+    """A Loss function over the concatenated vector of marginals.
+
+    Attributes:
+        cliques: A list of cliques (tuples of attribute names) that define the
+            scope of the marginals used in the loss function.
+        loss_fn: A callable that takes a `CliqueVector` (representing the
+            marginals) and returns a numeric loss value.
+        lipschitz: An optional float representing the Lipschitz constant of the
+            gradient of the loss function. This is used for optimization algorithms.
+    """
 
     cliques: list[Clique]
     loss_fn: Callable[[CliqueVector], chex.Numeric]
