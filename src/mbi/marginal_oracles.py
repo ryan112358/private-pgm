@@ -24,7 +24,7 @@ from .clique_utils import clique_mapping
 from .clique_vector import CliqueVector
 from .domain import Domain
 from .factor import Factor
-
+from . import einsum
 _EINSUM_LETTERS = list(string.ascii_lowercase) + list(string.ascii_uppercase)
 
 
@@ -73,7 +73,6 @@ class MarginalOracle(Protocol):
         ...
 
 
-
 def sum_product(factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
     """Compute the sum-of-products of a list of Factors using einsum.
 
@@ -102,17 +101,14 @@ def sum_product(factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Fac
     return Factor(dom, values)
 
 
-def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
+def logspace_sum_product_fast(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
     """Numerically stable algorithm for computing sum product in log space.
 
     This seems to be the most stable algorithm for doing this computation that doesn't
-    require materializing sum(log_factors).  Materializing sum(log_factors) will
+    require materializing sum(log_factors). Materializing sum(log_factors) will
     in general give better numerical stability, but it comes at the cost of
-    increased memory usage.
-
-    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map
-    to compute log sum product sequentially.  This will also have the dual
-    benefit of using less memory than jnp.einsum in some hard cases.
+    increased memory usage. This can be potentially mitigated by using
+    scan_einsum with an appropriately chosen `sequential` kwarg from mbi.einsum.
 
     https://github.com/jax-ml/jax/issues/24915
 
@@ -134,7 +130,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
     return sum_product(stable_factors, dom, einsum_fn).log() + sum(maxes)
 
 
-def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
+def logspace_sum_product_stable_v1(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.einsum) -> Factor:
     """More stable implementation of logspace_sum_product.
 
     This ipmlementation may (or may not) materialize a Factor over the domain
@@ -142,8 +138,9 @@ def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> 
     Under JIT, there may be some instances where the compiler can figure out
     that it does not need to materialize this intermediate to compute the final output.
     """
+    del einsum_fn  # unused
     summed = sum(log_factors)  # Might help to put a sharding constraint here
-    return summed.logsumexp(summed.domain.marginalize(dom).attributes)
+    return summed.logsumexp(summed.domain.marginalize(dom).attributes).transpose(dom.attributes)
 
 
 def brute_force_marginals(
@@ -167,7 +164,7 @@ def einsum_marginals(
         potentials.domain,
         potentials.cliques,
         {
-            cl: logspace_sum_product(inputs, potentials[cl].domain, einsum_fn)
+            cl: logspace_sum_product_fast(inputs, potentials[cl].domain, einsum_fn)
             .normalize(total, log=True)
             .exp()
             .apply_sharding(mesh)
@@ -178,7 +175,10 @@ def einsum_marginals(
 
 @functools.partial(jax.jit, static_argnums=[2])
 def message_passing_stable(
-    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None
+    potentials: CliqueVector,
+    total: float = 1,
+    mesh: jax.sharding.Mesh | None = None,
+    jtree: nx.Graph | None = None
 ) -> CliqueVector:
     """Compute marginals from (log-space) potentials using the message passing algorithm.
 
@@ -192,6 +192,7 @@ def message_passing_stable(
         potentials: The (log-space) potentials of a graphical model.
         total: The normalization factor.
         mesh: The mesh over which the computation should be sharded.
+        jtree: An optional junction tree that defines the message passing order.
 
     Returns:
         The marginals of the graphical model, defined over the same set of cliques
@@ -200,7 +201,8 @@ def message_passing_stable(
     potentials = potentials.apply_sharding(mesh)
     domain, cliques = potentials.domain, potentials.cliques
 
-    jtree = junction_tree.make_junction_tree(domain, cliques)[0]
+    if jtree is None:
+      jtree = junction_tree.make_junction_tree(domain, cliques)[0]
     message_order = junction_tree.message_passing_order(jtree)
     maximal_cliques = junction_tree.maximal_cliques(jtree)
 
@@ -219,9 +221,14 @@ def message_passing_stable(
 
     return beliefs.normalize(total, log=True).exp().contract(cliques).apply_sharding(mesh)
 
-@functools.partial(jax.jit, static_argnums=[2])
+@functools.partial(jax.jit, static_argnums=[2, 3, 4, 5])
 def message_passing_fast(
-    potentials: CliqueVector, total: float = 1, mesh: jax.sharding.Mesh | None = None, einsum_fn=jnp.einsum
+    potentials: CliqueVector,
+    total: float = 1,
+    mesh: jax.sharding.Mesh | None = None,
+    einsum_fn=jnp.einsum,
+    jtree: nx.Graph | None = None,
+    logspace_sum_product_fn=logspace_sum_product_fast
 ) -> CliqueVector:
     """Compute marginals from (log-space) potentials using the message passing algorithm.
 
@@ -238,6 +245,8 @@ def message_passing_fast(
         potentials: The (log-space) potentials of a graphical model.
         total: The normalization factor.
         mesh: The mesh over which the computation should be sharded.
+        einsum_fn: A function with the same API and semantics as jnp.einsum.
+        jtree: An optional junction tree that defines the message passing order.
 
     Returns:
         The marginals of the graphical model, defined over the same set of cliques
@@ -279,7 +288,7 @@ def message_passing_fast(
             if not any(attr in input.domain.attributes for input in inputs):
                 inputs.append(Factor.zeros(domain.project([attr])))
 
-        messages[(i, j)] = logspace_sum_product(inputs, shared, einsum_fn=einsum_fn).apply_sharding(mesh)
+        messages[(i, j)] = logspace_sum_product_fn(inputs, shared, einsum_fn=einsum_fn).apply_sharding(mesh)
 
     beliefs = {}
     for cl in maximal_cliques:
@@ -288,7 +297,7 @@ def message_passing_fast(
         inputs = input_potentials + input_messages
         for cl2 in inverse_mapping[cl]:
             beliefs[cl2] = (
-                logspace_sum_product(inputs, domain.project(cl2), einsum_fn=einsum_fn)
+                logspace_sum_product_fn(inputs, domain.project(cl2), einsum_fn=einsum_fn)
                 .normalize(total, log=True)
                 .exp()
                 .apply_sharding(mesh)
@@ -394,7 +403,9 @@ def calculate_many_marginals(
     """ Calculates marginals for all the projections in the list using
 
     Implements Algorithm from section 10.3 in Koller and Friedman.
-    This method may be faster than calling variable_elimination many times
+    This method may be faster than calling variable_elimination many times.
+    Note: this implementation is experimental, and further work may be needed
+    to optimize it. Contributions are welcome.
 
     Args:
         potentials: Potentials of a graphical model.

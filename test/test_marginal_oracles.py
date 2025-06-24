@@ -6,6 +6,7 @@ from mbi import marginal_oracles
 import numpy as np
 from parameterized import parameterized
 import itertools
+import functools
 
 
 def _variable_elimination_oracle(
@@ -29,12 +30,18 @@ def _bulk_variable_elimination_oracle(potentials: CliqueVector, total: float = 1
         potentials, potentials.cliques, total
     )
 
+message_passing_fast_v1 = functools.partial(
+  marginal_oracles.message_passing_fast,
+  logspace_sum_product_fn=marginal_oracles.logspace_sum_product_stable_v1
+)
+
 
 _ORACLES = [
     marginal_oracles.brute_force_marginals,
     marginal_oracles.einsum_marginals,
     marginal_oracles.message_passing_stable,
     marginal_oracles.message_passing_fast,
+    message_passing_fast_v1,
     _variable_elimination_oracle,
     _calculate_many_oracle,
     _bulk_variable_elimination_oracle
