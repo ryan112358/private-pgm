@@ -98,6 +98,21 @@ class Dataset:
 )
 @attr.dataclass(frozen=True)
 class JaxDataset:
+    """Represents a dataset for use with JAX, optimized for JIT compilation.
+
+    This class is similar to the standard `Dataset` but is designed to work
+    efficiently within JAX's ecosystem, particularly with JIT-compiled functions.
+    It stores data as JAX arrays and ensures compatibility with JAX transformations.
+
+    Attributes:
+        data (jax.Array): A 2D JAX array where rows represent records and columns
+            represent attributes. The data should be integral.
+        domain (Domain): A `Domain` object describing the attributes and their
+            possible discrete values.
+        weights (jax.Array | None): An optional 1D JAX array representing the
+            weight for each record in the dataset. If None, all records are
+            assumed to have a weight of 1.
+    """
     data: jax.Array = attr.field(converter=jnp.asarray)
     domain: Domain
     weights: jax.Array | None = None

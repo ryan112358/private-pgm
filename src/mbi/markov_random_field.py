@@ -19,7 +19,22 @@ from .factor import Factor
 
 @chex.dataclass(frozen=True, kw_only=False)
 class MarkovRandomField:
-    """Represents a learned graphical model, storing potentials, marginals, and the total count."""
+    """Represents a learned graphical model.
+
+    This class encapsulates the components of a Markov Random Field that has been
+    learned from data. It stores the learned potentials, the resulting marginal
+    distributions over specified cliques, and the total count (e.g., number of
+    records or equivalent sample size) associated with the model.
+
+    Attributes:
+        potentials (CliqueVector): A `CliqueVector` containing the learned
+            potential functions for the cliques in the model.
+        marginals (CliqueVector): A `CliqueVector` containing the marginal
+            distributions for a set of cliques, derived from the potentials.
+        total (chex.Numeric): The total count or effective sample size
+            represented by the model. This is often used for scaling or
+            interpreting the marginals.
+    """
     potentials: CliqueVector
     marginals: CliqueVector
     total: chex.Numeric = 1
