@@ -9,6 +9,7 @@ Interior Gradient, but using message_passing_fast with mirror descent.
 """
 
 import collections
+import concurrent.futures
 import functools
 import itertools
 import string
@@ -109,7 +110,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
     in general give better numerical stability, but it comes at the cost of
     increased memory usage.
 
-    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map 
+    TODO(ryan112358): consider using jax.lax.scan and/or jax.lax.map
     to compute log sum product sequentially.  This will also have the dual
     benefit of using less memory than jnp.einsum in some hard cases.
 
@@ -123,8 +124,8 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
 
     Returns:
         log sum_{S - D} prod_i exp(F_i),
-        where 
-            * F_i = log_factors[i], 
+        where
+            * F_i = log_factors[i],
             * D is the input domain,
             * S is the union of the domains of F_i
     """
@@ -135,7 +136,7 @@ def logspace_sum_product(log_factors: list[Factor], dom: Domain, einsum_fn=jnp.e
 
 def logspace_sum_product_very_stable(log_factors: list[Factor], dom: Domain) -> Factor:
     """More stable implementation of logspace_sum_product.
-        
+
     This ipmlementation may (or may not) materialize a Factor over the domain
     of all elements of log_factors.  Without JIT, it will materialize this "super-factor".
     Under JIT, there may be some instances where the compiler can figure out
@@ -298,7 +299,7 @@ def message_passing_fast(
 Clique = tuple[str, ...]
 
 def variable_elimination(
-    potentials: CliqueVector, 
+    potentials: CliqueVector,
     clique: Clique,
     total: float = 1,
     mesh: jax.sharding.Mesh | None = None,
@@ -340,18 +341,61 @@ def variable_elimination(
         .apply_sharding(mesh)
     )
 
+
+def bulk_variable_elimination(
+    potentials: CliqueVector,
+    marginal_queries: list[tuple[str, ...]],
+    total: float = 1.0,
+    mesh: jax.sharding.Mesh | None = None,
+) -> CliqueVector:
+    """Compute the marginals of the graphical model with the given potentials.
+
+    Unlike other marginal oracles, which only compute marginals for cliques
+    in the potentials vector, this function can compute arbitrary marginals
+    from an arbitrary model. Both runtime and compilation time can be expensive
+    when there are a large number of marginal queries. This function compiles
+    and runs variable_elimination for one query at a time, using parallelism
+    and asyncronous computation do do the compilation in the background, while
+    running variable_eliminatoin sequentially one query at a time.
+
+    Args:
+      potentials: The (log-space) potentials of a Graphical Model.
+      marginal_queries: A list of cliques to obtain marginals for.
+      total: The normalization factor.
+      mesh: The mesh over which the computation should be sharded.
+
+    Returns:
+      A CliqueVector with the marginals computed over the specified cliques.
+    """
+    jitted = jax.jit(variable_elimination, static_argnums=(1, 3))
+
+    # Async + parallel precompilation.
+    def _precompile(query):
+      return query, jitted.lower(potentials, query, total, mesh).compile()
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+      futures = [executor.submit(_precompile, cl) for cl in marginal_queries]
+
+      results = {}
+      for future in concurrent.futures.as_completed(futures):
+        query, compiled_fn = future.result()
+        results[query] = compiled_fn(potentials, total)
+
+      return CliqueVector(potentials.domain, marginal_queries, results)
+
+
 def calculate_many_marginals(
-    potentials: CliqueVector, 
-    marginal_queries: list[Clique], 
+    potentials: CliqueVector,
+    marginal_queries: list[Clique],
     total: float = 1.0,
     belief_propagation_oracle: MarginalOracle = message_passing_stable,
-    mesh: jax.sharding.Mesh | None = None
+    mesh: jax.sharding.Mesh | None = None,
 ) -> CliqueVector:
     """ Calculates marginals for all the projections in the list using
-        
+
     Implements Algorithm from section 10.3 in Koller and Friedman.
     This method may be faster than calling variable_elimination many times
-    
+
     Args:
         potentials: Potentials of a graphical model.
         marginal_queries: a list of cliques whose marginals are desired.
@@ -364,7 +408,7 @@ def calculate_many_marginals(
     jtree = junction_tree.make_junction_tree(potentials.domain, potentials.cliques)[0]
     max_cliques = junction_tree.maximal_cliques(jtree)
     neighbors = { i : tuple(jtree.neighbors(i)) for i in max_cliques }
-    
+
     # TODO: let's see if we can get rid of this similar to message_passing_fast
     potentials = potentials.expand(max_cliques)
 
@@ -384,7 +428,7 @@ def calculate_many_marginals(
     # not sure why this API changed and why we need to do this hack.
     nx.set_edge_attributes(jtree, values=1.0, name='weight')  # type: ignore
     pred, dist = nx.floyd_warshall_predecessor_and_distance(jtree) #, weight=None)
-    
+
     order_fn = lambda x: dist[x[0]][x[1]]
 
     results = {}
@@ -398,9 +442,9 @@ def calculate_many_marginals(
             X = results[(Ci, Cl)]
             S = set(Cl) - set(Ci) - set(Cj)
             results[(Ci, Cj)] = results[(Cj, Ci)] = (X*Y).sum(S)
-        
+
     results = { domain.canonical(key[0]+key[1]) : results[key] for key in results }
-    
+
     answers = { }
     for cl in marginal_queries:
         for attr in results:
@@ -414,7 +458,7 @@ def calculate_many_marginals(
     return CliqueVector(domain, marginal_queries, answers)
 
 def kron_query(
-    potentials: CliqueVector, 
+    potentials: CliqueVector,
     query_factors: dict[str, jax.Array],
     total: float = 1,
     mesh: jax.sharding.Mesh | None = None,

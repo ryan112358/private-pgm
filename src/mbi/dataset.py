@@ -92,17 +92,13 @@ class Dataset:
 
 
 @functools.partial(
-    jax.tree_util.register_dataclass, 
-    meta_fields=["domain"], 
+    jax.tree_util.register_dataclass,
+    meta_fields=["domain"],
     data_fields=["data", "weights"]
 )
 @attr.dataclass(frozen=True)
 class JaxDataset:
-    """Represents a dataset for use with JAX, optimized for JIT compilation.
-
-    This class is similar to the standard `Dataset` but is designed to work
-    efficiently within JAX's ecosystem, particularly with JIT-compiled functions.
-    It stores data as JAX arrays and ensures compatibility with JAX transformations.
+    """Represents a discrete dataset backed by a JAX Array.
 
     Attributes:
         data (jax.Array): A 2D JAX array where rows represent records and columns
@@ -130,7 +126,7 @@ class JaxDataset:
                 raise ValueError('Data must be non-negative.')
             if self.data[:, i].max() >= self.domain[ax]:
                 raise ValueError('Data must be within the bounds of the domain.')
-            
+
     @staticmethod
     def synthetic(domain: Domain, records: int) -> JaxDataset:
         """Generate synthetic data conforming to the given domain
