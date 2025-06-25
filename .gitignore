@@ -1,3 +1,14 @@
-__pycache__
-*.pyc
+# Virtual environment
 .venv/
+
+# Python build artifacts and package metadata
+build/
+*.egg-info/
+
+# Common Python cache directories
+__pycache__/
+*.pyc
+
+# IDE and OS specific files
+.vscode/
+.ipynb_checkpoints/ 
