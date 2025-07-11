@@ -48,6 +48,7 @@ The files in the "examples" folder are meant to demonstrate how to use Private-P
 
 If you would simply like to compare against mechanisms that are built on top of Private-PGM, please refer to the "mechanisms" folder.  These will contain implementations of several mechanisms that are designed to work on a broad class of datasets and workloads.  The mechanisms currently available here are:
 
+* [JAM](https://proceedings.mlr.press/v238/fuentes24a.html) - An iterative method that utilizes public data
 * [AIM](https://arxiv.org/abs/2201.12677) - An adaptive and iterative mechanism
 * [MST](https://arxiv.org/abs/2108.04978) - Winning solution to the 2018 NIST synthetic data challenge.
 * [Adaptive Grid](https://github.com/ryan112358/nist-synthetic-data-2021) - Second place solution to the 2020 NIST synthetic data challenge.
