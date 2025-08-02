@@ -99,10 +99,10 @@ class MargNN:
 
         self.lr = lr
         self.iterations = iterations
-        self.z = self.uniform_sample()
+        self.z = self._uniform_sample()
 
 
-    def find_query_index(self, marginals):
+    def _find_query_index(self, marginals):
         index, answer, size, weight = [], [], [], []
         for marg, matrix, w in marginals:
             starts = [
@@ -122,7 +122,7 @@ class MargNN:
         return index, answer, size, weight
 
 
-    def merge_marginals(self, marginals):
+    def _merge_marginals(self, marginals):
         merged = {}
         for name, matrix, w in marginals:
             if name not in merged:
@@ -137,8 +137,8 @@ class MargNN:
 
 
     def store_marginals(self, marginals):
-        merged = self.merge_marginals(marginals)
-        self.queries, self.real_answers, self.query_size, self.query_weight = self.find_query_index(merged)
+        merged = self._merge_marginals(marginals)
+        self.queries, self.real_answers, self.query_size, self.query_weight = self._find_query_index(merged)
 
         K, D = len(self.queries), int(self.cum_num_classes[-1])
         lengths = [len(q) for q in self.queries]
@@ -150,10 +150,7 @@ class MargNN:
         self.Q_mask = mask
 
 
-    def uniform_sample(self):
-        '''
-        Sample a uniform distributed input
-        '''
+    def _uniform_sample(self):
         if not hasattr(self, 'z') or self.resample:
             parts = []
             for i in range(len(self.cum_num_classes) - 1):
@@ -168,7 +165,7 @@ class MargNN:
             return self.z
 
 
-    def predict_x(self, output):
+    def _predict_x(self, output):
         outs = []
         for i in range(len(self.cum_num_classes) - 1):
             s, e = self.cum_num_classes[i], self.cum_num_classes[i+1]
@@ -183,7 +180,7 @@ class MargNN:
 
         # --- capture static variables ---
         model = self.model
-        predict_x = self.predict_x
+        predict_x = self._predict_x
 
         # --- core training function ---
         @jax.jit
@@ -215,7 +212,7 @@ class MargNN:
         # --- main training process ---
         variables = {'params': self.params, 'batch_stats': self.batch_stats}
         for iter in range(self.iterations):
-            z = self.uniform_sample()
+            z = self._uniform_sample()
 
             variables, self.opt_state, loss = train_step(
                 variables, 
@@ -234,13 +231,13 @@ class MargNN:
 
 
     def sample(self, num_samples):
-        z = self.uniform_sample()
+        z = self._uniform_sample()
         out = self.model.apply(
             {'params': self.params, 'batch_stats': self.batch_stats},
             z,
             train=False
         )
-        x_pred = jnp.exp(self.predict_x(out))
+        x_pred = jnp.exp(self._predict_x(out))
 
         self.key, subkey = jax.random.split(self.key)
         idx = jax.random.randint(subkey, (num_samples,), 0, x_pred.shape[0])
@@ -251,19 +248,19 @@ class MargNN:
             s, e = self.cum_num_classes[i], self.cum_num_classes[i+1]
             p = batch[:, s:e]
             self.key, sk = jax.random.split(self.key)
-            ids = jax.random.categorical(sk, jnp.log(p), axis=-1)
+            ids = jax.random.categorical(sk, jnp.log(p), axis=-1) # categorical requires log prob
             result.append(ids)
         return np.stack([np.array(r) for r in result], axis=1)
 
 
     def obtain_sample_marginals(self, marginals):
-        z = self.uniform_sample()
+        z = self._uniform_sample()
         out = self.model.apply(
             {'params': self.params, 'batch_stats': self.batch_stats},
             z,
             train=False
         )
-        x_pred = jnp.exp(self.predict_x(out))
+        x_pred = jnp.exp(self._predict_x(out))
 
         return [self._map_to_marginal(x_pred, m) for m in marginals]
     

@@ -15,6 +15,7 @@ from .marginal_loss import LinearMeasurement, MarginalLossFn
 from .marginal_oracles import MarginalOracle
 from .markov_random_field import MarkovRandomField
 from .nn_generator import MargNN
+from .relaxed_projection import RelaxedProjection
 
 Clique = tuple[str, ...]
 
@@ -35,4 +36,5 @@ __all__ = [
     'callbacks',
     'junction_tree',
     'marginal_oracles',
+    'RelaxedProjection'
 ]
