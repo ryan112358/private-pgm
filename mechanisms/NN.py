@@ -42,7 +42,8 @@ class MargDLGen():
         self.save_loss = False
 
         self.model = MargNN(
-            domain = self.domain.config
+            domain = self.domain.config,
+            iterations = 2000
         )
 
 
@@ -73,85 +74,24 @@ class MargDLGen():
         else:
             pass 
 
-
-
-    def fit_adaptive(self):
-        select_rho = 0.1*self.rho/(16*len(self.dataset.domain))
-        measure_rho = 0.9*self.rho/(16*len(self.dataset.domain))
-        self.est_n = 0  # an estimation of number of data records
-        rho_used = 0.0
-        weight = 1.0
-        enhance_weight = len(self.dataset.domain) # a training trick
-
-        one_way_marginals = list(itertools.combinations(self.domain.attrs, 1))
+    def fit(self):
+        """
+        This is a simple example, fitting NN with all 
+        one-way and two-way marginals
+        """
         selected_marginals = []
-        for cl in one_way_marginals:
+        marginals = list(itertools.combinations(self.domain.attrs, 1)) + list(itertools.combinations(self.domain.attrs, 2))
+        rho = self.rho/len(marginals)
+
+        for i in range(len(marginals)):
+            cl = marginals[i]
             marginal = self.dataset.project(cl).datavector()
-            marginal += np.random.normal(loc=0, scale=1/np.sqrt(2*measure_rho), size=marginal.shape)
+            marginal += np.random.normal(loc=0, scale=1/np.sqrt(2*rho), size=marginal.shape)
 
             selected_marginals.append(
-                (cl, scale_vector(marginal), weight)
+                (cl, scale_vector(marginal), 1.0)
             )
-            rho_used += measure_rho * len(one_way_marginals)
-            self.update_est_n(np.sum(marginal), measure_rho)
 
-        print('-'*100)
-        print('Initialization')
-        self.model.store_marginals(selected_marginals)
-        self.model.train_model()
-        print('-'*100)
-
-        two_way_marginals = list(itertools.combinations(self.domain.attrs, 2))
-        candidates_mask = {cl: 1 for cl in one_way_marginals}
-        terminate = False
-
-        round = 1
-        while not terminate:
-            marg_candidates = two_way_marginals
-            candidates_select_weight = {cl: 2.0 for cl in marg_candidates}
-
-            id = self.exponential_marginal_selection(marg_candidates, select_rho, measure_rho, candidates_select_weight)
-            cl = marg_candidates[id]
-
-            if cl not in candidates_mask.keys():
-                candidates_mask[cl] = 1
-            else:
-                candidates_mask[cl] += 1
-            print('selected marginal:', cl)
-
-            marginal = self.dataset.project(cl).datavector()
-            marginal += np.random.normal(loc=0, scale=1/np.sqrt(2*measure_rho), size=marginal.shape)
-
-            one_selected_marginals = [(cl, scale_vector(marginal), enhance_weight*weight)]
-            selected_marginals += one_selected_marginals
-            w_t = self.model.obtain_sample_marginals([cl])[0]
-
-            self.model.store_marginals(selected_marginals)   
-            self.model.train_model()
-            selected_marginals[-1] = (one_selected_marginals[0][0], one_selected_marginals[0][1], weight)
-
-            rho_used += measure_rho + select_rho
-            if rho_used + measure_rho + select_rho > self.rho:
-                weight = weight * np.sqrt(0.9 * (self.rho - rho_used)/measure_rho)
-                measure_rho = 0.9*(self.rho - rho_used) 
-                select_rho = 0.1*(self.rho - rho_used) 
-                terminate = True
-            else:
-                w_t_plus_1 = self.model.obtain_sample_marginals([cl])[0]
-                if self.est_n * np.linalg.norm(w_t_plus_1 - w_t, 1) < np.sqrt(1/(measure_rho * np.pi)) * w_t_plus_1.size:
-                    if candidates_mask[cl] == 1:
-                        print('-'*100)
-                        print('!!!!!!!!!!!!!!!!! sigma updated')
-                        print('-'*100)
-                        weight *= np.sqrt(2)
-                        measure_rho *= 2
-                        select_rho *= 2
-            
-            print('-'*100)
-            round += 1
-
-        print('finish marginal selection')
-        print('selected marginals:', list(candidates_mask.keys()))
         self.model.store_marginals(selected_marginals)
         self.model.train_model()
 
@@ -170,7 +110,7 @@ def default_params():
     params = {}
     params["dataset"] = "../data/adult.csv"
     params["domain"] = "../data/adult-domain.json"
-    params["epsilon"] = 10.0
+    params["epsilon"] = 1.0
     params["delta"] = 1e-9
     
     return params
@@ -195,7 +135,7 @@ if __name__ == '__main__':
         dataset = data,
         domain = data.domain
     )
-    generator.fit_adaptive()
+    generator.fit()
     synth = generator.sample(data.df.shape[0])
 
     workload = list(itertools.combinations(data.domain, 2))
