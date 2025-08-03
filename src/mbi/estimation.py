@@ -35,7 +35,7 @@ from .markov_random_field import MarkovRandomField
 
 class Estimator(Protocol):
     """
-    Defines the callable signature for graphical model estimator functions.
+    Defines the callable signature for marginal-based estimators.
 
     An estimator estimates a discrete distribution, or more generally
     a `Projectable' object from a loss function defined over it's 
