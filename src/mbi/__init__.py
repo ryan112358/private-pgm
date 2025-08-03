@@ -15,10 +15,13 @@ from .marginal_loss import LinearMeasurement, MarginalLossFn
 from .marginal_oracles import MarginalOracle
 from .markov_random_field import MarkovRandomField
 
+Clique = tuple[str, ...]
+
 __all__ = [
     'Domain',
     'Dataset',
     'Factor',
+    'Clique',
     'CliqueVector',
     'LinearMeasurement',
     'MarginalLossFn',

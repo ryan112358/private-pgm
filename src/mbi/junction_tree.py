@@ -19,7 +19,6 @@ from .domain import Domain
 Clique: TypeAlias = tuple[str, ...]
 
 
-
 def maximal_cliques(junction_tree: nx.Graph) -> list[Clique]:
     """Return the list of maximal cliques in the model."""
     return list(nx.dfs_preorder_nodes(junction_tree))

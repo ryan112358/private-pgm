@@ -28,11 +28,19 @@ from .factor import Factor, Projectable
 )
 @attr.dataclass
 class CliqueVector:
-    """This is a convenience class for simplifying arithmetic over the
-    concatenated vector of marginals and potentials.
+    """Manages a collection of factors, each associated with a clique.
 
-    These vectors are represented as a dictionary mapping cliques (subsets of attributes)
-    to marginals/potentials (Factor objects)
+    This class provides a structure for holding and operating on multiple
+    `Factor` objects, where each factor corresponds to a clique (a subset of
+    attributes) within a larger domain. It's particularly useful in the context
+    of graphical models for representing sets of potentials or marginals.
+
+    Attributes:
+        domain (Domain): The overall domain that encompasses all cliques.
+        cliques (list[Clique]): A list of cliques (tuples of attribute names)
+            for which factors are stored.
+        arrays (dict[Clique, Factor]): A dictionary mapping each clique in
+            `cliques` to its corresponding `Factor` object.
     """
 
     domain: Domain
@@ -60,11 +68,17 @@ class CliqueVector:
         return cls(domain, cliques, arrays)
 
     @classmethod
-    def random(cls, domain: Domain, cliques: list[Clique]):
+    def random(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
         """Creates a CliqueVector initialized with random factors for each clique."""
         cliques = [tuple(cl) for cl in cliques]
         arrays = {cl: Factor.random(domain.project(cl)) for cl in cliques}
         return cls(domain, cliques, arrays)
+
+    @classmethod
+    def abstract(cls, domain: Domain, cliques: list[Clique]) -> CliqueVector:
+      cliques = [tuple(cl) for cl in cliques]
+      arrays = { cl : Factor.abstract(domain.project(cl)) for cl in cliques }
+      return cls(domain, cliques, arrays)
 
     @classmethod
     def from_projectable(cls, data: Projectable, cliques: list[Clique]):
@@ -176,7 +190,7 @@ class CliqueVector:
             self.arrays[clique] = value
         else:
             raise ValueError(f"Clique {clique} not in CliqueVector.")
-        
+
     def apply_sharding(self, mesh: jax.sharding.Mesh | None) -> CliqueVector:
         """Apply sharding constraint to each factor in the CliqueVector.
 

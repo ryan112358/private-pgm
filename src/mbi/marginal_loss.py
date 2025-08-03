@@ -30,7 +30,15 @@ from .factor import Factor
 )
 @attr.dataclass(frozen=True)
 class LinearMeasurement:
-    """A class for representing a private linear measurement of a marginal."""
+    """A class for representing a private linear measurement of a marginal.
+
+    Attributes:
+        noisy_measurement: The noisy measurement of the marginal.
+        clique: The clique (a tuple of attribute names) defining the marginal.
+        stddev: The standard deviation of the noise added to the measurement.
+        query: A linear function that, when applied to a Factor, extracts a
+        a vector with the same shape and interpretation as `noisy_measurement`.
+    """
 
     noisy_measurement: jax.Array = attr.field(converter=jnp.array)
     clique: Clique = attr.field(converter=tuple)
@@ -43,7 +51,16 @@ class LinearMeasurement:
 # Or it can be a pytree where the measurements are one node in the PyTree.
 @attr.dataclass(frozen=True)
 class MarginalLossFn:
-    """A Loss function over the concatenated vector of marginals."""
+    """A Loss function over the concatenated vector of marginals.
+
+    Attributes:
+        cliques: A list of cliques (tuples of attribute names) that define the
+            scope of the marginals used in the loss function.
+        loss_fn: A callable that takes a `CliqueVector` (representing the
+            marginals) and returns a numeric loss value.
+        lipschitz: An optional float representing the Lipschitz constant of the
+            gradient of the loss function. This is used for optimization algorithms.
+    """
 
     cliques: list[Clique]
     loss_fn: Callable[[CliqueVector], chex.Numeric]
@@ -51,11 +68,11 @@ class MarginalLossFn:
 
     def __call__(self, marginals: CliqueVector) -> chex.Numeric:
         return self.loss_fn(marginals)
-    
+
 
 def calculate_l2_lipschitz(domain: Domain, cliques: list[Clique], loss_fn: Callable[[CliqueVector], chex.Numeric]) -> float:
     """Estimate the Lipschitz constant of L(x) = || f(x) - y ||_2^2 where f is a linear function.
-    
+
     The Lipschitz constant can usually be obtained via the largest eigenvalue of the Hessian, which
     for linear functions represented in matrix form is A^T A.  This function computes the same
     value without materializing this n x n matrix by using power iteration and leveraging jax.jvp.
@@ -116,7 +133,7 @@ def from_linear_measurements(
             if norm == "l2":
                 loss = jnp.sqrt(loss)
         return loss
-    
+
     if norm == "l2" and not normalize and domain is not None:
         lipschitz = calculate_l2_lipschitz(domain, maximal_cliques, loss_fn)
         return MarginalLossFn(maximal_cliques, loss_fn, lipschitz)

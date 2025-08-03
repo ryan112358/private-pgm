@@ -92,12 +92,23 @@ class Dataset:
 
 
 @functools.partial(
-    jax.tree_util.register_dataclass, 
-    meta_fields=["domain"], 
+    jax.tree_util.register_dataclass,
+    meta_fields=["domain"],
     data_fields=["data", "weights"]
 )
 @attr.dataclass(frozen=True)
 class JaxDataset:
+    """Represents a discrete dataset backed by a JAX Array.
+
+    Attributes:
+        data (jax.Array): A 2D JAX array where rows represent records and columns
+            represent attributes. The data should be integral.
+        domain (Domain): A `Domain` object describing the attributes and their
+            possible discrete values.
+        weights (jax.Array | None): An optional 1D JAX array representing the
+            weight for each record in the dataset. If None, all records are
+            assumed to have a weight of 1.
+    """
     data: jax.Array = attr.field(converter=jnp.asarray)
     domain: Domain
     weights: jax.Array | None = None
@@ -115,7 +126,7 @@ class JaxDataset:
                 raise ValueError('Data must be non-negative.')
             if self.data[:, i].max() >= self.domain[ax]:
                 raise ValueError('Data must be within the bounds of the domain.')
-            
+
     @staticmethod
     def synthetic(domain: Domain, records: int) -> JaxDataset:
         """Generate synthetic data conforming to the given domain

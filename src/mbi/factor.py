@@ -74,6 +74,10 @@ class Factor:
         """Creates a Factor object with random values (uniform 0-1)."""
         return cls(domain, np.random.rand(*domain.shape))
 
+    @classmethod
+    def abstract(cls, domain: Domain) -> Factor:
+      return cls(domain, jax.ShapeDtypeStruct(domain.shape, jnp.float64))
+
     # Reshaping operations
     def transpose(self, attrs: Sequence[str]) -> Factor:
         """Rearranges the factor's axes according to the new attribute order."""
@@ -207,7 +211,7 @@ class Factor:
     def datavector(self, flatten: bool = True) -> jax.Array:
         """Returns the factor's values as a flattened vector or original array."""
         return self.values.flatten() if flatten else self.values
-    
+
     def pad(self, mesh: jax.sharding.Mesh | None, pad_value: Literal[0, '-inf']) -> Factor:
         if mesh is None:
             return self
@@ -217,7 +221,7 @@ class Factor:
                 size = self.domain[ax]
                 num_shards = mesh.axis_sizes[mesh.axis_names.index(ax)]
                 pad_amounts[i] = -size % num_shards
-        
+
         values = jnp.pad(
             self.values,
             pad_width=tuple((0, w) for w in pad_amounts),
@@ -236,7 +240,7 @@ class Factor:
 
     def apply_sharding(self, mesh: jax.sharding.Mesh | None) -> Factor:
         """Apply sharding constraint to the factor values.
-        
+
         The sharding strategy is automatically determined based on the provided
         mesh, and the factor domain.
 
@@ -258,10 +262,10 @@ class Factor:
             domain=self.domain,
             values=jax.lax.with_sharding_constraint(self.values, sharding)
         )
-    
+
 class Projectable(Protocol):
     """A projectable is an object that can be projected onto a subset of attributes to compute a marginal.
-    
+
     Example projectables:
         * Dataset
         * Factor

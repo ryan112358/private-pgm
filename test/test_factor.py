@@ -12,6 +12,10 @@ class TestFactor(unittest.TestCase):
         values = np.random.rand(*shape)
         self.factor = Factor(domain, values)
 
+    def test_abstract(self):
+        domain = Domain(["a", "b", "c", "d"], [2, 3, 4, 5])
+        factor = Factor.abstract(domain)
+
     def test_expand(self):
         domain = Domain(["a", "b", "c", "d"], [2, 3, 4, 5])
         res = self.factor.expand(domain)

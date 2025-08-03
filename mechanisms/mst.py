@@ -58,7 +58,7 @@ def compress_domain(data, measurements):
       I2[-1] = 1.0 / np.sqrt(y.size - y2.size + 1.0)
       y2[-1] /= np.sqrt(y.size - y2.size + 1.0)
       # temporary hack to get MST working again
-      query = (lambda I2: lambda mu: mu * I2)(I2)  
+      query = (lambda I2: lambda mu: mu.datavector() * I2)(I2)  
       new_measurements.append(LinearMeasurement(y2, M.clique, M.stddev, query=query))
   undo_compress_fn = lambda data: reverse_data(data, supports)
   return transform_data(data, supports), new_measurements, undo_compress_fn
