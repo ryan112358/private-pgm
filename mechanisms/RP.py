@@ -7,7 +7,7 @@ import json
 import itertools
 import argparse
 import jax.numpy as jnp
-from mbi import Dataset, Domain, RelaxedProjection
+from mbi import Dataset, Domain, relaxed_projection_estimation
 from cdp2adp import cdp_rho
 
 
@@ -38,17 +38,35 @@ class RPGen():
         self.domain = domain
         self.save_loss = False
 
-        self.model = RelaxedProjection(
-            dataset = self.dataset,
-            stat_dim = [1,2]
-        )
-
 
     def fit(self):
         """
         This is a simple example, fitting RP with all 
-        one-way and two-way marginals
+        one-way and two-way marginals without DP
         """
+        print('Start fitting all')
+        selected_marginals = []
+        marginals = list(itertools.combinations(self.domain.attrs, 1)) + list(itertools.combinations(self.domain.attrs, 2))
+
+        for i in range(len(marginals)):
+            cl = marginals[i]
+            marginal = self.dataset.project(cl).datavector()
+            selected_marginals.append(
+                (cl, scale_vector(marginal))
+            )
+
+        self.model = relaxed_projection_estimation(
+            self.domain,
+            selected_marginals
+        )
+
+
+    def fit_noisy_marginal(self):
+        """
+        This is a simple example, fitting RP with all 
+        one-way and two-way marginals with DP
+        """
+        print('Start fitting all')
         selected_marginals = []
         marginals = list(itertools.combinations(self.domain.attrs, 1)) + list(itertools.combinations(self.domain.attrs, 2))
         rho = self.rho/len(marginals)
@@ -62,12 +80,14 @@ class RPGen():
                 (cl, scale_vector(marginal))
             )
 
-        self.model.store_marginals(selected_marginals)
-        self.model.run()
+        self.model = relaxed_projection_estimation(
+            self.domain,
+            selected_marginals
+        )
         
 
     def sample(self, num_samples):
-        return self.model.sample(num_samples)
+        return self.model.synthetic_data(num_samples)
    
 
 # --- Example Usage ---
