@@ -1,16 +1,15 @@
 # Installation
 
-Private-PGM requires Python>=3.9. You can install private-pgm in one of two ways.
-If you just want to use Private-PGM, the first command should suffice.  If you are
-interested in making changes or contributing to Private-PGM, the second command would
-be preferable.
+`mbi` requires Python>=3.9. You can install `mbi` from PyPI by running:
 
 ```
-$ pip install git+https://github.com/ryan112358/private-pgm.git
+pip install mbi==1.0.0
 ```
 
+If you are interested in making changes or contributing to `mbi`, you can install it from source:
+
 ```
-$ git clone https://github.com/ryan112358/private-pgm.git
-$ cd private-pgm
-$ pip install .
+git clone https://github.com/ryan112358/mbi.git
+cd mbi
+pip install .
 ```
