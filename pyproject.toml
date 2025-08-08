@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "private-pgm"
+name = "mbi"
 version = "1.0.0"
-description = "Marginal-based estimation and inference for differential privacy"
+description = "Marginal-based estimation and inference (with applications to differential privacy)"
 authors = [
     {name = "Ryan McKenna", email = "rmckenna21@gmail.com"},
 ]
 license = {text = "Apache License 2.0"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
@@ -23,7 +23,6 @@ dependencies = [
     "scipy",
     "pandas",
     "networkx",
-    "matplotlib",
     "jax",
     "jaxlib",
     "chex",
@@ -31,8 +30,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ryan112358/private-pgm"
-Repository = "https://github.com/ryan112358/private-pgm"
+Homepage = "https://github.com/ryan112358/mbi"
+Repository = "https://github.com/ryan112358/mbi"
 
 [project.optional-dependencies]
 dev = [
