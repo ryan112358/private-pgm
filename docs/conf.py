@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.abspath('../src'))
 
-project = 'private-pgm'
+project = 'mbi'
 copyright = '2025, Ryan McKenna'
 author = 'Ryan McKenna'
 
