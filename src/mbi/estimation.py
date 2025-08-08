@@ -28,17 +28,18 @@ from . import marginal_loss, marginal_oracles
 from .approximate_oracles import StatefulMarginalOracle
 from .clique_vector import CliqueVector
 from .domain import Domain
-from .factor import Factor
+from .factor import Factor, Projectable
 from .marginal_loss import LinearMeasurement
 from .markov_random_field import MarkovRandomField
 
 
 class Estimator(Protocol):
     """
-    Defines the callable signature for graphical model estimator functions.
+    Defines the callable signature for marginal-based estimators.
 
-    An estimator learns the parameters (potentials) of a graphical model,
-    typically by optimizing a marginal-based loss function.
+    An estimator estimates a discrete distribution, or more generally
+    a `Projectable' object from a loss function defined over it's 
+    low-dimensional marginals.
 
     Examples of conforming functions from `mbi.estimation`:
     - `mirror_descent`
@@ -46,6 +47,7 @@ class Estimator(Protocol):
     - `dual_averaging`
     - `interior_gradient`
     - `universal_accelerated_method`
+    - ... and more from other modules
     """
 
     def __call__(
@@ -54,15 +56,10 @@ class Estimator(Protocol):
         loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
         *,
         known_total: float | None = None,
-        potentials: CliqueVector | None = None,
-        marginal_oracle: marginal_oracles.MarginalOracle,
-        iters: int = 1000,
-        callback_fn: Callable[[CliqueVector], None] = lambda _: None,
-        mesh: jax.sharding.Mesh | None = None,
-        **kwargs: Any,
-    ) -> MarkovRandomField:
+        **kwargs: Any
+    ) -> Projectable:
         """
-        Estimates the parameters of a graphical model.
+        Estimate a Projectable from noisy marginal measurements.
 
         Args:
             domain: The Domain object specifying the attributes and their
@@ -71,22 +68,14 @@ class Estimator(Protocol):
                 LinearMeasurement objects. This defines the objective function
                 to be minimized.
             known_total: An optional float for the known or estimated total
-                number of records.
-            potentials: An optional CliqueVector for the initial guess of
-                model potentials.
-            marginal_oracle: A callable (stateless or stateful) that computes
-                marginal distributions from potentials.
-            iters: Maximum number of optimization iterations. Defaults to 1000.
-            callback_fn: Optional function called periodically during estimation.
-                Defaults to a no-op lambda.
-            mesh: Determines how the marginal oracle and loss calculation
-                will be sharded across devices.
-            **kwargs: Additional keyword arguments specific to the estimation
-                algorithm (e.g., stepsize, stateful flag).
+                number of records. If not specified, the estimator will attempt
+                to learn this automatically.
+            **kwargs: Additional optional keyword arguments specific to the
+                estimation algorithm.
 
         Returns:
-            A MarkovRandomField object with the learned potentials,
-            resulting marginals, and the model domain.
+            A Projectable object that is maximally consistent with the
+            noisy measurements taken in some sense.
         """
         ...
 

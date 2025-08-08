@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mbi"
+version = "1.0.0"
+description = "Marginal-based estimation and inference (with applications to differential privacy)"
+authors = [
+    {name = "Ryan McKenna", email = "rmckenna21@gmail.com"},
+]
+license = {text = "Apache License 2.0"}
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "attrs",
+    "numpy",
+    "scipy",
+    "pandas",
+    "networkx",
+    "jax",
+    "jaxlib",
+    "chex",
+    "optax",
+]
+
+[project.urls]
+Homepage = "https://github.com/ryan112358/mbi"
+Repository = "https://github.com/ryan112358/mbi"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytype",
+    "parameterized",
+    "yapf",
+    "pylint",
+    "pydocstyle",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

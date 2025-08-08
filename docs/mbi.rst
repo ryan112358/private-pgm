@@ -13,9 +13,11 @@ Top-Level Classes
    Dataset
    Factor
    CliqueVector
+   Projectable
    MarginalLossFn
    LinearMeasurement
    MarginalOracle
+   MarkovRandomField
    Estimator
    
 
