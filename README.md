@@ -1,4 +1,5 @@
-# Marginal-based estimation and inference for differential privacy
+## MBI: Marginal-Based Estimation and Inference
+**(with applications to differential privacy)**
 
 <img src="pgm-logo.png" alt="drawing" width="123"/>
 
