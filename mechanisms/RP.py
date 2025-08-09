@@ -7,7 +7,7 @@ import json
 import itertools
 import argparse
 import jax.numpy as jnp
-from mbi import Dataset, Domain, relaxed_projection_estimation
+from mbi import Dataset, Domain, relaxed_projection_estimation, LinearMeasurement
 from cdp2adp import cdp_rho
 
 
@@ -52,7 +52,7 @@ class RPGen():
             cl = marginals[i]
             marginal = self.dataset.project(cl).datavector()
             selected_marginals.append(
-                (cl, scale_vector(marginal))
+                LinearMeasurement(scale_vector(marginal), cl)
             )
 
         self.model = relaxed_projection_estimation(
@@ -77,7 +77,7 @@ class RPGen():
             marginal += np.random.normal(loc=0, scale=1/np.sqrt(2*rho), size=marginal.shape)
 
             selected_marginals.append(
-                (cl, scale_vector(marginal))
+                LinearMeasurement(scale_vector(marginal), cl)
             )
 
         self.model = relaxed_projection_estimation(

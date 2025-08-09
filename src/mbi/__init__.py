@@ -14,7 +14,6 @@ from .factor import Factor, Projectable
 from .marginal_loss import LinearMeasurement, MarginalLossFn
 from .marginal_oracles import MarginalOracle
 from .markov_random_field import MarkovRandomField
-from .nn_generator import MargNN
 from .relaxed_projection import relaxed_projection_estimation
 
 Clique = tuple[str, ...]
@@ -28,7 +27,6 @@ __all__ = [
     'LinearMeasurement',
     'MarginalLossFn',
     'MarkovRandomField',
-    'MargNN',
     'Projectable',
     'MarginalOracle',
     'Estimator',

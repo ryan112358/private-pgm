@@ -1,21 +1,19 @@
 import numpy as np
 import pandas as pd
 import itertools
-from typing import Callable, List, Tuple
 
 import jax
 import jax.numpy as jnp
 import optax
+
+from typing import Callable, List
+from . import marginal_loss
 from .dataset import Dataset
 from .domain import Domain
-
-
-
-#######################################################
-#                                                     #
-#       Here is a the projectable data class          #
-#                                                     #
-#######################################################
+from .marginal_loss import LinearMeasurement
+from .clique_vector import CliqueVector
+from .estimation import mirror_descent
+from .factor import Factor
 
 class ProjectableData():
     def __init__(
@@ -24,23 +22,28 @@ class ProjectableData():
             domain: Domain
         ):
         """
-        A class storing one-hot data, supporting projection, vector 
+        A class storing soft-hot data, supporting projection, vector 
         query, and synthesize data operation.
         
         Args:
-            D: a jax.Array, representing a one-hot form of the data.
+            D: a jax.Array, representing a soft-hot form of the data.
             domain: a Domain class.
         """
         self.D_prime = D
         self.domain = domain
-        self.feature_indices_map = {}
+    
+    @property 
+    def feature_indices_map(self):
+        map_dict = {}
         s = 0
         for col in self.domain.attrs:
             e = s + self.domain.size(col)
-            self.feature_indices_map[col] = list(range(s, e))
+            map_dict[col] = list(range(s, e))
             s = e
+        return map_dict
 
     def datavector(self):
+        """ This will return a flattened vector of PROBABILITY distribution """
         splits = [self.D_prime[:, self.feature_indices_map[attr]] for attr in self.domain.attrs]
 
         letters = "bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -53,7 +56,25 @@ class ProjectableData():
         einsum_str = f'{input_dims}->a{output_dims}'
 
         joint = jnp.einsum(einsum_str, *splits).mean(axis=0)
-        return np.array(joint).flatten()
+        return joint.flatten()
+
+
+    def datamatrix(self):
+        """ This will return a matrix of frequency COUNT """
+        splits = [self.D_prime[:, self.feature_indices_map[attr]] for attr in self.domain.attrs]
+
+        letters = "bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        assert(
+            len(letters) >= len(self.domain)
+        ), 'High dim domain'
+
+        input_dims = ','.join(f'a{letters[i]}' for i in range(len(splits)))
+        output_dims = ''.join(f'{letters[i]}' for i in range(len(splits)))
+        einsum_str = f'{input_dims}->a{output_dims}'
+
+        joint = jnp.einsum(einsum_str, *splits).sum(axis=0)
+        return joint
+
 
     def project(self, cl: tuple):
         cols = list(itertools.chain.from_iterable(self.feature_indices_map[attr] for attr in cl))
@@ -61,7 +82,8 @@ class ProjectableData():
         domain_proj = self.domain.project(cl)
         return ProjectableData(D_proj, domain_proj)
     
-    def synthetic_data(self, num_samples, seed=0):
+
+    def synthetic_data(self, num_samples=1000, seed=0):
         n, _ = self.D_prime.shape
         key = jax.random.PRNGKey(seed)
         key, sk = jax.random.split(key)
@@ -82,12 +104,9 @@ class ProjectableData():
 
 def relaxed_projection_estimation(
     domain: Domain,
-    measurements: List[tuple],
+    loss_fn: marginal_loss.MarginalLossFn | list[LinearMeasurement],
     iters: int = 1000,
-    lr: float = 0.01,
-    D_start: jax.Array = None,
-    seed: int = 0,
-    D_size: int = 1000,
+    **kwargs
 ) -> ProjectableData:
     """
     API function for relaxed projection mechanism, return a 
@@ -96,99 +115,128 @@ def relaxed_projection_estimation(
 
     Args:
         domain: a Domain class.
-        measurements: a list of tuples, each of which should be in 
-                      form ``(clique, measurement of clique)``.
+        loss_fn: a list of LinearMeasurement, or a callable MarginalLossFn.
         iters: number of iterations in training.
-        lr: learning rate in training.
-        D_start: initial data on which we start the optimization. If 
-                 None, the optimization will start from a randomly 
-                 initialized data.
-        seed: random seed.
-        D_size: number of records in optimizable data.
+        kwargs: args that may be used for extra config:
+            D_start: initial data on which we start the optimization. If 
+                     None, the optimization will start from a randomly 
+                     initialized data.
+            known_total: number of records in optimizable data (``D_prime.shape[0]``), 
+                         which can be regarded as the `batch size`.
+            optimizer: an optax optimizer, default to adam with lr=0.01.
+            seed: random seed, default to 0.
     """
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.PRNGKey(kwargs.get('seed', 0))
+    D_start = kwargs.get('D_start', None)
     if D_start is None:
-        D_start = _initialize_synthetic_dataset(key, num_generated_points=D_size, data_dimension=np.sum(domain.shape))
+        D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
 
-    stat_dim = _obtain_dim(measurements = measurements)
-    statistics = [MarginalStatistics(domain, dim) for dim in stat_dim]
-    selected_query_index, measured_ans = _marginal_stat(measurements, stat_dim, statistics)
+    if isinstance(loss_fn, List):
+        # if given a list of LinearMeasurement, define the loss function by it
 
-    exact_fn, diff_fn = [None]*len(stat_dim), [None]*len(stat_dim)
-    for i in range(len(stat_dim)):
-        exact_fn[i] = statistics[i].get_exact_statistics_fn()
-        diff_fn[i]  = statistics[i].get_differentiable_statistics_fn()
+        stat_dim = _obtain_dim(measurements = loss_fn)
+        statistics = [MarginalStatistics(domain, dim) for dim in stat_dim]
+        selected_query_index, measured_ans = _marginal_stat(loss_fn, stat_dim, statistics)
 
-    @jax.jit
-    def progress_loss(D_prime, query_idx, target, _exact_fn=exact_fn):
-        loss = 0.0
+        exact_fn = [None]*len(stat_dim)
         for i in range(len(stat_dim)):
-            stats = _exact_fn[i](D_prime, query_idx[i])
-            loss += jnp.linalg.norm(target[i] - stats)**2
-        return loss
-    prog_fn = jax.jit(lambda D: progress_loss(D, selected_query_index, measured_ans))
+            exact_fn[i] = statistics[i].get_exact_statistics_fn()
 
-    @jax.jit
-    def loss_fn(D_prime, query_idx, target, _diff_fn=diff_fn):
-        loss = 0.0
-        for i in range(len(stat_dim)):
-            stats = _diff_fn[i](D_prime, query_idx[i])
-            loss += jnp.linalg.norm(target[i] - stats)**2
-        return loss
+        @jax.jit
+        def progress_loss(D_prime, query_idx, target, _exact_fn=exact_fn):
+            loss = 0.0
+            for i in range(len(stat_dim)):
+                stats = _exact_fn[i](D_prime, query_idx[i])
+                loss += jnp.linalg.norm(target[i] - stats)**2
+            return loss
+        loss_fn = jax.jit(lambda D: progress_loss(D, selected_query_index, measured_ans))
 
-    feats_cum = jnp.array([0] + list(domain.shape)).cumsum()
-    feats_idx = [list(range(feats_cum[i], feats_cum[i+1])) for i in range(len(feats_cum)-1)]
-    optimizer = optax.adam(learning_rate=lr)
-    opt_init_fn = optimizer.init
-
-    @jax.jit
-    def update_fn(D, opt_state, query_idx, target):
-        value, grads = jax.value_and_grad(loss_fn)(D, query_idx, target)
-        updates, opt_state = optimizer.update(grads, opt_state, D)
-        D = optax.apply_updates(D, updates)
-        D = jnp.clip(_sparsemax_project(D, feats_idx), 0, 1)
-        return D, opt_state, value
-    upt_fn = jax.jit(lambda D, state: update_fn(D, state, selected_query_index, measured_ans))
+        # -- initialize optimizer and update function --
+        feats_cum = jnp.array([0] + list(domain.shape)).cumsum()
+        feats_idx = [list(range(feats_cum[i], feats_cum[i+1])) for i in range(len(feats_cum)-1)]
+        optimizer = kwargs.get('optimizer', optax.adam(learning_rate=0.01))
+        opt_init_fn = optimizer.init
 
 
-    """ main optimization step: find a D' that minimized the loss function using the corresponding parameters  """
-    progress_loss_start = prog_fn(D_start)
-
-    D_prime = _optimize_D(
-        D_start,
-        opt_init_fn,
-        prog_fn,
-        upt_fn,
-        iters
-    )
-
-    progress_loss_final = prog_fn(D_prime)
-    print(
-        f'marginal fitting results: start loss = {progress_loss_start}, end loss = {progress_loss_final}'
-    )
-
-    return ProjectableData(D_prime, domain)
+        @jax.jit
+        def update_fn(D, opt_state):
+            value, grads = jax.value_and_grad(loss_fn)(D)
+            updates, opt_state = optimizer.update(grads, opt_state, D)
+            D = optax.apply_updates(D, updates)
+            D = jnp.clip(_sparsemax_project(D, feats_idx), 0, 1)
+            return D, opt_state, value
 
 
+        # -- main optimization step: find a D' that minimized the loss function -- 
+        progress_loss_start = loss_fn(D_start)
+        D_prime = _optimize_D(
+            D_start,
+            opt_init_fn,
+            loss_fn,
+            update_fn,
+            iters
+        )
+        progress_loss_final = loss_fn(D_prime)
+        print(
+            f'marginal fitting results: start loss = {progress_loss_start}, end loss = {progress_loss_final}'
+        )
 
-def _obtain_dim(measurements: List[tuple]):
-    dims = [len(cl) for cl, _ in measurements]
+        return ProjectableData(D_prime, domain)
+    
+    else:
+        # if given a MarginalLossFn, we transform D_start into CliqueVector and optimize it (same as PGM)
+
+        D_start = kwargs.get('D_start', None)
+        if D_start is None:
+            D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
+        ProjectableD = ProjectableData(D_start, domain)
+
+        cliques = [tuple(cl) for cl in loss_fn.cliques]
+        arrays = {
+            cl: Factor(domain.project(cl), ProjectableD.project(cl).datamatrix()) 
+            for cl in cliques
+        }
+        clv_start = CliqueVector(domain, cliques, arrays)
+
+        return mirror_descent(
+            domain = domain,
+            loss_fn = loss_fn, 
+            known_total = D_start.shape[0],
+            potentials = clv_start
+        )
+
+
+
+
+
+def _obtain_dim(measurements):
+    dims = [len(measure.clique) for measure in measurements]
     return list(set(dims))
+
+
+def _scale_vector(vec):
+    temp_vec = jnp.clip(vec, 0, jnp.inf)
+    return temp_vec/jnp.sum(temp_vec)
 
 
 def _marginal_stat(measurements, stat_dim, statistics):
     selected_query_index = [None]*len(stat_dim)
     measured_ans = [None]*len(stat_dim)
-    for cl, measure in measurements:
+    for measure in measurements:
+        cl = measure.clique
+        marginal = measure.noisy_measurement
+        if jnp.sum(marginal) > 1.1:
+            # if marginal is a count vector, scale it to probability vector
+            marginal = _scale_vector(marginal) 
         try:
             stat_id = stat_dim.index(len(cl))
             if selected_query_index[stat_id] is None:
                 selected_query_index[stat_id] = [statistics[stat_id].workload.index(cl)]
-                measured_ans[stat_id] = [np.hstack([np.array(measure), np.zeros((statistics[stat_id].max_size - len(measure),))])]
+                measured_ans[stat_id] = [np.hstack([np.array(marginal), np.zeros((statistics[stat_id].max_size - len(marginal),))])]
             else:
                 selected_query_index[stat_id].append(statistics[stat_id].workload.index(cl))
                 measured_ans[stat_id].append(
-                    np.hstack([np.array(measure), np.zeros((statistics[stat_id].max_size - len(measure),))])
+                    np.hstack([np.array(marginal), np.zeros((statistics[stat_id].max_size - len(marginal),))])
                 )
         except:
             raise ValueError(f'Unsupported marginal dimension: {len(cl)}')
@@ -271,12 +319,6 @@ _optimize_D = jax.jit(_optimize_D, static_argnums=(1, 2, 3, 4))
 
 
 
-#######################################################
-#                                                     #
-#         Here is a the marginal class                #
-#                                                     #
-#######################################################
-
 class MarginalStatistics():
     def __init__(self, domain, k, max_number_rows=5000):
         self.domain = domain
@@ -356,13 +398,5 @@ class MarginalStatistics():
             stats_normed = stats / D.shape[0]
 
             return stats_normed
-
-        return compute_statistics_fn
-
-    def get_differentiable_statistics_fn(self):
-        stat_fn = self.get_exact_statistics_fn()
-
-        def compute_statistics_fn(D, queries_idx: jnp.ndarray):
-            return stat_fn(D, queries_idx)
 
         return compute_statistics_fn
