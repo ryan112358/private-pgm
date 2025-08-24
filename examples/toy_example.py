@@ -38,6 +38,8 @@ bc2 = model.project(['B', 'C']).datavector()
 
 print(ab2)
 print(bc2)
+print('L1 loss of ab:', np.linalg.norm(ab2/np.sum(ab2) - yab/np.sum(yab), 1))
+print('L1 loss of bc:', np.linalg.norm(bc2/np.sum(bc2) - ybc/np.sum(ybc), 1))
 
 # estimate answer to unmeasured queries
 ac2 = model.project(['A', 'C']).datavector()

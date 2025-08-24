@@ -189,21 +189,38 @@ def relaxed_projection_estimation(
         D_start = kwargs.get('D_start', None)
         if D_start is None:
             D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
-        ProjectableD = ProjectableData(D_start, domain)
+        
+        @jax.jit
+        def loss_fn_wrap(D):
+            ProjectableD = ProjectableData(D, domain)
+            cliques = [tuple(cl) for cl in loss_fn.cliques]
+            arrays = {
+                cl: Factor(domain.project(cl), ProjectableD.project(cl).datamatrix()) 
+                for cl in cliques
+            }
+            return loss_fn(CliqueVector(domain, cliques, arrays))
 
-        cliques = [tuple(cl) for cl in loss_fn.cliques]
-        arrays = {
-            cl: Factor(domain.project(cl), ProjectableD.project(cl).datamatrix()) 
-            for cl in cliques
-        }
-        clv_start = CliqueVector(domain, cliques, arrays)
+        feats_cum = jnp.array([0] + list(domain.shape)).cumsum()
+        feats_idx = [list(range(feats_cum[i], feats_cum[i+1])) for i in range(len(feats_cum)-1)]
+        optimizer = kwargs.get('optimizer', optax.adam(learning_rate=0.01))
+        opt_init_fn = optimizer.init
 
-        return mirror_descent(
-            domain = domain,
-            loss_fn = loss_fn, 
-            known_total = D_start.shape[0],
-            potentials = clv_start
+        @jax.jit
+        def update_fn(D, opt_state):
+            value, grads = jax.value_and_grad(loss_fn_wrap)(D)
+            updates, opt_state = optimizer.update(grads, opt_state, D)
+            D = optax.apply_updates(D, updates)
+            D = jnp.clip(_sparsemax_project(D, feats_idx), 0, 1)
+            return D, opt_state, value
+
+        D_prime = _optimize_D(
+            D_start,
+            opt_init_fn,
+            loss_fn_wrap,
+            update_fn,
+            iters
         )
+        return ProjectableData(D_prime, domain)
 
 
 
