@@ -5,6 +5,7 @@ import itertools
 import jax
 import jax.numpy as jnp
 import optax
+from dataclasses import dataclass, field
 
 from typing import Callable, List
 from . import marginal_loss
@@ -15,22 +16,20 @@ from .clique_vector import CliqueVector
 from .estimation import mirror_descent
 from .factor import Factor
 
+
+@jax.tree_util.register_dataclass
+@dataclass()
 class ProjectableData():
-    def __init__(
-            self, 
-            D: jax.Array, 
-            domain: Domain
-        ):
-        """
-        A class storing soft-hot data, supporting projection, vector 
-        query, and synthesize data operation.
-        
-        Args:
-            D: a jax.Array, representing a soft-hot form of the data.
-            domain: a Domain class.
-        """
-        self.D_prime = D
-        self.domain = domain
+    """
+    A class storing soft-hot data, supporting projection, vector 
+    query, and synthesize data operation.
+    
+    Args:
+        D: a jax.Array, representing a soft-hot form of the data.
+        domain: a Domain class.
+    """
+    D_prime: jax.Array
+    domain: Domain = field(metadata=dict(static=True))
     
     @property 
     def feature_indices_map(self):
@@ -80,7 +79,7 @@ class ProjectableData():
         cols = list(itertools.chain.from_iterable(self.feature_indices_map[attr] for attr in cl))
         D_proj = self.D_prime[:, cols]
         domain_proj = self.domain.project(cl)
-        return ProjectableData(D_proj, domain_proj)
+        return ProjectableData(D_prime = D_proj, domain = domain_proj)
     
 
     def synthetic_data(self, num_samples=1000, seed=0):
@@ -127,12 +126,12 @@ def relaxed_projection_estimation(
             seed: random seed, default to 0.
     """
     key = jax.random.PRNGKey(kwargs.get('seed', 0))
-    D_start = kwargs.get('D_start', None)
-    if D_start is None:
-        D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
 
     if isinstance(loss_fn, List):
         # if given a list of LinearMeasurement, define the loss function by it
+        D_start = kwargs.get('D_start', None)
+        if D_start is None:
+            D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
 
         stat_dim = _obtain_dim(measurements = loss_fn)
         statistics = [MarginalStatistics(domain, dim) for dim in stat_dim]
@@ -181,18 +180,22 @@ def relaxed_projection_estimation(
             f'marginal fitting results: start loss = {progress_loss_start}, end loss = {progress_loss_final}'
         )
 
-        return ProjectableData(D_prime, domain)
+        return ProjectableData(D_prime = D_prime, domain = domain)
     
     else:
         # if given a MarginalLossFn, we transform D_start into CliqueVector and optimize it (same as PGM)
 
         D_start = kwargs.get('D_start', None)
         if D_start is None:
-            D_start = _initialize_synthetic_dataset(key, num_generated_points=kwargs.get('known_total', 1000), data_dimension=np.sum(domain.shape))
+            known_total = kwargs.get('known_total', None)
+            if known_total is not None:
+                D_start = _initialize_synthetic_dataset(key, num_generated_points=known_total, data_dimension=np.sum(domain.shape))
+            else:
+                raise ValueError('Relaxed Projection reuqires an estimiated sample number if given MarginalLossFn')
         
         @jax.jit
         def loss_fn_wrap(D):
-            ProjectableD = ProjectableData(D, domain)
+            ProjectableD = ProjectableData(D_prime = D, domain = domain)
             cliques = [tuple(cl) for cl in loss_fn.cliques]
             arrays = {
                 cl: Factor(domain.project(cl), ProjectableD.project(cl).datamatrix()) 
@@ -213,6 +216,7 @@ def relaxed_projection_estimation(
             D = jnp.clip(_sparsemax_project(D, feats_idx), 0, 1)
             return D, opt_state, value
 
+        progress_loss_start = loss_fn_wrap(D_start)
         D_prime = _optimize_D(
             D_start,
             opt_init_fn,
@@ -220,7 +224,11 @@ def relaxed_projection_estimation(
             update_fn,
             iters
         )
-        return ProjectableData(D_prime, domain)
+        progress_loss_final = loss_fn_wrap(D_prime)
+        print(
+            f'marginal fitting results: start loss = {progress_loss_start}, end loss = {progress_loss_final}'
+        )
+        return ProjectableData(D_prime = D_prime, domain = domain)
 
 
 
